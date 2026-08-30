@@ -54,6 +54,7 @@ from typing import Any
 import pandas as pd
 
 from finai.sources import tdx_source
+from finai.sources.adjustment_mode import AdjustmentMode, UnknownAdjustment
 from finai.sources.base import (
     EMPTY_OK,
     FetchResult,
@@ -160,6 +161,12 @@ def fetch(name: str, /, **kwargs: Any) -> FetchResult:
             detail="tdx_daily_bar_adapter.fetch: missing required `symbol` kwarg",
             evidence={"name": name, "kwargs": list(kwargs)},
         )
+    # ⭐ R4 §3.5：把"TDX 无复权参数 = RAW"从隐式变显式 —— 任何非 RAW 口径请求
+    #   在此被拒（⛔ 不许装作支持），防止"调用方以为拿到前复权、实际是不复权"的静默漂移。
+    if kwargs.get("adjustment") not in (None, AdjustmentMode.RAW):
+        raise UnknownAdjustment(
+            f"tdx::daily_bar 走 TDX 协议**无复权参数**，只能 RAW（"
+            f"adjustment={kwargs.get('adjustment')!r} 无法映射，R4 §3.5）")
     start = kwargs.get("start_date")
     end = kwargs.get("end_date")
     count = _count_from_range(start, end)

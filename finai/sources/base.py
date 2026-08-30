@@ -233,6 +233,12 @@ class FetchResult:
     source: str = ""
     detail: str = ""
     evidence: dict[str, Any] = field(default_factory=dict)
+    #: ⭐ R1§③/R4§5B 共用的扩展点：血缘/审计用的**自由键值对**（如
+    #:   `meta["suspended_rows"]` = 被过滤的停牌行数、`meta["adjust_mode"]` = 复权口径）。
+    #: ⛔⛔ **刻意不进 `__post_init__` 白名单校验**：meta 是开放的血缘字典，
+    #:   钉死键集合等于把"以后想记什么"也冻住 —— 校验只属于七态契约 `state`。
+    #: ⚠ 默认空 dict ⇒ 旧消费方零破坏（dataclass 字段默认值，非必填）。
+    meta: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         """⛔ 状态必须在 `ALL_STATES` 内（`FINDING-258`）。

@@ -27,6 +27,10 @@ from typing import Any
 
 import pandas as pd
 
+from finai.sources.adjustment_mode import (
+    BAOSTOCK as _ADJUSTFLAG_TABLE,
+    UnknownAdjustment,
+)
 from finai.sources.base import (
     FetchResult,
     classify_exception,
@@ -40,6 +44,25 @@ CURSOR_LIMIT = 60_000
 
 #: 单次取数的外部超时（秒）。`FINDING-181`：socket 超时约束不住 baostock。
 DEFAULT_TIMEOUT = 90
+
+#: ⭐ R1 §1-①：日线查询必须显式要的字段（用于停牌脏行过滤）。
+#:   12 号文档 §9-A-4 实测：baostock 停牌日**返回数据行**且 `tradestatus='0'`、
+#:   `volume=0`、OHLC 四项全部等于前收盘价（100% 命中）。缺 `tradestatus` 则无法
+#:   在入口挡掉脏行，故缺它直接 raise（⛔ 不静默 append，诚实性先于便利）。
+_DAILY_FIELDS_REQUIRED: tuple[str, ...] = ("tradestatus",)
+
+
+def _drop_suspended(frame: pd.DataFrame, *, kind: str) -> tuple[pd.DataFrame, int]:
+    """把停牌脏行（`tradestatus != '1'`，OHLC=前收平推）挡在适配层出口。
+
+    12 号文档 §9-A-4 实测 100% 命中；⛔ 不得用前收平推填补缺失（R1 红线）。
+    返回 ``(过滤后的帧, 被过滤的行数)``。非 kline 或无 `tradestatus` 列时原样放行。
+    """
+    if kind != "kline" or "tradestatus" not in frame.columns:
+        return frame, 0
+    pre = len(frame)
+    out = frame[frame["tradestatus"] == "1"]
+    return out, pre - len(out)
 
 
 class BaostockCursorNotTerminating(RuntimeError):
@@ -97,8 +120,33 @@ def run_with_timeout(fn: Any, timeout: int) -> Any:
     return box.get("value")
 
 
+def _validate_kline_params(kind: str, params: dict[str, Any]) -> None:
+    """kline 入参的离线校验（R1 §1-① 字段强制 + R4 §3.4 口径校验）。
+
+    ⭐ 必须**先于** `bs.login()`：⛔ 不许先连网登录才发现参数错（既慢又留会话）。
+    """
+    if kind != "kline":
+        return
+    frequency = params.get("frequency", "d")
+    # ⭐ R1 §1-①：日线必须显式要 `tradestatus`，否则无法过滤停牌脏行。
+    if frequency == "d":
+        missing = [f for f in _DAILY_FIELDS_REQUIRED
+                   if f not in params.get("fields", "").split(",")]
+        if missing:
+            raise ValueError(
+                f"baostock 日线 fields 必须含 {missing} —— 否则无法过滤停牌"
+                f"脏行（R1，12 号 §9-A-4 实测：停牌日 OHLC=前收平推）")
+    # ⭐ R4 §3.4：adjustflag 显式化 + 用映射表校验，⛔ 越界不静默透传。
+    adjustflag = params.get("adjustflag", "3")
+    if adjustflag not in _ADJUSTFLAG_TABLE:
+        raise UnknownAdjustment(
+            f"baostock adjustflag={adjustflag!r} 不在映射表 "
+            f"{sorted(_ADJUSTFLAG_TABLE)} 内（R4：⛔ 不许静默换口径）")
+
+
 def _query(kind: str, params: dict[str, Any]) -> pd.DataFrame:
     """登录 → 查询 → 逐行消费 → 登出。每次调用独立登录，避免会话状态串扰。"""
+    _validate_kline_params(kind, params)   # ⭐ 先于登录（离线校验，⛔ 不连网才发现错）
     import baostock as bs
 
     bs.login()
@@ -147,11 +195,25 @@ def fetch(kind: str, *, timeout: int = DEFAULT_TIMEOUT, **params: Any) -> FetchR
       ``trade_dates``    交易日历
 
     ⛔ 返回 0 行时 state 为 ``EMPTY_OK``，**不是** OK，也**不是**"该区间无数据"的证据。
+
+    ⭐ R1 §1-②③：日线在 `_query` 返回后、`make_result` 前过滤停牌脏行
+    （`tradestatus != '1'`，OHLC=前收平推），被过滤行数写入
+    `evidence["suspended_rows"]` 与 `meta["suspended_rows"]`。语义纪律：过滤后
+    仍有行 → state 仍 ``OK``（数据真实取到，只是按口径剔除停牌日）；全区间停牌 →
+    ``EMPTY_OK``（0 行，代表"该区间无真实行情"，⛔ 与"源故障"分开读）。
     """
     try:
+        _validate_kline_params(kind, params)   # ⭐ 离线校验先于一切（⛔ 不连网才发现错）
         frame = run_with_timeout(lambda: _query(kind, params), timeout)
-        return make_result(frame, source=SOURCE,
-                           evidence={"kind": kind, "params": {k: str(v)[:40] for k, v in params.items()}})
+        frame, n_susp = _drop_suspended(frame, kind=kind)
+        evidence: dict[str, Any] = {
+            "kind": kind, "params": {k: str(v)[:40] for k, v in params.items()},
+            "suspended_rows": n_susp, "suspended_warn": n_susp > 0,
+        }
+        res = make_result(frame, source=SOURCE, evidence=evidence)
+        if n_susp:
+            res.meta["suspended_rows"] = n_susp
+        return res
     except BaseException as exc:  # noqa: BLE001
         return FetchResult(
             state=classify_exception(exc), frame=None, rows=0, source=SOURCE,

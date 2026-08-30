@@ -33,6 +33,7 @@ from typing import Any, Callable, Iterable
 import pandas as pd
 
 from finai import security_ids as _security_ids
+from finai.sources.adjustment_mode import AdjustmentMode
 from finai.sources.base import FetchResult
 
 #: 六态里算"拿到了数据"的状态。⛔ `EMPTY_OK` **不算** —— 0 行不是成功（`FINDING-178`），
@@ -362,6 +363,12 @@ class Candidate:
             并被 `test_failure_report_carries_the_candidate_note` 钉住。
             ⚠ 只在**失败**结果上出现：成功时调用方拿到的是数据，
               把"已知限制"混进成功路径会被读成"本次数据有问题"。
+        adjust: 该候选**钉死的复权口径**（`AdjustmentMode`，R4 §3.3）。
+            ⭐ 这是口径的**符号化**表示 —— 与 `pinned` 里的字面量值
+            （`{"adjust": ""}` / `{"fqt": 0}`）**同源**：pinned 是给被调函数的实参，
+            `adjust` 是"这条腿是什么口径"的机器可读声明，两者由 `to_kwargs()` 同源
+            断言一致（⛔ 不许某条改了一个忘了另一个）。默认 ``None`` 只为不破坏
+            既有测试夹具的构造式；`ohlcv_daily` 口径的 `daily_bar` 候选**必须**填。
     """
     key: str
     schema: str
@@ -375,6 +382,8 @@ class Candidate:
     coverage: str = ""
     upstream: Upstream | None = None
     note: str = ""
+    #: ⭐ R4 §3.3：钉死的复权口径（符号化，与 `pinned` 同源）。默认 ``None`` 见上。
+    adjust: "AdjustmentMode | None" = None
 
 
 def _prefix_symbol(code: Any) -> str:
@@ -1019,6 +1028,8 @@ CAPABILITIES: dict[str, list[Candidate]] = {
                       "https://push2his.eastmoney.com/api/qt/stock/kline/get",
                       "akshare/stock_feature/stock_hist_em.py:952 "
                       "stock_zh_a_hist() 内 requests.get(url,…)"),
+                  # ⭐ R4 §3.3：口径符号化。pinned["adjust"]="" ⇔ RAW（AKSHARE 表）。
+                  adjust=AdjustmentMode.RAW,
                   note="2026-08-10 实测 1599 行/6.5年·12 列；⭐ adjust 钉死为不复权"),
         Candidate("efinance::stock.get_quote_history", "ohlcv_daily",
                   arg_map={"symbol": "stock_codes",
@@ -1033,6 +1044,8 @@ CAPABILITIES: dict[str, list[Candidate]] = {
                       "efinance/common/getter.py:109 get_quote_history_single() "
                       "内 session.get(url,…)；调用链 stock.get_quote_history → "
                       "get_quote_history_for_stock → get_quote_history_single"),
+                  # ⭐ R4 §3.3：口径符号化。pinned["fqt"]=0 ⇔ RAW（EFINANCE 表）。
+                  adjust=AdjustmentMode.RAW,
                   note="2026-08-10 实测与上条 4797/4797 逐元素全等（fqt=0 时）；"
                        "⛔ 它带 **kwargs，参名写错会静默返回 35 年全量（FINDING-352）；"
                        "⛔⛔ 与上条**同上游**（push2his，FINDING-402）⇒ 不是独立备胎"),
@@ -1089,6 +1102,8 @@ CAPABILITIES: dict[str, list[Candidate]] = {
                       "（封装 finai/tdx_minute5.py::_connect_tdx_api，"
                       "复用其健康节点缓存 data/tdx_healthy_nodes.json）"
                   ),
+                  # ⭐ R4 §3.3：口径符号化。pinned["adjust"]="" ⇔ RAW（TDX 无复权参数）。
+                  adjust=AdjustmentMode.RAW,
                   note="2026-08-14 实测 StdQuotes().bars 0.1s/800 根·"
                        "000001 区间 33 行不复权日线；"
                        "⛔ 不走 catalog（tdx 需会话初始化，见 tdx_daily_bar_adapter）；"
