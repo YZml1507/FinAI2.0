@@ -23,6 +23,11 @@ artifacts/interface_matrix/*.lock
 artifacts/**/*.tmp
 artifacts/**/*.partial
 
+# Test / tool caches (regenerable)
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
 # IDE / editor
 .idea/
 .vscode/

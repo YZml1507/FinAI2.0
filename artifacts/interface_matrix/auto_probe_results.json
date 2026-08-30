@@ -1,13 +1,13 @@
 {
- "probed_at": "2026-08-09T21:57:11.633082+00:00",
+ "probed_at": "2026-08-30T01:13:56.561973+00:00",
  "plan_stats": {
   "enumerated": 1612,
-  "excluded_category": 441,
+  "excluded_category": 443,
   "not_importable": 49,
   "unsynthesizable": 56,
-  "planned": 1066
+  "planned": 1064
  },
- "attempted_this_run": 6,
+ "attempted_this_run": 54,
  "network_gate": {
   "baidu(境内基准)": "3/3",
   "datacenter-web(东财可用面)": "3/3",
@@ -22,20 +22,22 @@
   "_pass": true
  },
  "proxy_snapshot": {
-  "http_proxy": null,
-  "https_proxy": null,
-  "captured_at": "2026-08-09T21:57:11.633082+00:00",
+  "http_proxy": "http://127.0.0.1:7897",
+  "https_proxy": "http://127.0.0.1:7897",
+  "captured_at": "2026-08-30T01:13:56.561973+00:00",
   "scope": "flush 时刻的系统代理状态；⛔ 不代表历史各批次探测时的状态",
   "per_record_key": "proxy_at_probe（只有本次真实探测过的记录才有）",
   "note": "系统代理状态快照（urllib.request.getproxies）"
  },
- "plan_order_sha256": "afd799d33bef494762915e32f49c6647ad2b6f40201bc26daa691cd7492af456",
- "interfaces_raw_sha256": "bb142d751f9075bb6a65d8d12ba294dcbc8796610adcbd0c5c3eb396bc6ef213",
- "plan_keys_count": 1066,
+ "plan_order_sha256": "a347228a7c7f199455073addae94ef1ea4294ccf000e301ac6e26472cff117b0",
+ "interfaces_raw_sha256": "97eb67b5a48e8c7d0538c2b20e834147b8103e05f54b940bee5140698448f902",
+ "plan_keys_count": 1064,
  "off_plan_records": [
   "akshare::bank_fjcf_table_detail",
   "akshare::energy_oil_detail",
   "akshare::forbes_rank",
+  "akshare::futures_news_shmet",
+  "akshare::game_hot_rank_taptap",
   "akshare::get_token",
   "akshare::hurun_rank",
   "akshare::migration_area_baidu",
@@ -61,12 +63,29 @@
    "local": 0.0
   },
   "family_window_limit": {
-   "eastmoney": 240,
+   "eastmoney": 180,
+   "ths": 200
+  },
+  "domain_min_interval_s": {
+   "eastmoney": 1.5,
+   "ths": 1.2,
+   "cninfo": 1.0,
+   "sina": 0.8,
+   "legulegu": 0.8,
+   "other": 0.5,
+   "local": 0.0
+  },
+  "domain_window_limit": {
+   "eastmoney": 180,
    "ths": 200
   },
   "window_seconds": 300,
   "thresholds_source": "a-stock-data/SKILL.md 东财风控阈值(社区实测 2026-05): >5/s 高 · 1min>=200 中高 · 5min>=300 触发封禁 · 并发>=10 高",
-  "self_imposed_margin": "窗口上限取 240 而非 300，留 20% 余量（无法观测其他进程是否也在打同一家）",
+  "keyed_on": "host_rate_limit_domain",
+  "attribution_source": "scripts/probe_host_attribution.py（生成器 scripts/gen_probe_host_attribution.py，来源为 inspect.getsource 读已安装包源码里的 URL 主机；⛔ 不是函数名后缀启发式）",
+  "attribution_entries": 1127,
+  "self_imposed_margin": "eastmoney 窗口上限 180 < 封禁阈值 300，且 1.5s×(180-1) < 300s ⇒ 该上限**可达**（旧值 240 结构上不可达，退避分支是死代码）",
+  "reachability_self_check": "assert_window_budgets_reachable() @ import",
   "backoffs_triggered": []
  },
  "contract": {
@@ -84,10 +103,11 @@
    "category": "债券/可转债",
    "signature": "()",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "OK",
-   "rows": 954,
+   "rows": 957,
    "cols": [
     "bond_code",
     "bond_name",
@@ -111,20 +131,28 @@
     "convert_price": "object"
    },
    "first_row": {
-    "bond_code": "123281",
-    "bond_name": "中仑转债",
-    "stock_code": "301565",
-    "short_name": "中仑新材",
-    "sub_date": "2026-08-06",
-    "issue_amount": "0.0",
+    "bond_code": "123284",
+    "bond_name": "强达转债",
+    "stock_code": "301628",
+    "short_name": "强达电路",
+    "sub_date": "2026-08-19",
+    "issue_amount": "550000000.0",
     "listing_date": "0",
-    "expire_date": "2032-08-06",
-    "convert_price": "20.280"
+    "expire_date": "2032-08-19",
+    "convert_price": "84.040"
    },
-   "elapsed_s": 15.26,
+   "elapsed_s": 4.24,
+   "timeout_used_s": 45,
    "attempts": null,
    "network_degraded": false,
-   "probed_at_record": "2026-08-07T05:44:43.721001+00:00"
+   "observed_at": "2026-08-30T01:12:43.306526+00:00",
+   "proxy_at_probe": {
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
+   }
   },
   {
    "lib": "adata",
@@ -132,10 +160,11 @@
    "category": "债券/可转债",
    "signature": "(code_list=None)",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "OK",
-   "rows": 320,
+   "rows": 330,
    "cols": [
     "bond_code",
     "bond_name",
@@ -171,17 +200,25 @@
     "open": "0.0",
     "high": "0.0",
     "low": "0.0",
-    "pre_close": "100.0",
+    "pre_close": "99.8",
     "change": "0.0",
     "change_pct": "0.0",
     "volume": "0.0",
     "amount": "0.0",
-    "time": "11:34:57"
+    "time": "15:30:01"
    },
-   "elapsed_s": 13.78,
+   "elapsed_s": 4.19,
+   "timeout_used_s": 45,
    "attempts": null,
    "network_degraded": false,
-   "probed_at_record": "2026-08-07T05:44:43.721001+00:00"
+   "observed_at": "2026-08-30T01:12:47.498751+00:00",
+   "proxy_at_probe": {
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
+   }
   },
   {
    "lib": "adata",
@@ -189,10 +226,11 @@
    "category": "基金/ETF",
    "signature": "(wait_time=None)",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "OK",
-   "rows": 1564,
+   "rows": 1587,
    "cols": [
     "fund_code",
     "short_name",
@@ -204,21 +242,21 @@
     "net_value": "float64"
    },
    "first_row": {
-    "fund_code": "589720",
-    "short_name": "科创创新药ETF国泰",
-    "net_value": "0.952"
+    "fund_code": "159082",
+    "short_name": "化工ETF华夏",
+    "net_value": "1.034"
    },
-   "elapsed_s": 10.14,
-   "timeout_used_s": 60,
+   "elapsed_s": 8.85,
+   "timeout_used_s": 45,
    "attempts": null,
    "network_degraded": false,
-   "observed_at": "2026-08-09T12:37:36.120249+00:00",
+   "observed_at": "2026-08-30T01:12:19.292893+00:00",
    "proxy_at_probe": {
-    "http": null,
-    "https": null,
-    "env_http_proxy": null,
-    "env_https_proxy": null,
-    "any_proxy": false
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
    }
   },
   {
@@ -227,10 +265,11 @@
    "category": "基金/ETF",
    "signature": "(fund_code: str = '512880', k_type: int = 1, start_date='', end_date='')",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "OK",
-   "rows": 2426,
+   "rows": 2443,
    "cols": [
     "fund_code",
     "trade_time",
@@ -270,10 +309,18 @@
     "change": "None",
     "change_pct": "None"
    },
-   "elapsed_s": 13.28,
+   "elapsed_s": 4.24,
+   "timeout_used_s": 45,
    "attempts": null,
    "network_degraded": false,
-   "probed_at_record": "2026-08-07T05:44:43.721001+00:00"
+   "observed_at": "2026-08-30T01:12:23.530062+00:00",
+   "proxy_at_probe": {
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
+   }
   },
   {
    "lib": "adata",
@@ -281,6 +328,7 @@
    "category": "基金/ETF",
    "signature": "(fund_code: str = '512880', k_type: int = 1)",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "OK",
@@ -313,21 +361,29 @@
    },
    "first_row": {
     "fund_code": "512880",
-    "trade_time": "2026-08-06 12:32:00",
-    "trade_date": "2026-08-06",
-    "open": "1.104",
-    "high": "1.108",
-    "low": "1.092",
-    "price": "1.093",
-    "volume": "1291567770",
-    "amount": "1419934600.000",
+    "trade_time": "2026-08-28 09:12:00",
+    "trade_date": "2026-08-28",
+    "open": "1.105",
+    "high": "1.109",
+    "low": "1.099",
+    "price": "1.104",
+    "volume": "1738862400",
+    "amount": "1919492000.000",
     "change": "None",
     "change_pct": "None"
    },
-   "elapsed_s": 12.72,
+   "elapsed_s": 5.57,
+   "timeout_used_s": 45,
    "attempts": null,
    "network_degraded": false,
-   "probed_at_record": "2026-08-07T05:44:43.721001+00:00"
+   "observed_at": "2026-08-30T01:12:29.102920+00:00",
+   "proxy_at_probe": {
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
+   }
   },
   {
    "lib": "adata",
@@ -335,10 +391,11 @@
    "category": "基金/ETF",
    "signature": "(fund_code='512880')",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "OK",
-   "rows": 121,
+   "rows": 266,
    "cols": [
     "fund_code",
     "trade_time",
@@ -363,19 +420,27 @@
    },
    "first_row": {
     "fund_code": "512880",
-    "trade_time": "2026-08-06 09:30:00",
-    "trade_date": "2026-08-06",
-    "price": "1.104",
-    "avg_price": "1.104",
-    "volume": "13878000",
-    "amount": "15321312",
-    "change": "-0.004999999999999893",
-    "change_pct": "-0.45085662759241596"
+    "trade_time": "2026-08-28 09:30:00",
+    "trade_date": "2026-08-28",
+    "price": "1.105",
+    "avg_price": "1.105",
+    "volume": "9938500",
+    "amount": "10982043",
+    "change": "-0.001000000000000112",
+    "change_pct": "-0.09041591320073344"
    },
-   "elapsed_s": 13.97,
+   "elapsed_s": 9.96,
+   "timeout_used_s": 45,
    "attempts": null,
    "network_degraded": false,
-   "probed_at_record": "2026-08-07T05:44:43.721001+00:00"
+   "observed_at": "2026-08-30T01:12:39.060537+00:00",
+   "proxy_at_probe": {
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
+   }
   },
   {
    "lib": "adata",
@@ -383,6 +448,7 @@
    "category": "龙虎榜",
    "signature": "(stock_code, report_date=None)",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {
     "stock_code": "000001"
@@ -392,25 +458,26 @@
    "cols": [],
    "dtypes": {},
    "first_row": null,
-   "elapsed_s": 6.43,
+   "elapsed_s": 5.93,
    "timeout_used_s": 45,
    "attempts": null,
    "network_degraded": false,
-   "observed_at": "2026-08-08T18:43:56.804685+00:00",
+   "observed_at": "2026-08-30T01:13:08.883038+00:00",
    "proxy_at_probe": {
-    "http": null,
-    "https": null,
-    "env_http_proxy": null,
-    "env_https_proxy": null,
-    "any_proxy": false
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
    }
   },
   {
    "lib": "adata",
    "name": "sentiment.hot.hot_concept_20_ths",
-   "category": "板块/概念/行业",
+   "category": "舆情/热度",
    "signature": "(plate_type=1)",
    "endpoint_family": "ths",
+   "rate_limit_domain": "ths",
    "variant": "required_only",
    "kwargs": {},
    "state": "OK",
@@ -433,23 +500,32 @@
    },
    "first_row": {
     "rank": "1",
-    "concept_code": "886108",
-    "concept_name": "AI应用",
-    "change_pct": "-0.5763",
-    "hot_value": "315970.0",
-    "hot_tag": "连续22天上榜"
+    "concept_code": "885995",
+    "concept_name": "粮食概念",
+    "change_pct": "2.915",
+    "hot_value": "14348.5",
+    "hot_tag": "10天10次上榜"
    },
-   "elapsed_s": 15.64,
+   "elapsed_s": 3.99,
+   "timeout_used_s": 45,
    "attempts": null,
    "network_degraded": false,
-   "probed_at_record": "2026-08-07T05:44:43.721001+00:00"
+   "observed_at": "2026-08-30T01:13:12.875842+00:00",
+   "proxy_at_probe": {
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
+   }
   },
   {
    "lib": "adata",
    "name": "sentiment.hot.hot_rank_100_ths",
-   "category": "行情-实时/快照",
+   "category": "舆情/热度",
    "signature": "()",
    "endpoint_family": "ths",
+   "rate_limit_domain": "ths",
    "variant": "required_only",
    "kwargs": {},
    "state": "OK",
@@ -474,17 +550,25 @@
    },
    "first_row": {
     "rank": "1",
-    "stock_code": "002428",
-    "short_name": "云南锗业",
-    "change_pct": "9.9988",
-    "hot_value": "815329.0",
-    "pop_tag": "3天3板",
-    "concept_tag": "光纤概念;第三代半导体"
+    "stock_code": "000560",
+    "short_name": "我爱我家",
+    "change_pct": "10.0",
+    "hot_value": "132297.0",
+    "pop_tag": "首板涨停",
+    "concept_tag": "租售同权;物业管理"
    },
-   "elapsed_s": 15.02,
+   "elapsed_s": 4.39,
+   "timeout_used_s": 45,
    "attempts": null,
    "network_degraded": false,
-   "probed_at_record": "2026-08-07T05:44:43.721001+00:00"
+   "observed_at": "2026-08-30T01:13:17.265816+00:00",
+   "proxy_at_probe": {
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
+   }
   },
   {
    "lib": "adata",
@@ -492,6 +576,7 @@
    "category": "龙虎榜",
    "signature": "(report_date=None)",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "func_overridden",
    "kwargs": {
     "report_date": "2024-08-01"
@@ -544,17 +629,17 @@
     "a_amount_rate": "20.262281577828",
     "reason": "连续三个交易日内，日均换手率与前五个交易日的日均换手率的比值达到30倍，且换手率累计达20%的证券"
    },
-   "elapsed_s": 3.57,
+   "elapsed_s": 5.51,
    "timeout_used_s": 45,
    "attempts": null,
    "network_degraded": false,
-   "observed_at": "2026-08-08T14:13:39.056831+00:00",
+   "observed_at": "2026-08-30T01:13:22.774552+00:00",
    "proxy_at_probe": {
-    "http": null,
-    "https": null,
-    "env_http_proxy": null,
-    "env_https_proxy": null,
-    "any_proxy": false
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
    }
   },
   {
@@ -563,10 +648,11 @@
    "category": "舆情/热度",
    "signature": "()",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "OK",
-   "rows": 100,
+   "rows": 99,
    "cols": [
     "rank",
     "stock_code",
@@ -585,23 +671,23 @@
    },
    "first_row": {
     "rank": "1",
-    "stock_code": "603259",
-    "short_name": "药明康德",
-    "price": "154.82",
-    "change": "13.144218",
-    "change_pct": "8.49"
+    "stock_code": "000560",
+    "short_name": "我爱我家",
+    "price": "2.64",
+    "change": "0.264",
+    "change_pct": "10.0"
    },
-   "elapsed_s": 4.81,
-   "timeout_used_s": 60,
+   "elapsed_s": 10.92,
+   "timeout_used_s": 45,
    "attempts": null,
    "network_degraded": false,
-   "observed_at": "2026-08-09T12:37:40.927557+00:00",
+   "observed_at": "2026-08-30T01:13:33.701118+00:00",
    "proxy_at_probe": {
-    "http": null,
-    "https": null,
-    "env_http_proxy": null,
-    "env_https_proxy": null,
-    "any_proxy": false
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
    }
   },
   {
@@ -610,6 +696,7 @@
    "category": "行情-实时/快照",
    "signature": "(stock_code='600811')",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "OK",
@@ -641,10 +728,18 @@
     "t_type": "短期负债风险",
     "reason": "截止至2024-09-30，货币资金占短期负债和一年内到期非流动负债不足40%，利息保障倍数<3"
    },
-   "elapsed_s": 10.13,
+   "elapsed_s": 3.98,
+   "timeout_used_s": 45,
    "attempts": null,
    "network_degraded": false,
-   "probed_at_record": "2026-08-07T05:44:43.721001+00:00"
+   "observed_at": "2026-08-30T01:13:37.764251+00:00",
+   "proxy_at_probe": {
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
+   }
   },
   {
    "lib": "adata",
@@ -652,6 +747,7 @@
    "category": "资金流",
    "signature": "(start_date=None)",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "OK",
@@ -681,7 +777,7 @@
     "sell_tgt": "int64"
    },
    "first_row": {
-    "trade_date": "2026-08-05",
+    "trade_date": "2026-08-28",
     "net_hgt": "0",
     "buy_hgt": "0",
     "sell_hgt": "0",
@@ -692,10 +788,18 @@
     "buy_tgt": "0",
     "sell_tgt": "0"
    },
-   "elapsed_s": 21.92,
+   "elapsed_s": 5.32,
+   "timeout_used_s": 45,
    "attempts": null,
    "network_degraded": false,
-   "probed_at_record": "2026-08-07T05:44:43.721001+00:00"
+   "observed_at": "2026-08-30T01:13:43.087762+00:00",
+   "proxy_at_probe": {
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
+   }
   },
   {
    "lib": "adata",
@@ -703,6 +807,7 @@
    "category": "资金流",
    "signature": "()",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "OK",
@@ -720,26 +825,35 @@
     "net_tgt": "int64"
    },
    "first_row": {
-    "trade_time": "2026-08-06 11:30:00",
+    "trade_time": "2026-08-28 15:00:00",
     "net_hgt": "0",
     "net_sgt": "0",
     "net_tgt": "0"
    },
-   "elapsed_s": 17.79,
+   "elapsed_s": 6.41,
+   "timeout_used_s": 45,
    "attempts": null,
    "network_degraded": false,
-   "probed_at_record": "2026-08-07T05:44:43.721001+00:00"
+   "observed_at": "2026-08-30T01:13:49.495204+00:00",
+   "proxy_at_probe": {
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
+   }
   },
   {
    "lib": "adata",
    "name": "sentiment.north.north_flow_min",
-   "category": "分钟/日内",
+   "category": "资金流",
    "signature": "()",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "OK",
-   "rows": 121,
+   "rows": 241,
    "cols": [
     "trade_time",
     "net_hgt",
@@ -753,15 +867,23 @@
     "net_tgt": "int64"
    },
    "first_row": {
-    "trade_time": "2026-08-06 09:30:00",
+    "trade_time": "2026-08-28 09:30:00",
     "net_hgt": "0",
     "net_sgt": "0",
     "net_tgt": "0"
    },
-   "elapsed_s": 18.59,
+   "elapsed_s": 7.06,
+   "timeout_used_s": 45,
    "attempts": null,
    "network_degraded": false,
-   "probed_at_record": "2026-08-07T05:44:43.721001+00:00"
+   "observed_at": "2026-08-30T01:13:56.560469+00:00",
+   "proxy_at_probe": {
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
+   }
   },
   {
    "lib": "adata",
@@ -769,12 +891,13 @@
    "category": "融资融券",
    "signature": "(start_date=None)",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "with_optional",
    "kwargs": {
     "start_date": "2026-07-01"
    },
    "state": "OK",
-   "rows": 25,
+   "rows": 41,
    "cols": [
     "trade_date",
     "rzye",
@@ -790,13 +913,14 @@
     "rzrqyecz": "int64"
    },
    "first_row": {
-    "trade_date": "2026-08-05",
-    "rzye": "2604537143099",
-    "rqye": "23929182876",
-    "rzrqye": "2628466325975",
-    "rzrqyecz": "2580607960223"
+    "trade_date": "2026-08-27",
+    "rzye": "2636409159125",
+    "rqye": "28707627653",
+    "rzrqye": "2665116786778",
+    "rzrqyecz": "2607701531472"
    },
-   "elapsed_s": 13.86,
+   "elapsed_s": 4.71,
+   "timeout_used_s": 45,
    "attempts": [
     {
      "variant": "required_only",
@@ -818,7 +942,8 @@
       "rzrqyecz": "int64"
      },
      "first_row": null,
-     "elapsed_s": 14.88
+     "elapsed_s": 5.71,
+     "timeout_used_s": 45
     },
     {
      "variant": "with_optional",
@@ -826,7 +951,7 @@
       "start_date": "2026-07-01"
      },
      "state": "OK",
-     "rows": 25,
+     "rows": 41,
      "cols": [
       "trade_date",
       "rzye",
@@ -842,17 +967,25 @@
       "rzrqyecz": "int64"
      },
      "first_row": {
-      "trade_date": "2026-08-05",
-      "rzye": "2604537143099",
-      "rqye": "23929182876",
-      "rzrqye": "2628466325975",
-      "rzrqyecz": "2580607960223"
+      "trade_date": "2026-08-27",
+      "rzye": "2636409159125",
+      "rqye": "28707627653",
+      "rzrqye": "2665116786778",
+      "rzrqyecz": "2607701531472"
      },
-     "elapsed_s": 13.86
+     "elapsed_s": 4.71,
+     "timeout_used_s": 45
     }
    ],
    "network_degraded": false,
-   "probed_at_record": "2026-08-07T05:44:43.721001+00:00"
+   "observed_at": "2026-08-30T01:12:57.921667+00:00",
+   "proxy_at_probe": {
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
+   }
   },
   {
    "lib": "adata",
@@ -860,10 +993,11 @@
    "category": "股东/股本",
    "signature": "()",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "OK",
-   "rows": 126,
+   "rows": 194,
    "cols": [
     "stock_code",
     "short_name",
@@ -883,18 +1017,26 @@
     "price": "object"
    },
    "first_row": {
-    "stock_code": "688512",
-    "short_name": "慧智微",
-    "lift_date": "2026-09-04",
-    "volume": "2697200",
-    "amount": "36169500",
-    "ratio": "0.57",
-    "price": "13.41"
+    "stock_code": "300547",
+    "short_name": "川环科技",
+    "lift_date": "2026-09-30",
+    "volume": "33591300",
+    "amount": "878000000",
+    "ratio": "15.49",
+    "price": "26.13"
    },
-   "elapsed_s": 8.77,
+   "elapsed_s": 5.03,
+   "timeout_used_s": 45,
    "attempts": null,
    "network_degraded": false,
-   "probed_at_record": "2026-08-07T05:44:43.721001+00:00"
+   "observed_at": "2026-08-30T01:13:02.955003+00:00",
+   "proxy_at_probe": {
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
+   }
   },
   {
    "lib": "adata",
@@ -902,10 +1044,11 @@
    "category": "指数",
    "signature": "(stock_code='300059')",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "OK",
-   "rows": 72,
+   "rows": 73,
    "cols": [
     "stock_code",
     "short_name",
@@ -965,52 +1108,60 @@
    "first_row": {
     "stock_code": "300059",
     "short_name": "东方财富",
-    "report_date": "2026-03-31",
-    "report_type": "一季报",
-    "notice_date": "2026-04-25",
-    "basic_eps": "0.2365",
-    "diluted_eps": "nan",
-    "non_gaap_eps": "0.2364",
-    "net_asset_ps": "6.049809318139",
-    "cap_reserve_ps": "1.439912575742",
-    "undist_profit_ps": "3.464745711559",
-    "oper_cf_ps": "1.925678429125",
-    "total_rev": "5031027125.4",
-    "gross_profit": "3721532661.51",
-    "net_profit_attr_sh": "3737779855.92",
-    "non_gaap_net_profit": "3695496350.95",
-    "total_rev_yoy_gr": "44.33801552735",
-    "net_profit_yoy_gr": "37.669892046298",
-    "non_gaap_net_profit_yoy_gr": "36.948972538373",
-    "total_rev_qoq_gr": "9.618278684352",
-    "net_profit_qoq_gr": "8.463247169284",
-    "non_gaap_net_profit_qoq_gr": "8.555503476826",
-    "roe_wtd": "3.99",
-    "roe_non_gaap_wtd": "nan",
-    "roa_wtd": "0.8976085804",
-    "gross_margin": "73.9716278356",
-    "net_margin": "74.294567744411",
-    "adv_receipts_to_rev": "0.000503555365",
-    "net_cf_sales_to_rev": "0.898344142006",
-    "oper_cf_to_rev": "28.636186134984",
-    "eff_tax_rate": "14.6117917499",
-    "curr_ratio": "1.326270505368",
-    "quick_ratio": "1.326270505368",
-    "cash_flow_ratio": "0.096477877541",
-    "asset_liab_ratio": "78.265042302",
-    "equity_multiplier": "4.600883120615",
-    "equity_ratio": "3.600883120608",
-    "total_asset_turn_days": "7449.25042273944",
-    "inv_turn_days": "nan",
-    "acct_recv_turn_days": "82.939445154268",
-    "total_asset_turn_rate": "0.012081752511",
-    "inv_turn_rate": "nan",
-    "acct_recv_turn_rate": "1.085129033991"
+    "report_date": "2026-06-30",
+    "report_type": "中报",
+    "notice_date": "2026-08-22",
+    "basic_eps": "0.5102",
+    "diluted_eps": "0.4888",
+    "non_gaap_eps": "0.5102",
+    "net_asset_ps": "6.219501510299",
+    "cap_reserve_ps": "1.452795344328",
+    "undist_profit_ps": "3.635817204481",
+    "oper_cf_ps": "1.91590225336",
+    "total_rev": "10505339283.68",
+    "gross_profit": "7815211778.55",
+    "net_profit_attr_sh": "8064281453.11",
+    "non_gaap_net_profit": "7726695676.62",
+    "total_rev_yoy_gr": "53.220189050954",
+    "net_profit_yoy_gr": "44.848976215289",
+    "non_gaap_net_profit_yoy_gr": "47.126261808975",
+    "total_rev_qoq_gr": "11.942939945316",
+    "net_profit_qoq_gr": "11.246826422456",
+    "non_gaap_net_profit_qoq_gr": "11.682158078641",
+    "roe_wtd": "8.46",
+    "roe_non_gaap_wtd": "8.11",
+    "roa_wtd": "1.7947044687",
+    "gross_margin": "74.3927594104",
+    "net_margin": "76.763645945618",
+    "adv_receipts_to_rev": "0.000322297572",
+    "net_cf_sales_to_rev": "0.902113422374",
+    "oper_cf_to_rev": "13.298046678085",
+    "eff_tax_rate": "14.8921318794",
+    "curr_ratio": "1.273301410978",
+    "quick_ratio": "1.273301317628",
+    "cash_flow_ratio": "0.080599460747",
+    "asset_liab_ratio": "80.5421907557",
+    "equity_multiplier": "5.139324717622",
+    "equity_ratio": "4.139324717618",
+    "total_asset_turn_days": "7699.01480223476",
+    "inv_turn_days": "0.02010923024",
+    "acct_recv_turn_days": "82.838015948673",
+    "total_asset_turn_rate": "0.023379614746",
+    "inv_turn_rate": "8951.11338668125",
+    "acct_recv_turn_rate": "2.172915393236"
    },
-   "elapsed_s": 14.3,
+   "elapsed_s": 9.21,
+   "timeout_used_s": 45,
    "attempts": null,
    "network_degraded": false,
-   "probed_at_record": "2026-08-07T05:44:43.721001+00:00"
+   "observed_at": "2026-08-30T00:58:30.545561+00:00",
+   "proxy_at_probe": {
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
+   }
   },
   {
    "lib": "adata",
@@ -1018,14 +1169,30 @@
    "category": "交易日历/宇宙",
    "signature": "(wait_time=100)",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only_retry150s",
    "kwargs": {},
-   "state": "FAIL_GATEWAY",
-   "rows": null,
-   "error": "KeyError: '81'",
-   "traceback_tail": "n311\\site-packages\\adata\\common\\utils\\code_utils.py\", line 33, in get_exchange_by_stock_code\n    return exchange_suffix[stock_code[0:2]][1:]\n           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^\nKeyError: '81'\n",
-   "bytes_received": 456581,
-   "elapsed_s": 133.5,
+   "state": "OK",
+   "rows": 6000,
+   "cols": [
+    "stock_code",
+    "short_name",
+    "exchange",
+    "list_date"
+   ],
+   "dtypes": {
+    "stock_code": "object",
+    "short_name": "object",
+    "exchange": "object",
+    "list_date": "object"
+   },
+   "first_row": {
+    "stock_code": "000001",
+    "short_name": "平安银行",
+    "exchange": "SZ",
+    "list_date": "1991-04-03"
+   },
+   "elapsed_s": 74.1,
    "timeout_used_s": 150,
    "retried_after_hung": true,
    "attempts": [
@@ -1034,33 +1201,48 @@
      "kwargs": {},
      "state": "FAIL_UNREACHABLE",
      "rows": null,
-     "error": "HUNG_NO_RESULT_IN_60s",
+     "error": "HUNG_NO_RESULT_IN_45s",
      "note": "子进程超时被杀 —— ⛔ 不可解释为接口不可用",
-     "bytes_received": 248154,
-     "elapsed_s": 60.04,
-     "timeout_used_s": 60
+     "bytes_received": 2809983,
+     "elapsed_s": 45.04,
+     "timeout_used_s": 45
     },
     {
      "variant": "required_only_retry150s",
      "kwargs": {},
-     "state": "FAIL_GATEWAY",
-     "rows": null,
-     "error": "KeyError: '81'",
-     "traceback_tail": "n311\\site-packages\\adata\\common\\utils\\code_utils.py\", line 33, in get_exchange_by_stock_code\n    return exchange_suffix[stock_code[0:2]][1:]\n           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^\nKeyError: '81'\n",
-     "bytes_received": 456581,
-     "elapsed_s": 133.5,
+     "state": "OK",
+     "rows": 6000,
+     "cols": [
+      "stock_code",
+      "short_name",
+      "exchange",
+      "list_date"
+     ],
+     "dtypes": {
+      "stock_code": "object",
+      "short_name": "object",
+      "exchange": "object",
+      "list_date": "object"
+     },
+     "first_row": {
+      "stock_code": "000001",
+      "short_name": "平安银行",
+      "exchange": "SZ",
+      "list_date": "1991-04-03"
+     },
+     "elapsed_s": 74.1,
      "timeout_used_s": 150,
      "retried_after_hung": true
     }
    ],
    "network_degraded": false,
-   "observed_at": "2026-08-09T13:13:42.014862+00:00",
+   "observed_at": "2026-08-30T01:00:29.685596+00:00",
    "proxy_at_probe": {
-    "http": null,
-    "https": null,
-    "env_http_proxy": null,
-    "env_https_proxy": null,
-    "any_proxy": false
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
    }
   },
   {
@@ -1069,24 +1251,25 @@
    "category": "板块/概念/行业",
    "signature": "(wait_time=None)",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "FAIL_UNREACHABLE",
    "rows": null,
    "error": "FileNotFoundError: [Errno 2] No such file or directory: 'C:\\\\Users\\\\MengLin\\\\AppData\\\\Roaming\\\\Python\\\\Python311\\\\site-packages\\\\adata\\\\stock\\\\info\\\\cache/all_concept_code_east.csv'",
    "traceback_tail": "            ^^^^^\nFileNotFoundError: [Errno 2] No such file or directory: 'C:\\\\Users\\\\MengLin\\\\AppData\\\\Roaming\\\\Python\\\\Python311\\\\site-packages\\\\adata\\\\stock\\\\info\\\\cache/all_concept_code_east.csv'\n",
-   "bytes_received": 36887,
-   "elapsed_s": 10.13,
-   "timeout_used_s": 60,
+   "bytes_received": 43377,
+   "elapsed_s": 15.75,
+   "timeout_used_s": 45,
    "attempts": null,
    "network_degraded": false,
-   "observed_at": "2026-08-09T12:35:49.683902+00:00",
+   "observed_at": "2026-08-30T01:00:45.434111+00:00",
    "proxy_at_probe": {
-    "http": null,
-    "https": null,
-    "env_http_proxy": null,
-    "env_https_proxy": null,
-    "any_proxy": false
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
    }
   },
   {
@@ -1095,7 +1278,8 @@
    "category": "板块/概念/行业",
    "signature": "()",
    "endpoint_family": "ths",
-   "variant": "required_only",
+   "rate_limit_domain": "ths",
+   "variant": "required_only_retry150s",
    "kwargs": {},
    "state": "OK",
    "rows": 361,
@@ -1112,22 +1296,62 @@
     "source": "object"
    },
    "first_row": {
-    "index_code": "885652",
-    "name": "钛白粉概念",
-    "concept_code": "300351",
+    "index_code": "nan",
+    "name": "阿尔茨海默概念",
+    "concept_code": "308614",
     "source": "同花顺"
    },
-   "elapsed_s": 48.06,
-   "timeout_used_s": 200,
-   "attempts": null,
+   "elapsed_s": 59.59,
+   "timeout_used_s": 150,
+   "retried_after_hung": true,
+   "attempts": [
+    {
+     "variant": "required_only",
+     "kwargs": {},
+     "state": "FAIL_UNREACHABLE",
+     "rows": null,
+     "error": "HUNG_NO_RESULT_IN_45s",
+     "note": "子进程超时被杀 —— ⛔ 不可解释为接口不可用",
+     "bytes_received": 14040,
+     "elapsed_s": 45.04,
+     "timeout_used_s": 45
+    },
+    {
+     "variant": "required_only_retry150s",
+     "kwargs": {},
+     "state": "OK",
+     "rows": 361,
+     "cols": [
+      "index_code",
+      "name",
+      "concept_code",
+      "source"
+     ],
+     "dtypes": {
+      "index_code": "object",
+      "name": "object",
+      "concept_code": "object",
+      "source": "object"
+     },
+     "first_row": {
+      "index_code": "nan",
+      "name": "阿尔茨海默概念",
+      "concept_code": "308614",
+      "source": "同花顺"
+     },
+     "elapsed_s": 59.59,
+     "timeout_used_s": 150,
+     "retried_after_hung": true
+    }
+   ],
    "network_degraded": false,
-   "observed_at": "2026-08-07T11:39:46.585345+00:00",
+   "observed_at": "2026-08-30T01:02:30.066157+00:00",
    "proxy_at_probe": {
-    "http": null,
-    "https": null,
-    "env_http_proxy": null,
-    "env_https_proxy": null,
-    "any_proxy": false
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
    }
   },
   {
@@ -1136,10 +1360,11 @@
    "category": "指数",
    "signature": "()",
    "endpoint_family": "other",
-   "variant": "required_only",
+   "rate_limit_domain": "other",
+   "variant": "required_only_retry150s",
    "kwargs": {},
    "state": "OK",
-   "rows": 1091,
+   "rows": 1107,
    "cols": [
     "index_code",
     "concept_code",
@@ -1153,22 +1378,62 @@
     "source": "object"
    },
    "first_row": {
-    "index_code": "000037",
+    "index_code": "000122",
     "concept_code": "",
-    "name": "上证医药",
+    "name": "农业主题",
     "source": "东方财富"
    },
-   "elapsed_s": 40.85,
-   "timeout_used_s": 60,
-   "attempts": null,
+   "elapsed_s": 38.58,
+   "timeout_used_s": 150,
+   "retried_after_hung": true,
+   "attempts": [
+    {
+     "variant": "required_only",
+     "kwargs": {},
+     "state": "FAIL_UNREACHABLE",
+     "rows": null,
+     "error": "HUNG_NO_RESULT_IN_45s",
+     "note": "子进程超时被杀 —— ⛔ 不可解释为接口不可用",
+     "bytes_received": 84733,
+     "elapsed_s": 45.03,
+     "timeout_used_s": 45
+    },
+    {
+     "variant": "required_only_retry150s",
+     "kwargs": {},
+     "state": "OK",
+     "rows": 1107,
+     "cols": [
+      "index_code",
+      "concept_code",
+      "name",
+      "source"
+     ],
+     "dtypes": {
+      "index_code": "object",
+      "concept_code": "object",
+      "name": "object",
+      "source": "object"
+     },
+     "first_row": {
+      "index_code": "000122",
+      "concept_code": "",
+      "name": "农业主题",
+      "source": "东方财富"
+     },
+     "elapsed_s": 38.58,
+     "timeout_used_s": 150,
+     "retried_after_hung": true
+    }
+   ],
    "network_degraded": false,
-   "observed_at": "2026-08-09T12:36:30.533777+00:00",
+   "observed_at": "2026-08-30T01:03:53.676666+00:00",
    "proxy_at_probe": {
-    "http": null,
-    "https": null,
-    "env_http_proxy": null,
-    "env_https_proxy": null,
-    "any_proxy": false
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
    }
   },
   {
@@ -1177,6 +1442,7 @@
    "category": "板块/概念/行业",
    "signature": "(concept_code=None, wait_time=None)",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "EMPTY_OK",
@@ -1190,17 +1456,17 @@
     "short_name": "object"
    },
    "first_row": null,
-   "elapsed_s": 4.93,
-   "timeout_used_s": 60,
+   "elapsed_s": 9.43,
+   "timeout_used_s": 45,
    "attempts": null,
    "network_degraded": false,
-   "observed_at": "2026-08-09T12:36:35.459386+00:00",
+   "observed_at": "2026-08-30T01:04:03.103575+00:00",
    "proxy_at_probe": {
-    "http": null,
-    "https": null,
-    "env_http_proxy": null,
-    "env_https_proxy": null,
-    "any_proxy": false
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
    }
   },
   {
@@ -1209,6 +1475,7 @@
    "category": "板块/概念/行业",
    "signature": "(concept_code=None, name=None, index_code=None, wait_time=None)",
    "endpoint_family": "ths",
+   "rate_limit_domain": "ths",
    "variant": "func_overridden",
    "kwargs": {
     "index_code": "886013"
@@ -1227,17 +1494,17 @@
     "stock_code": "688802",
     "short_name": "沐曦股份-U"
    },
-   "elapsed_s": 7.06,
+   "elapsed_s": 7.42,
    "timeout_used_s": 45,
    "attempts": null,
    "network_degraded": false,
-   "observed_at": "2026-08-08T18:43:20.054206+00:00",
+   "observed_at": "2026-08-30T01:04:10.522378+00:00",
    "proxy_at_probe": {
-    "http": null,
-    "https": null,
-    "env_http_proxy": null,
-    "env_https_proxy": null,
-    "any_proxy": false
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
    }
   },
   {
@@ -1246,10 +1513,11 @@
    "category": "板块/概念/行业",
    "signature": "(stock_code='000001')",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "OK",
-   "rows": 12,
+   "rows": 11,
    "cols": [
     "stock_code",
     "concept_code",
@@ -1271,17 +1539,17 @@
     "source": "百度股市通",
     "reason": ""
    },
-   "elapsed_s": 3.68,
+   "elapsed_s": 5.2,
    "timeout_used_s": 45,
    "attempts": null,
    "network_degraded": false,
-   "observed_at": "2026-08-08T14:13:07.773848+00:00",
+   "observed_at": "2026-08-30T01:04:15.723737+00:00",
    "proxy_at_probe": {
-    "http": null,
-    "https": null,
-    "env_http_proxy": null,
-    "env_https_proxy": null,
-    "any_proxy": false
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
    }
   },
   {
@@ -1290,6 +1558,7 @@
    "category": "板块/概念/行业",
    "signature": "(stock_code: str = '000001')",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "OK",
@@ -1315,10 +1584,18 @@
     "source": "东方财富",
     "reason": "CIPS是我国重要的金融市场基础设施,在助力人民币国际化等方面发挥着重要作用。公司是首批直接参与者之一。"
    },
-   "elapsed_s": 9.96,
+   "elapsed_s": 4.75,
+   "timeout_used_s": 45,
    "attempts": null,
    "network_degraded": false,
-   "probed_at_record": "2026-08-07T05:44:43.721001+00:00"
+   "observed_at": "2026-08-30T01:04:20.479025+00:00",
+   "proxy_at_probe": {
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
+   }
   },
   {
    "lib": "adata",
@@ -1326,10 +1603,11 @@
    "category": "板块/概念/行业",
    "signature": "(stock_code: str = '000001')",
    "endpoint_family": "ths",
+   "rate_limit_domain": "ths",
    "variant": "required_only",
    "kwargs": {},
    "state": "OK",
-   "rows": 3,
+   "rows": 2,
    "cols": [
     "stock_code",
     "concept_code",
@@ -1351,10 +1629,18 @@
     "source": "同花顺",
     "reason": "    平安银行最近3年的股息率分别为：7.66%，5.20%，5.22%"
    },
-   "elapsed_s": 10.41,
+   "elapsed_s": 4.85,
+   "timeout_used_s": 45,
    "attempts": null,
    "network_degraded": false,
-   "probed_at_record": "2026-08-07T05:44:43.721001+00:00"
+   "observed_at": "2026-08-30T01:04:25.333892+00:00",
+   "proxy_at_probe": {
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
+   }
   },
   {
    "lib": "adata",
@@ -1362,14 +1648,15 @@
    "category": "指数",
    "signature": "(stock_code='000001')",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "EMPTY_OK",
    "rows": 0,
    "cols": null,
    "note": "returned None",
-   "elapsed_s": 9.18,
-   "timeout_used_s": 90,
+   "elapsed_s": 4.43,
+   "timeout_used_s": 45,
    "attempts": [
     {
      "variant": "required_only",
@@ -1378,8 +1665,8 @@
      "rows": 0,
      "cols": null,
      "note": "returned None",
-     "elapsed_s": 9.18,
-     "timeout_used_s": 90
+     "elapsed_s": 4.43,
+     "timeout_used_s": 45
     },
     {
      "variant": "with_optional",
@@ -1390,18 +1677,18 @@
      "rows": 0,
      "cols": null,
      "note": "returned None",
-     "elapsed_s": 9.33,
-     "timeout_used_s": 90
+     "elapsed_s": 6.06,
+     "timeout_used_s": 45
     }
    ],
    "network_degraded": false,
-   "observed_at": "2026-08-09T19:17:45.471619+00:00",
+   "observed_at": "2026-08-30T01:04:35.822089+00:00",
    "proxy_at_probe": {
-    "http": null,
-    "https": null,
-    "env_http_proxy": null,
-    "env_https_proxy": null,
-    "any_proxy": false
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
    }
   },
   {
@@ -1410,6 +1697,7 @@
    "category": "板块/概念/行业",
    "signature": "(stock_code='000001')",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "OK",
@@ -1435,17 +1723,17 @@
     "industry_type": "申万一级",
     "source": "百度股市通"
    },
-   "elapsed_s": 3.47,
+   "elapsed_s": 5.63,
    "timeout_used_s": 45,
    "attempts": null,
    "network_degraded": false,
-   "observed_at": "2026-08-08T14:13:16.887394+00:00",
+   "observed_at": "2026-08-30T01:04:41.454592+00:00",
    "proxy_at_probe": {
-    "http": null,
-    "https": null,
-    "env_http_proxy": null,
-    "env_https_proxy": null,
-    "any_proxy": false
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
    }
   },
   {
@@ -1454,12 +1742,11 @@
    "category": "板块/概念/行业",
    "signature": "(stock_code: str = '000001', plate_type=None)",
    "endpoint_family": "other",
-   "variant": "with_optional",
-   "kwargs": {
-    "stock_code": "000001"
-   },
+   "rate_limit_domain": "other",
+   "variant": "required_only",
+   "kwargs": {},
    "state": "OK",
-   "rows": 25,
+   "rows": 24,
    "cols": [
     "stock_code",
     "plate_code",
@@ -1481,50 +1768,18 @@
     "plate_type": "行业",
     "source": "东方财富"
    },
-   "elapsed_s": 13.89,
-   "attempts": [
-    {
-     "variant": "required_only",
-     "kwargs": {},
-     "state": "FAIL_UNREACHABLE",
-     "rows": null,
-     "error": "HUNG_NO_RESULT_IN_35s",
-     "note": "子进程超时被杀 —— ⛔ 不可解释为接口不可用",
-     "elapsed_s": 35.02
-    },
-    {
-     "variant": "with_optional",
-     "kwargs": {
-      "stock_code": "000001"
-     },
-     "state": "OK",
-     "rows": 25,
-     "cols": [
-      "stock_code",
-      "plate_code",
-      "plate_name",
-      "plate_type",
-      "source"
-     ],
-     "dtypes": {
-      "stock_code": "object",
-      "plate_code": "object",
-      "plate_name": "object",
-      "plate_type": "object",
-      "source": "object"
-     },
-     "first_row": {
-      "stock_code": "000001",
-      "plate_code": "BK1283",
-      "plate_name": "银行",
-      "plate_type": "行业",
-      "source": "东方财富"
-     },
-     "elapsed_s": 13.89
-    }
-   ],
+   "elapsed_s": 7.8,
+   "timeout_used_s": 45,
+   "attempts": null,
    "network_degraded": false,
-   "probed_at_record": "2026-08-07T05:44:43.721001+00:00"
+   "observed_at": "2026-08-30T01:04:49.251992+00:00",
+   "proxy_at_probe": {
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
+   }
   },
   {
    "lib": "adata",
@@ -1532,6 +1787,7 @@
    "category": "涨跌停",
    "signature": "(stock_code: str = '000033', is_history=True)",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "OK",
@@ -1560,10 +1816,18 @@
     "list_a_shares": "429720035",
     "change_reason": "转增股上市"
    },
-   "elapsed_s": 11.53,
+   "elapsed_s": 5.16,
+   "timeout_used_s": 45,
    "attempts": null,
    "network_degraded": false,
-   "probed_at_record": "2026-08-07T05:44:43.721001+00:00"
+   "observed_at": "2026-08-30T01:04:54.417357+00:00",
+   "proxy_at_probe": {
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
+   }
   },
   {
    "lib": "adata",
@@ -1571,6 +1835,7 @@
    "category": "指数",
    "signature": "(index_code=None, wait_time=None)",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "with_optional",
    "kwargs": {
     "index_code": "000300"
@@ -1589,19 +1854,22 @@
    },
    "first_row": {
     "index_code": "000300",
-    "stock_code": "000657",
-    "short_name": "中钨高新"
+    "stock_code": "688183",
+    "short_name": "生益电子"
    },
-   "elapsed_s": 31.56,
+   "elapsed_s": 12.64,
+   "timeout_used_s": 45,
    "attempts": [
     {
      "variant": "required_only",
      "kwargs": {},
-     "state": "FAIL_PROBE_BUG",
+     "state": "FAIL_GATEWAY",
      "rows": null,
      "error": "KeyError: \"['stock_code', 'short_name'] not in index\"",
      "traceback_tail": "ile \"D:\\Anaconda3\\Lib\\site-packages\\pandas\\core\\indexes\\base.py\", line 6264, in _raise_if_missing\n    raise KeyError(f\"{not_found} not in index\")\nKeyError: \"['stock_code', 'short_name'] not in index\"\n",
-     "elapsed_s": 15.34
+     "bytes_received": 4905,
+     "elapsed_s": 5.76,
+     "timeout_used_s": 45
     },
     {
      "variant": "with_optional",
@@ -1622,14 +1890,22 @@
      },
      "first_row": {
       "index_code": "000300",
-      "stock_code": "000657",
-      "short_name": "中钨高新"
+      "stock_code": "688183",
+      "short_name": "生益电子"
      },
-     "elapsed_s": 31.56
+     "elapsed_s": 12.64,
+     "timeout_used_s": 45
     }
    ],
    "network_degraded": false,
-   "probed_at_record": "2026-08-07T05:44:43.721001+00:00"
+   "observed_at": "2026-08-30T01:05:12.810251+00:00",
+   "proxy_at_probe": {
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
+   }
   },
   {
    "lib": "adata",
@@ -1637,10 +1913,11 @@
    "category": "其他/未分类",
    "signature": "(wait_time=100)",
    "endpoint_family": "sina",
-   "variant": "required_only",
+   "rate_limit_domain": "sina",
+   "variant": "required_only_retry150s",
    "kwargs": {},
    "state": "OK",
-   "rows": 5538,
+   "rows": 5550,
    "cols": [
     "stock_code",
     "short_name",
@@ -1654,22 +1931,62 @@
     "list_date": "float64"
    },
    "first_row": {
-    "stock_code": "301707",
-    "short_name": "N展芯",
-    "exchange": "SZ",
+    "stock_code": "920288",
+    "short_name": "N华大",
+    "exchange": "BJ",
     "list_date": "nan"
    },
-   "elapsed_s": 110.02,
-   "timeout_used_s": 200,
-   "attempts": null,
+   "elapsed_s": 80.15,
+   "timeout_used_s": 150,
+   "retried_after_hung": true,
+   "attempts": [
+    {
+     "variant": "required_only",
+     "kwargs": {},
+     "state": "FAIL_UNREACHABLE",
+     "rows": null,
+     "error": "HUNG_NO_RESULT_IN_45s",
+     "note": "子进程超时被杀 —— ⛔ 不可解释为接口不可用",
+     "bytes_received": 350424,
+     "elapsed_s": 45.03,
+     "timeout_used_s": 45
+    },
+    {
+     "variant": "required_only_retry150s",
+     "kwargs": {},
+     "state": "OK",
+     "rows": 5550,
+     "cols": [
+      "stock_code",
+      "short_name",
+      "exchange",
+      "list_date"
+     ],
+     "dtypes": {
+      "stock_code": "object",
+      "short_name": "object",
+      "exchange": "object",
+      "list_date": "float64"
+     },
+     "first_row": {
+      "stock_code": "920288",
+      "short_name": "N华大",
+      "exchange": "BJ",
+      "list_date": "nan"
+     },
+     "elapsed_s": 80.15,
+     "timeout_used_s": 150,
+     "retried_after_hung": true
+    }
+   ],
    "network_degraded": false,
-   "observed_at": "2026-08-07T11:41:55.825104+00:00",
+   "observed_at": "2026-08-30T01:07:17.986144+00:00",
    "proxy_at_probe": {
-    "http": null,
-    "https": null,
-    "env_http_proxy": null,
-    "env_https_proxy": null,
-    "any_proxy": false
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
    }
   },
   {
@@ -1678,6 +1995,7 @@
    "category": "交易日历/宇宙",
    "signature": "(year=None)",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "OK",
@@ -1697,10 +2015,18 @@
     "trade_status": "0",
     "day_week": "5"
    },
-   "elapsed_s": 12.65,
+   "elapsed_s": 6.55,
+   "timeout_used_s": 45,
    "attempts": null,
    "network_degraded": false,
-   "probed_at_record": "2026-08-07T05:44:43.721001+00:00"
+   "observed_at": "2026-08-30T01:07:24.536015+00:00",
+   "proxy_at_probe": {
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
+   }
   },
   {
    "lib": "adata",
@@ -1708,6 +2034,7 @@
    "category": "资金流",
    "signature": "(days_type=1)",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "OK",
@@ -1744,33 +2071,33 @@
     "sm_net_inflow": "float64"
    },
    "first_row": {
-    "index_code": "BK0596",
-    "index_name": "融资融券",
-    "change_pct": "1.18",
-    "main_net_inflow": "36389826560.0",
-    "main_net_inflow_rate": "1.5",
-    "max_net_inflow": "28921839616.0",
-    "max_net_inflow_rate": "1.2",
-    "lg_net_inflow": "7467986944.0",
-    "lg_net_inflow_rate": "0.31",
-    "mid_net_inflow": "-17505202176.0",
-    "mid_net_inflow_rate": "-0.72",
-    "sm_net_inflow": "-19031920640.0",
-    "sm_net_inflow_rate": "-0.79",
-    "stock_code": "光迅科技",
-    "stock_name": "002281"
+    "index_code": "BK1629",
+    "index_name": "AI应用",
+    "change_pct": "0.5",
+    "main_net_inflow": "3294398976.0",
+    "main_net_inflow_rate": "3.04",
+    "max_net_inflow": "2634972672.0",
+    "max_net_inflow_rate": "2.43",
+    "lg_net_inflow": "659426304.0",
+    "lg_net_inflow_rate": "0.61",
+    "mid_net_inflow": "-373645568.0",
+    "mid_net_inflow_rate": "-0.34",
+    "sm_net_inflow": "-2931644160.0",
+    "sm_net_inflow_rate": "-2.71",
+    "stock_code": "三六零",
+    "stock_name": "601360"
    },
-   "elapsed_s": 17.28,
-   "timeout_used_s": 60,
+   "elapsed_s": 18.4,
+   "timeout_used_s": 45,
    "attempts": null,
    "network_degraded": false,
-   "observed_at": "2026-08-09T12:36:52.738040+00:00",
+   "observed_at": "2026-08-30T01:07:42.941303+00:00",
    "proxy_at_probe": {
-    "http": null,
-    "https": null,
-    "env_http_proxy": null,
-    "env_https_proxy": null,
-    "any_proxy": false
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
    }
   },
   {
@@ -1779,6 +2106,7 @@
    "category": "资金流",
    "signature": "(stock_code: str = '000001', start_date=None, end_date=None)",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "OK",
@@ -1803,24 +2131,24 @@
    },
    "first_row": {
     "stock_code": "000001",
-    "trade_date": "2026-02-06",
-    "main_net_inflow": "-2213553.0",
-    "sm_net_inflow": "-7714158.0",
-    "mid_net_inflow": "9927710.0",
-    "lg_net_inflow": "-212415.0",
-    "max_net_inflow": "-2001138.0"
+    "trade_date": "2026-03-09",
+    "main_net_inflow": "22224560.0",
+    "sm_net_inflow": "-49682522.0",
+    "mid_net_inflow": "27457962.0",
+    "lg_net_inflow": "54298060.0",
+    "max_net_inflow": "-32073500.0"
    },
-   "elapsed_s": 4.38,
-   "timeout_used_s": 60,
+   "elapsed_s": 7.82,
+   "timeout_used_s": 45,
    "attempts": null,
    "network_degraded": false,
-   "observed_at": "2026-08-09T12:36:57.119866+00:00",
+   "observed_at": "2026-08-30T01:07:50.760157+00:00",
    "proxy_at_probe": {
-    "http": null,
-    "https": null,
-    "env_http_proxy": null,
-    "env_https_proxy": null,
-    "any_proxy": false
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
    }
   },
   {
@@ -1829,6 +2157,7 @@
    "category": "资金流",
    "signature": "(stock_code: str = '000001')",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "OK",
@@ -1853,24 +2182,24 @@
    },
    "first_row": {
     "stock_code": "000001",
-    "trade_time": "2026-08-07 09:31:00",
-    "main_net_inflow": "477248.0",
-    "sm_net_inflow": "1019435.0",
-    "mid_net_inflow": "-1496683.0",
-    "lg_net_inflow": "-6586842.0",
-    "max_net_inflow": "7064090.0"
+    "trade_time": "2026-08-28 09:31:00",
+    "main_net_inflow": "2252270.0",
+    "sm_net_inflow": "786532.0",
+    "mid_net_inflow": "-3038802.0",
+    "lg_net_inflow": "-7097019.0",
+    "max_net_inflow": "9349289.0"
    },
-   "elapsed_s": 4.53,
-   "timeout_used_s": 60,
+   "elapsed_s": 14.05,
+   "timeout_used_s": 45,
    "attempts": null,
    "network_degraded": false,
-   "observed_at": "2026-08-09T12:37:01.650786+00:00",
+   "observed_at": "2026-08-30T01:08:04.810273+00:00",
    "proxy_at_probe": {
-    "http": null,
-    "https": null,
-    "env_http_proxy": null,
-    "env_https_proxy": null,
-    "any_proxy": false
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
    }
   },
   {
@@ -1879,15 +2208,16 @@
    "category": "分红送转",
    "signature": "(stock_code='000001')",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "FAIL_UNREACHABLE",
    "rows": null,
    "error": "TooManyRedirects: Exceeded 30 redirects.",
    "traceback_tail": "s\\MengLin\\AppData\\Roaming\\Python\\Python311\\site-packages\\requests\\sessions.py\", line 192, in resolve_redirects\n    raise TooManyRedirects(\nrequests.exceptions.TooManyRedirects: Exceeded 30 redirects.\n",
-   "bytes_received": 17533,
-   "elapsed_s": 5.28,
-   "timeout_used_s": 60,
+   "bytes_received": 21383,
+   "elapsed_s": 6.56,
+   "timeout_used_s": 45,
    "attempts": [
     {
      "variant": "required_only",
@@ -1896,9 +2226,9 @@
      "rows": null,
      "error": "TooManyRedirects: Exceeded 30 redirects.",
      "traceback_tail": "s\\MengLin\\AppData\\Roaming\\Python\\Python311\\site-packages\\requests\\sessions.py\", line 192, in resolve_redirects\n    raise TooManyRedirects(\nrequests.exceptions.TooManyRedirects: Exceeded 30 redirects.\n",
-     "bytes_received": 17533,
-     "elapsed_s": 5.28,
-     "timeout_used_s": 60
+     "bytes_received": 21383,
+     "elapsed_s": 6.56,
+     "timeout_used_s": 45
     },
     {
      "variant": "with_optional",
@@ -1909,19 +2239,19 @@
      "rows": null,
      "error": "TooManyRedirects: Exceeded 30 redirects.",
      "traceback_tail": "s\\MengLin\\AppData\\Roaming\\Python\\Python311\\site-packages\\requests\\sessions.py\", line 192, in resolve_redirects\n    raise TooManyRedirects(\nrequests.exceptions.TooManyRedirects: Exceeded 30 redirects.\n",
-     "bytes_received": 17533,
-     "elapsed_s": 9.16,
-     "timeout_used_s": 60
+     "bytes_received": 21383,
+     "elapsed_s": 7.04,
+     "timeout_used_s": 45
     }
    ],
    "network_degraded": false,
-   "observed_at": "2026-08-09T12:37:16.090736+00:00",
+   "observed_at": "2026-08-30T01:08:18.411905+00:00",
    "proxy_at_probe": {
-    "http": null,
-    "https": null,
-    "env_http_proxy": null,
-    "env_https_proxy": null,
-    "any_proxy": false
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
    }
   },
   {
@@ -1930,10 +2260,11 @@
    "category": "其他/未分类",
    "signature": "(stock_code: str = '000001', start_date='1990-01-01', end_date=None, k_type=1, adjust_type: int = 1)",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "OK",
-   "rows": 8453,
+   "rows": 8468,
    "cols": [
     "stock_code",
     "trade_time",
@@ -1978,17 +2309,17 @@
     "turnover_ratio": "0.0",
     "pre_close": "-3.16"
    },
-   "elapsed_s": 13.96,
-   "timeout_used_s": 90,
+   "elapsed_s": 11.16,
+   "timeout_used_s": 45,
    "attempts": null,
    "network_degraded": false,
-   "observed_at": "2026-08-09T19:18:36.829007+00:00",
+   "observed_at": "2026-08-30T01:08:29.574412+00:00",
    "proxy_at_probe": {
-    "http": null,
-    "https": null,
-    "env_http_proxy": null,
-    "env_https_proxy": null,
-    "any_proxy": false
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
    }
   },
   {
@@ -1997,10 +2328,11 @@
    "category": "分钟/日内",
    "signature": "(stock_code: str = '000001')",
    "endpoint_family": "other",
-   "variant": "required_only",
+   "rate_limit_domain": "other",
+   "variant": "required_only_retry150s",
    "kwargs": {},
    "state": "OK",
-   "rows": 4565,
+   "rows": 200,
    "cols": [
     "stock_code",
     "trade_time",
@@ -2011,28 +2343,84 @@
    "dtypes": {
     "stock_code": "object",
     "trade_time": "object",
-    "price": "float64",
-    "volume": "int64",
+    "price": "object",
+    "volume": "object",
     "bs_type": "object"
    },
    "first_row": {
     "stock_code": "000001",
-    "trade_time": "09:25:00",
-    "price": "11.23",
-    "volume": "4530",
+    "trade_time": "2026-08-28 14:48:00",
+    "price": "11.66",
+    "volume": "1500",
     "bs_type": "B"
    },
-   "elapsed_s": 86.3,
-   "timeout_used_s": 200,
-   "attempts": null,
+   "elapsed_s": 23.92,
+   "timeout_used_s": 150,
+   "retried_after_hung": true,
+   "attempts": [
+    {
+     "variant": "required_only",
+     "kwargs": {},
+     "state": "FAIL_UNREACHABLE",
+     "rows": null,
+     "error": "HUNG_NO_RESULT_IN_45s",
+     "note": "子进程超时被杀 —— ⛔ 不可解释为接口不可用",
+     "bytes_received": 37010,
+     "elapsed_s": 45.02,
+     "timeout_used_s": 45
+    },
+    {
+     "variant": "with_optional",
+     "kwargs": {
+      "stock_code": "000001"
+     },
+     "state": "FAIL_UNREACHABLE",
+     "rows": null,
+     "error": "HUNG_NO_RESULT_IN_45s",
+     "note": "子进程超时被杀 —— ⛔ 不可解释为接口不可用",
+     "bytes_received": 29570,
+     "elapsed_s": 45.05,
+     "timeout_used_s": 45
+    },
+    {
+     "variant": "required_only_retry150s",
+     "kwargs": {},
+     "state": "OK",
+     "rows": 200,
+     "cols": [
+      "stock_code",
+      "trade_time",
+      "price",
+      "volume",
+      "bs_type"
+     ],
+     "dtypes": {
+      "stock_code": "object",
+      "trade_time": "object",
+      "price": "object",
+      "volume": "object",
+      "bs_type": "object"
+     },
+     "first_row": {
+      "stock_code": "000001",
+      "trade_time": "2026-08-28 14:48:00",
+      "price": "11.66",
+      "volume": "1500",
+      "bs_type": "B"
+     },
+     "elapsed_s": 23.92,
+     "timeout_used_s": 150,
+     "retried_after_hung": true
+    }
+   ],
    "network_degraded": false,
-   "observed_at": "2026-08-07T11:44:18.067836+00:00",
+   "observed_at": "2026-08-30T01:10:23.567174+00:00",
    "proxy_at_probe": {
-    "http": null,
-    "https": null,
-    "env_http_proxy": null,
-    "env_https_proxy": null,
-    "any_proxy": false
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
    }
   },
   {
@@ -2041,6 +2429,7 @@
    "category": "板块/概念/行业",
    "signature": "(index_code: str = 'BK0612')",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "OK",
@@ -2073,21 +2462,29 @@
    },
    "first_row": {
     "index_code": "BK0612",
-    "trade_time": "2026-08-06 12:28:03.206046",
+    "trade_time": "2026-08-30 09:10:30.996254",
     "trade_date": "nan",
-    "open": "173169.0",
-    "high": "173845.0",
-    "low": "172744.0",
-    "price": "173012.0",
-    "volume": "98609301.0",
-    "amount": "273336108239.0",
-    "change": "-817.0",
-    "change_pct": "-0.47"
+    "open": "173934.0",
+    "high": "174643.0",
+    "low": "173763.0",
+    "price": "174183.0",
+    "volume": "107686341.0",
+    "amount": "279087400592.0",
+    "change": "-41.0",
+    "change_pct": "-0.02"
    },
-   "elapsed_s": 11.82,
+   "elapsed_s": 7.45,
+   "timeout_used_s": 45,
    "attempts": null,
    "network_degraded": false,
-   "probed_at_record": "2026-08-07T05:44:43.721001+00:00"
+   "observed_at": "2026-08-30T01:10:31.018646+00:00",
+   "proxy_at_probe": {
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
+   }
   },
   {
    "lib": "adata",
@@ -2095,6 +2492,7 @@
    "category": "板块/概念/行业",
    "signature": "(index_code: str = '886013', k_type: int = 1)",
    "endpoint_family": "ths",
+   "rate_limit_domain": "ths",
    "variant": "required_only",
    "kwargs": {},
    "state": "OK",
@@ -2127,21 +2525,29 @@
    },
    "first_row": {
     "index_code": "886013",
-    "trade_time": "2026-08-06 12:28:00",
-    "trade_date": "2026-08-06",
-    "open": "1946.493",
-    "high": "1996.015",
-    "low": "1946.493",
-    "price": "1965.449",
-    "volume": "5769102200",
-    "amount": "117633210000.000",
+    "trade_time": "2026-08-28 09:10:00",
+    "trade_date": "2026-08-28",
+    "open": "1941.354",
+    "high": "1972.036",
+    "low": "1934.441",
+    "price": "1934.441",
+    "volume": "6459371700",
+    "amount": "127917553000.000",
     "change": "None",
     "change_pct": "None"
    },
-   "elapsed_s": 10.54,
+   "elapsed_s": 4.4,
+   "timeout_used_s": 45,
    "attempts": null,
    "network_degraded": false,
-   "probed_at_record": "2026-08-07T05:44:43.721001+00:00"
+   "observed_at": "2026-08-30T01:10:35.419367+00:00",
+   "proxy_at_probe": {
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
+   }
   },
   {
    "lib": "adata",
@@ -2149,10 +2555,11 @@
    "category": "板块/概念/行业",
    "signature": "(index_code: str = 'BK0612', k_type: int = 1)",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "OK",
-   "rows": 3438,
+   "rows": 3453,
    "cols": [
     "index_code",
     "trade_time",
@@ -2192,17 +2599,17 @@
     "change": "-239.25",
     "change_pct": "-23.93"
    },
-   "elapsed_s": 3.83,
-   "timeout_used_s": 60,
+   "elapsed_s": 7.17,
+   "timeout_used_s": 45,
    "attempts": null,
    "network_degraded": false,
-   "observed_at": "2026-08-09T12:37:19.926429+00:00",
+   "observed_at": "2026-08-30T01:10:42.685193+00:00",
    "proxy_at_probe": {
-    "http": null,
-    "https": null,
-    "env_http_proxy": null,
-    "env_https_proxy": null,
-    "any_proxy": false
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
    }
   },
   {
@@ -2211,6 +2618,7 @@
    "category": "分钟/日内",
    "signature": "(index_code='BK0612')",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "OK",
@@ -2239,26 +2647,26 @@
    },
    "first_row": {
     "index_code": "BK0612",
-    "trade_time": "2026-08-07 09:30:00",
-    "trade_date": "2026-08-07",
-    "price": "1738.22",
-    "avg_price": "1738.22",
-    "volume": "850850.0",
-    "amount": "2670542816.0",
-    "change": "-0.58",
-    "change_pct": "-0.03"
+    "trade_time": "2026-08-28 09:30:00",
+    "trade_date": "2026-08-28",
+    "price": "1739.34",
+    "avg_price": "1739.34",
+    "volume": "768907.0",
+    "amount": "2226299712.0",
+    "change": "-2.9",
+    "change_pct": "-0.17"
    },
-   "elapsed_s": 6.06,
-   "timeout_used_s": 60,
+   "elapsed_s": 8.93,
+   "timeout_used_s": 45,
    "attempts": null,
    "network_degraded": false,
-   "observed_at": "2026-08-09T12:37:25.983406+00:00",
+   "observed_at": "2026-08-30T01:10:51.611371+00:00",
    "proxy_at_probe": {
-    "http": null,
-    "https": null,
-    "env_http_proxy": null,
-    "env_https_proxy": null,
-    "any_proxy": false
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
    }
   },
   {
@@ -2267,10 +2675,11 @@
    "category": "分钟/日内",
    "signature": "(index_code='886041')",
    "endpoint_family": "ths",
+   "rate_limit_domain": "ths",
    "variant": "required_only",
    "kwargs": {},
    "state": "OK",
-   "rows": 121,
+   "rows": 241,
    "cols": [
     "index_code",
     "trade_time",
@@ -2295,19 +2704,27 @@
    },
    "first_row": {
     "index_code": "886041",
-    "trade_time": "2026-08-06 09:30:00",
-    "trade_date": "2026-08-06",
-    "price": "1169.052",
+    "trade_time": "2026-08-28 09:30:00",
+    "trade_date": "2026-08-28",
+    "price": "1157.094",
     "avg_price": "None",
-    "volume": "137128360",
-    "amount": "2027307000",
-    "change": "-9.71400000000017",
-    "change_pct": "-0.8240821333496358"
+    "volume": "91199578",
+    "amount": "1221544770",
+    "change": "4.101000000000113",
+    "change_pct": "0.35568299200429776"
    },
-   "elapsed_s": 10.65,
+   "elapsed_s": 4.24,
+   "timeout_used_s": 45,
    "attempts": null,
    "network_degraded": false,
-   "probed_at_record": "2026-08-07T05:44:43.721001+00:00"
+   "observed_at": "2026-08-30T01:10:55.851916+00:00",
+   "proxy_at_probe": {
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
+   }
   },
   {
    "lib": "adata",
@@ -2315,10 +2732,11 @@
    "category": "板块/概念/行业",
    "signature": "(index_code: str = '886013', k_type: int = 1, adjust_type: int = 1)",
    "endpoint_family": "ths",
+   "rate_limit_domain": "ths",
    "variant": "required_only",
    "kwargs": {},
    "state": "OK",
-   "rows": 940,
+   "rows": 956,
    "cols": [
     "index_code",
     "trade_time",
@@ -2358,10 +2776,18 @@
     "change": "None",
     "change_pct": "None"
    },
-   "elapsed_s": 8.52,
+   "elapsed_s": 3.92,
+   "timeout_used_s": 45,
    "attempts": null,
    "network_degraded": false,
-   "probed_at_record": "2026-08-07T05:44:43.721001+00:00"
+   "observed_at": "2026-08-30T01:10:59.775872+00:00",
+   "proxy_at_probe": {
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
+   }
   },
   {
    "lib": "adata",
@@ -2369,6 +2795,7 @@
    "category": "其他/未分类",
    "signature": "(stock_code: str = '000001')",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "OK",
@@ -2414,31 +2841,39 @@
    "first_row": {
     "stock_code": "000001",
     "short_name": "平安银行",
-    "s5": "11.21",
-    "sv5": "192000",
-    "s4": "11.20",
-    "sv4": "334600",
-    "s3": "11.19",
-    "sv3": "255500",
-    "s2": "11.18",
-    "sv2": "216300",
-    "s1": "11.17",
-    "sv1": "85200",
-    "b1": "11.16",
-    "bv1": "115600",
-    "b2": "11.15",
-    "bv2": "621700",
-    "b3": "11.14",
-    "bv3": "230900",
-    "b4": "11.13",
-    "bv4": "1226600",
-    "b5": "11.12",
-    "bv5": "881100"
+    "s5": "11.69",
+    "sv5": "577400",
+    "s4": "11.68",
+    "sv4": "1324800",
+    "s3": "11.67",
+    "sv3": "562000",
+    "s2": "11.66",
+    "sv2": "1243200",
+    "s1": "11.65",
+    "sv1": "48100",
+    "b1": "11.64",
+    "bv1": "73300",
+    "b2": "11.63",
+    "bv2": "191200",
+    "b3": "11.62",
+    "bv3": "220600",
+    "b4": "11.61",
+    "bv4": "385700",
+    "b5": "11.60",
+    "bv5": "146900"
    },
-   "elapsed_s": 10.43,
+   "elapsed_s": 6.89,
+   "timeout_used_s": 45,
    "attempts": null,
    "network_degraded": false,
-   "probed_at_record": "2026-08-07T05:44:43.721001+00:00"
+   "observed_at": "2026-08-30T01:11:06.668815+00:00",
+   "proxy_at_probe": {
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
+   }
   },
   {
    "lib": "adata",
@@ -2446,10 +2881,11 @@
    "category": "指数",
    "signature": "(index_code: str = '000001', start_date='2020-01-01', k_type: int = 1)",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "OK",
-   "rows": 1597,
+   "rows": 1614,
    "cols": [
     "index_code",
     "trade_date",
@@ -2467,32 +2903,40 @@
     "index_code": "object",
     "trade_date": "object",
     "trade_time": "object",
-    "open": "object",
-    "high": "object",
-    "low": "object",
-    "close": "object",
-    "volume": "object",
-    "amount": "object",
-    "change": "object",
-    "change_pct": "object"
+    "open": "float64",
+    "high": "float64",
+    "low": "float64",
+    "close": "float64",
+    "volume": "float64",
+    "amount": "float64",
+    "change": "float64",
+    "change_pct": "float64"
    },
    "first_row": {
     "index_code": "000001",
     "trade_date": "2020-01-02",
     "trade_time": "2020-01-02 00:00:00",
     "open": "3066.34",
-    "high": "3098.10",
+    "high": "3098.1",
     "low": "3066.34",
-    "close": "3085.20",
-    "volume": "29247021000",
-    "amount": "327197120000.00",
+    "close": "3085.2",
+    "volume": "292470208.0",
+    "amount": "327197122560.0",
     "change": "35.08",
     "change_pct": "1.15"
    },
-   "elapsed_s": 10.73,
+   "elapsed_s": 7.37,
+   "timeout_used_s": 45,
    "attempts": null,
    "network_degraded": false,
-   "probed_at_record": "2026-08-07T05:44:43.721001+00:00"
+   "observed_at": "2026-08-30T01:11:14.039056+00:00",
+   "proxy_at_probe": {
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
+   }
   },
   {
    "lib": "adata",
@@ -2500,6 +2944,7 @@
    "category": "指数",
    "signature": "(index_code: str = '000001')",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "func_overridden",
    "kwargs": {
     "index_code": "000300"
@@ -2534,28 +2979,28 @@
    },
    "first_row": {
     "index_code": "000300",
-    "trade_time": "2026-08-10 03:18:04.386698",
+    "trade_time": "2026-08-30 09:11:23.172825",
     "trade_date": "nan",
-    "open": "4656.1",
-    "high": "4706.73",
-    "low": "4649.58",
-    "price": "4694.44",
-    "volume": "239072020.0",
-    "amount": "788405762429.7",
-    "change": "43.13",
-    "change_pct": "0.93"
+    "open": "4615.84",
+    "high": "4643.34",
+    "low": "4608.46",
+    "price": "4609.18",
+    "volume": "180989495.0",
+    "amount": "549813480130.3",
+    "change": "-21.1",
+    "change_pct": "-0.46"
    },
-   "elapsed_s": 18.99,
-   "timeout_used_s": 90,
+   "elapsed_s": 9.15,
+   "timeout_used_s": 45,
    "attempts": null,
    "network_degraded": false,
-   "observed_at": "2026-08-09T19:18:04.468123+00:00",
+   "observed_at": "2026-08-30T01:11:23.192038+00:00",
    "proxy_at_probe": {
-    "http": null,
-    "https": null,
-    "env_http_proxy": null,
-    "env_https_proxy": null,
-    "any_proxy": false
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
    }
   },
   {
@@ -2564,10 +3009,11 @@
    "category": "分钟/日内",
    "signature": "(index_code='000001')",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "OK",
-   "rows": 121,
+   "rows": 241,
    "cols": [
     "index_code",
     "trade_time",
@@ -2583,28 +3029,36 @@
     "index_code": "object",
     "trade_time": "object",
     "trade_date": "object",
-    "price": "object",
-    "avg_price": "object",
-    "volume": "object",
-    "amount": "object",
-    "change": "object",
-    "change_pct": "object"
+    "price": "float64",
+    "avg_price": "float64",
+    "volume": "float64",
+    "amount": "float64",
+    "change": "float64",
+    "change_pct": "float64"
    },
    "first_row": {
     "index_code": "000001",
-    "trade_time": "2026-08-06 09:30:00",
-    "trade_date": "2026-08-06",
-    "price": "3864.27",
-    "avg_price": "3864.4677",
-    "volume": "489839700",
-    "amount": "11210351700",
-    "change": "-14.16",
-    "change_pct": "-0.37"
+    "trade_time": "2026-08-28 09:30:00",
+    "trade_date": "2026-08-28",
+    "price": "3950.24",
+    "avg_price": "3956.03",
+    "volume": "4488109.0",
+    "amount": "8595747584.0",
+    "change": "-6.33",
+    "change_pct": "-0.16"
    },
-   "elapsed_s": 12.7,
+   "elapsed_s": 7.71,
+   "timeout_used_s": 45,
    "attempts": null,
    "network_degraded": false,
-   "probed_at_record": "2026-08-07T05:44:43.721001+00:00"
+   "observed_at": "2026-08-30T01:11:30.905778+00:00",
+   "proxy_at_probe": {
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
+   }
   },
   {
    "lib": "adata",
@@ -2612,10 +3066,11 @@
    "category": "分钟/日内",
    "signature": "(stock_code: str = '000001')",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "OK",
-   "rows": 121,
+   "rows": 256,
    "cols": [
     "stock_code",
     "trade_time",
@@ -2629,27 +3084,35 @@
    "dtypes": {
     "stock_code": "object",
     "trade_time": "object",
-    "price": "object",
+    "price": "float64",
     "change": "float64",
     "change_pct": "float64",
-    "volume": "int64",
-    "avg_price": "object",
-    "amount": "object"
+    "volume": "float64",
+    "avg_price": "float64",
+    "amount": "float64"
    },
    "first_row": {
     "stock_code": "000001",
-    "trade_time": "2026-08-06 09:30:00",
-    "price": "11.22",
-    "change": "-0.03",
-    "change_pct": "-0.27",
-    "volume": "639000",
-    "avg_price": "11.22",
-    "amount": "7169692"
+    "trade_time": "2026-08-28 09:15",
+    "price": "11.59",
+    "change": "0.0",
+    "change_pct": "0.0",
+    "volume": "0.0",
+    "avg_price": "11.59",
+    "amount": "0.0"
    },
-   "elapsed_s": 31.01,
+   "elapsed_s": 8.57,
+   "timeout_used_s": 45,
    "attempts": null,
    "network_degraded": false,
-   "probed_at_record": "2026-08-07T05:44:43.721001+00:00"
+   "observed_at": "2026-08-30T01:11:39.474055+00:00",
+   "proxy_at_probe": {
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
+   }
   },
   {
    "lib": "adata",
@@ -2657,24 +3120,25 @@
    "category": "其他/未分类",
    "signature": "()",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "FAIL_GATEWAY",
    "rows": null,
    "error": "TypeError: 'NoneType' object is not subscriptable",
    "traceback_tail": "\\base_ths.py\", line 76, in get_wencai_server_time\n    js_url = \"http:\" + soup.find('script')['src']\n                       ~~~~~~~~~~~~~~~~~~~^^^^^^^\nTypeError: 'NoneType' object is not subscriptable\n",
-   "bytes_received": 3698,
-   "elapsed_s": 9.12,
-   "timeout_used_s": 60,
+   "bytes_received": 7549,
+   "elapsed_s": 19.43,
+   "timeout_used_s": 45,
    "attempts": null,
    "network_degraded": false,
-   "observed_at": "2026-08-09T13:13:51.135958+00:00",
+   "observed_at": "2026-08-30T01:11:58.907564+00:00",
    "proxy_at_probe": {
-    "http": null,
-    "https": null,
-    "env_http_proxy": null,
-    "env_https_proxy": null,
-    "any_proxy": false
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
    }
   },
   {
@@ -2683,6 +3147,7 @@
    "category": "其他/未分类",
    "signature": "(code_list=None)",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "func_overridden",
    "kwargs": {
     "code_list": [
@@ -2713,23 +3178,23 @@
    "first_row": {
     "stock_code": "600000",
     "short_name": "浦发银行",
-    "price": "9.210",
-    "change": "-0.080",
-    "change_pct": "-0.86",
-    "volume": "56545700",
-    "amount": "520690000.0"
+    "price": "9.000",
+    "change": "-0.070",
+    "change_pct": "-0.77",
+    "volume": "58786800",
+    "amount": "528820000.0"
    },
-   "elapsed_s": 3.48,
+   "elapsed_s": 6.9,
    "timeout_used_s": 45,
    "attempts": null,
    "network_degraded": false,
-   "observed_at": "2026-08-08T14:13:32.100752+00:00",
+   "observed_at": "2026-08-30T01:12:05.806333+00:00",
    "proxy_at_probe": {
-    "http": null,
-    "https": null,
-    "env_http_proxy": null,
-    "env_https_proxy": null,
-    "any_proxy": false
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
    }
   },
   {
@@ -2738,24 +3203,25 @@
    "category": "其他/未分类",
    "signature": "(js_path='hexin.js')",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "FAIL_DETERMINISTIC",
    "rows": null,
    "error": "AttributeError: function 'mr_eval_context' not found",
    "traceback_tail": "\\ctypes\\__init__.py\", line 394, in __getitem__\n    func = self._FuncPtr((name_or_ordinal, self))\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAttributeError: function 'mr_eval_context' not found\n",
-   "bytes_received": 0,
-   "elapsed_s": 6.64,
-   "timeout_used_s": 60,
+   "bytes_received": 3850,
+   "elapsed_s": 4.63,
+   "timeout_used_s": 45,
    "attempts": null,
    "network_degraded": false,
-   "observed_at": "2026-08-07T08:30:05.683826+00:00",
+   "observed_at": "2026-08-30T01:12:10.439394+00:00",
    "proxy_at_probe": {
-    "http": null,
-    "https": null,
-    "env_http_proxy": null,
-    "env_https_proxy": null,
-    "any_proxy": false
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
    }
   },
   {
@@ -2764,24 +3230,25 @@
    "category": "基金/ETF",
    "signature": "() -> pandas.core.frame.DataFrame",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "FAIL_GATEWAY",
    "rows": null,
    "error": "JSONDecodeError: Expecting value: line 1 column 1 (char 0)",
    "traceback_tail": "on\\Python311\\site-packages\\requests\\models.py\", line 982, in json\n    raise RequestsJSONDecodeError(e.msg, e.doc, e.pos)\nrequests.exceptions.JSONDecodeError: Expecting value: line 1 column 1 (char 0)\n",
-   "bytes_received": 4100,
-   "elapsed_s": 5.69,
-   "timeout_used_s": 45,
+   "bytes_received": 4107,
+   "elapsed_s": 4.74,
+   "timeout_used_s": 30,
    "attempts": null,
    "network_degraded": false,
-   "observed_at": "2026-08-09T20:28:03.612563+00:00",
+   "observed_at": "2026-08-30T00:31:51.799142+00:00",
    "proxy_at_probe": {
-    "http": null,
-    "https": null,
-    "env_http_proxy": null,
-    "env_https_proxy": null,
-    "any_proxy": false
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
    }
   },
   {
@@ -2790,14 +3257,15 @@
    "category": "基金/ETF",
    "signature": "() -> pandas.core.frame.DataFrame",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only_retry150s",
    "kwargs": {},
    "state": "FAIL_GATEWAY",
    "rows": null,
    "error": "JSONDecodeError: Expecting value: line 1 column 1 (char 0)",
    "traceback_tail": "on\\Python311\\site-packages\\requests\\models.py\", line 982, in json\n    raise RequestsJSONDecodeError(e.msg, e.doc, e.pos)\nrequests.exceptions.JSONDecodeError: Expecting value: line 1 column 1 (char 0)\n",
-   "bytes_received": 1010022,
-   "elapsed_s": 146.12,
+   "bytes_received": 426236,
+   "elapsed_s": 36.43,
    "timeout_used_s": 150,
    "retried_after_hung": true,
    "attempts": [
@@ -2806,11 +3274,11 @@
      "kwargs": {},
      "state": "FAIL_UNREACHABLE",
      "rows": null,
-     "error": "HUNG_NO_RESULT_IN_45s",
+     "error": "HUNG_NO_RESULT_IN_30s",
      "note": "子进程超时被杀 —— ⛔ 不可解释为接口不可用",
-     "bytes_received": 321686,
-     "elapsed_s": 45.06,
-     "timeout_used_s": 45
+     "bytes_received": 425393,
+     "elapsed_s": 30.03,
+     "timeout_used_s": 30
     },
     {
      "variant": "required_only_retry150s",
@@ -2819,20 +3287,20 @@
      "rows": null,
      "error": "JSONDecodeError: Expecting value: line 1 column 1 (char 0)",
      "traceback_tail": "on\\Python311\\site-packages\\requests\\models.py\", line 982, in json\n    raise RequestsJSONDecodeError(e.msg, e.doc, e.pos)\nrequests.exceptions.JSONDecodeError: Expecting value: line 1 column 1 (char 0)\n",
-     "bytes_received": 1010022,
-     "elapsed_s": 146.12,
+     "bytes_received": 426236,
+     "elapsed_s": 36.43,
      "timeout_used_s": 150,
      "retried_after_hung": true
     }
    ],
    "network_degraded": false,
-   "observed_at": "2026-08-09T20:31:14.790098+00:00",
+   "observed_at": "2026-08-30T00:32:58.262191+00:00",
    "proxy_at_probe": {
-    "http": null,
-    "https": null,
-    "env_http_proxy": null,
-    "env_https_proxy": null,
-    "any_proxy": false
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
    }
   },
   {
@@ -2841,24 +3309,25 @@
    "category": "基金/ETF",
    "signature": "() -> pandas.core.frame.DataFrame",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "FAIL_GATEWAY",
    "rows": null,
    "error": "JSONDecodeError: Expecting value: line 1 column 1 (char 0)",
    "traceback_tail": "on\\Python311\\site-packages\\requests\\models.py\", line 982, in json\n    raise RequestsJSONDecodeError(e.msg, e.doc, e.pos)\nrequests.exceptions.JSONDecodeError: Expecting value: line 1 column 1 (char 0)\n",
-   "bytes_received": 4690,
-   "elapsed_s": 4.38,
-   "timeout_used_s": 45,
+   "bytes_received": 4697,
+   "elapsed_s": 3.78,
+   "timeout_used_s": 30,
    "attempts": null,
    "network_degraded": false,
-   "observed_at": "2026-08-09T20:31:19.169273+00:00",
+   "observed_at": "2026-08-30T00:33:02.044646+00:00",
    "proxy_at_probe": {
-    "http": null,
-    "https": null,
-    "env_http_proxy": null,
-    "env_https_proxy": null,
-    "any_proxy": false
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
    }
   },
   {
@@ -2867,6 +3336,7 @@
    "category": "基金/ETF",
    "signature": "(start_page: str = '1', end_page: str = '2000') -> pandas.core.frame.DataFrame",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "first_page_only",
    "kwargs": {
     "start_page": "1",
@@ -2893,25 +3363,25 @@
     "托管人名称": "object"
    },
    "first_row": {
-    "基金名称": "世纪前沿金选中证1000指数增强7号私募证券投资基金",
-    "私募基金管理人名称": "海南世纪前沿私募基金管理有限公司",
+    "基金名称": "苏州星创聚达创业投资合伙企业（有限合伙）",
+    "私募基金管理人名称": "苏州维特力新创业投资管理有限公司",
     "私募基金管理人类型": "受托管理",
     "运行状态": "正在运作",
-    "备案时间": "2026-08-05",
-    "建立时间": "2026-07-28",
-    "托管人名称": "国泰海通证券股份有限公司"
+    "备案时间": "2026-08-28",
+    "建立时间": "2026-06-22",
+    "托管人名称": "招商银行股份有限公司"
    },
-   "elapsed_s": 8.52,
-   "timeout_used_s": 200,
+   "elapsed_s": 4.41,
+   "timeout_used_s": 30,
    "attempts": null,
    "network_degraded": false,
-   "observed_at": "2026-08-07T09:20:38.268882+00:00",
+   "observed_at": "2026-08-30T00:33:06.453971+00:00",
    "proxy_at_probe": {
-    "http": null,
-    "https": null,
-    "env_http_proxy": null,
-    "env_https_proxy": null,
-    "any_proxy": false
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
    }
   },
   {
@@ -2920,24 +3390,25 @@
    "category": "基金/ETF",
    "signature": "() -> pandas.core.frame.DataFrame",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "FAIL_GATEWAY",
    "rows": null,
    "error": "JSONDecodeError: Expecting value: line 1 column 1 (char 0)",
    "traceback_tail": "on\\Python311\\site-packages\\requests\\models.py\", line 982, in json\n    raise RequestsJSONDecodeError(e.msg, e.doc, e.pos)\nrequests.exceptions.JSONDecodeError: Expecting value: line 1 column 1 (char 0)\n",
-   "bytes_received": 4100,
-   "elapsed_s": 4.36,
-   "timeout_used_s": 45,
+   "bytes_received": 4108,
+   "elapsed_s": 3.47,
+   "timeout_used_s": 30,
    "attempts": null,
    "network_degraded": false,
-   "observed_at": "2026-08-09T20:31:23.529246+00:00",
+   "observed_at": "2026-08-30T00:33:09.926790+00:00",
    "proxy_at_probe": {
-    "http": null,
-    "https": null,
-    "env_http_proxy": null,
-    "env_https_proxy": null,
-    "any_proxy": false
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
    }
   },
   {
@@ -2946,24 +3417,25 @@
    "category": "基金/ETF",
    "signature": "() -> pandas.core.frame.DataFrame",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "FAIL_GATEWAY",
    "rows": null,
    "error": "JSONDecodeError: Expecting value: line 1 column 1 (char 0)",
    "traceback_tail": "on\\Python311\\site-packages\\requests\\models.py\", line 982, in json\n    raise RequestsJSONDecodeError(e.msg, e.doc, e.pos)\nrequests.exceptions.JSONDecodeError: Expecting value: line 1 column 1 (char 0)\n",
-   "bytes_received": 4099,
-   "elapsed_s": 4.8,
-   "timeout_used_s": 45,
+   "bytes_received": 4107,
+   "elapsed_s": 3.38,
+   "timeout_used_s": 30,
    "attempts": null,
    "network_degraded": false,
-   "observed_at": "2026-08-09T20:31:28.330492+00:00",
+   "observed_at": "2026-08-30T00:33:13.305936+00:00",
    "proxy_at_probe": {
-    "http": null,
-    "https": null,
-    "env_http_proxy": null,
-    "env_https_proxy": null,
-    "any_proxy": false
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
    }
   },
   {
@@ -2972,10 +3444,11 @@
    "category": "基金/ETF",
    "signature": "() -> pandas.core.frame.DataFrame",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only_retry150s",
    "kwargs": {},
    "state": "OK",
-   "rows": 18493,
+   "rows": 18454,
    "cols": [
     "私募基金管理人名称",
     "法定代表人/执行事务合伙人(委派代表)姓名",
@@ -3013,12 +3486,12 @@
     "办公地": "上海市",
     "成立时间": "2009-06-26",
     "登记时间": "2014-03-17",
-    "在管基金数量": "205",
+    "在管基金数量": "206",
     "会员类型": "普通会员",
     "是否有提示信息": "否",
     "是否有诚信信息": "否"
    },
-   "elapsed_s": 122.21,
+   "elapsed_s": 143.16,
    "timeout_used_s": 150,
    "retried_after_hung": true,
    "attempts": [
@@ -3027,17 +3500,17 @@
      "kwargs": {},
      "state": "FAIL_UNREACHABLE",
      "rows": null,
-     "error": "HUNG_NO_RESULT_IN_60s",
+     "error": "HUNG_NO_RESULT_IN_30s",
      "note": "子进程超时被杀 —— ⛔ 不可解释为接口不可用",
-     "bytes_received": 8453069,
-     "elapsed_s": 60.02,
-     "timeout_used_s": 60
+     "bytes_received": 4409781,
+     "elapsed_s": 30.03,
+     "timeout_used_s": 30
     },
     {
      "variant": "required_only_retry150s",
      "kwargs": {},
      "state": "OK",
-     "rows": 18493,
+     "rows": 18454,
      "cols": [
       "私募基金管理人名称",
       "法定代表人/执行事务合伙人(委派代表)姓名",
@@ -3075,24 +3548,24 @@
       "办公地": "上海市",
       "成立时间": "2009-06-26",
       "登记时间": "2014-03-17",
-      "在管基金数量": "205",
+      "在管基金数量": "206",
       "会员类型": "普通会员",
       "是否有提示信息": "否",
       "是否有诚信信息": "否"
      },
-     "elapsed_s": 122.21,
+     "elapsed_s": 143.16,
      "timeout_used_s": 150,
      "retried_after_hung": true
     }
    ],
    "network_degraded": false,
-   "observed_at": "2026-08-09T12:55:21.127342+00:00",
+   "observed_at": "2026-08-30T00:36:06.497132+00:00",
    "proxy_at_probe": {
-    "http": null,
-    "https": null,
-    "env_http_proxy": null,
-    "env_https_proxy": null,
-    "any_proxy": false
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
    }
   },
   {
@@ -3101,10 +3574,11 @@
    "category": "基金/ETF",
    "signature": "() -> pandas.core.frame.DataFrame",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only_retry150s",
    "kwargs": {},
    "state": "OK",
-   "rows": 18493,
+   "rows": 18454,
    "cols": [
     "私募基金管理人名称",
     "法定代表人/执行事务合伙人(委派代表)姓名",
@@ -3132,7 +3606,7 @@
     "成立时间": "2009-06-26",
     "登记时间": "2014-03-17"
    },
-   "elapsed_s": 125.34,
+   "elapsed_s": 142.73,
    "timeout_used_s": 150,
    "retried_after_hung": true,
    "attempts": [
@@ -3141,17 +3615,17 @@
      "kwargs": {},
      "state": "FAIL_UNREACHABLE",
      "rows": null,
-     "error": "HUNG_NO_RESULT_IN_60s",
+     "error": "HUNG_NO_RESULT_IN_30s",
      "note": "子进程超时被杀 —— ⛔ 不可解释为接口不可用",
-     "bytes_received": 7548088,
-     "elapsed_s": 60.04,
-     "timeout_used_s": 60
+     "bytes_received": 2014480,
+     "elapsed_s": 30.04,
+     "timeout_used_s": 30
     },
     {
      "variant": "required_only_retry150s",
      "kwargs": {},
      "state": "OK",
-     "rows": 18493,
+     "rows": 18454,
      "cols": [
       "私募基金管理人名称",
       "法定代表人/执行事务合伙人(委派代表)姓名",
@@ -3179,19 +3653,19 @@
       "成立时间": "2009-06-26",
       "登记时间": "2014-03-17"
      },
-     "elapsed_s": 125.34,
+     "elapsed_s": 142.73,
      "timeout_used_s": 150,
      "retried_after_hung": true
     }
    ],
    "network_degraded": false,
-   "observed_at": "2026-08-09T15:10:44.735083+00:00",
+   "observed_at": "2026-08-30T00:38:59.264138+00:00",
    "proxy_at_probe": {
-    "http": null,
-    "https": null,
-    "env_http_proxy": null,
-    "env_https_proxy": null,
-    "any_proxy": false
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
    }
   },
   {
@@ -3200,26 +3674,27 @@
    "category": "基金/ETF",
    "signature": "() -> pandas.core.frame.DataFrame",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "FAIL_UNREACHABLE",
    "rows": null,
-   "error": "HUNG_NO_RESULT_IN_90s",
+   "error": "HUNG_NO_RESULT_IN_30s",
    "note": "子进程超时被杀 —— ⛔ 不可解释为接口不可用",
-   "bytes_received": 106357,
-   "elapsed_s": 90.15,
-   "timeout_used_s": 90,
+   "bytes_received": 207219,
+   "elapsed_s": 30.04,
+   "timeout_used_s": 30,
    "attempts": [
     {
      "variant": "required_only",
      "kwargs": {},
      "state": "FAIL_UNREACHABLE",
      "rows": null,
-     "error": "HUNG_NO_RESULT_IN_90s",
+     "error": "HUNG_NO_RESULT_IN_30s",
      "note": "子进程超时被杀 —— ⛔ 不可解释为接口不可用",
-     "bytes_received": 106357,
-     "elapsed_s": 90.15,
-     "timeout_used_s": 90
+     "bytes_received": 207219,
+     "elapsed_s": 30.04,
+     "timeout_used_s": 30
     },
     {
      "variant": "required_only_retry150s",
@@ -3228,20 +3703,20 @@
      "rows": null,
      "error": "HUNG_NO_RESULT_IN_150s",
      "note": "子进程超时被杀 —— ⛔ 不可解释为接口不可用",
-     "bytes_received": 308824,
-     "elapsed_s": 150.09,
+     "bytes_received": 1065409,
+     "elapsed_s": 150.04,
      "timeout_used_s": 150,
      "retried_after_hung": true
     }
    ],
    "network_degraded": false,
-   "observed_at": "2026-08-09T19:05:23.238008+00:00",
+   "observed_at": "2026-08-30T00:41:59.349389+00:00",
    "proxy_at_probe": {
-    "http": null,
-    "https": null,
-    "env_http_proxy": null,
-    "env_https_proxy": null,
-    "any_proxy": false
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
    }
   },
   {
@@ -3250,24 +3725,25 @@
    "category": "基金/ETF",
    "signature": "() -> pandas.core.frame.DataFrame",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "FAIL_GATEWAY",
    "rows": null,
    "error": "JSONDecodeError: Expecting value: line 1 column 1 (char 0)",
    "traceback_tail": "on\\Python311\\site-packages\\requests\\models.py\", line 982, in json\n    raise RequestsJSONDecodeError(e.msg, e.doc, e.pos)\nrequests.exceptions.JSONDecodeError: Expecting value: line 1 column 1 (char 0)\n",
-   "bytes_received": 4100,
-   "elapsed_s": 4.43,
-   "timeout_used_s": 45,
+   "bytes_received": 4106,
+   "elapsed_s": 8.21,
+   "timeout_used_s": 30,
    "attempts": null,
    "network_degraded": false,
-   "observed_at": "2026-08-09T20:31:32.764878+00:00",
+   "observed_at": "2026-08-30T00:42:07.562707+00:00",
    "proxy_at_probe": {
-    "http": null,
-    "https": null,
-    "env_http_proxy": null,
-    "env_https_proxy": null,
-    "any_proxy": false
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
    }
   },
   {
@@ -3276,6 +3752,7 @@
    "category": "基金/ETF",
    "signature": "() -> pandas.core.frame.DataFrame",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "OK",
@@ -3298,17 +3775,17 @@
     "机构名称": "安联基金管理有限公司",
     "公示网址": "https://www.allianzgi.com.cn/contents/2024/6/11-254bd26539bd"
    },
-   "elapsed_s": 27.35,
-   "timeout_used_s": 45,
+   "elapsed_s": 24.36,
+   "timeout_used_s": 30,
    "attempts": null,
    "network_degraded": false,
-   "observed_at": "2026-08-09T11:24:21.834765+00:00",
+   "observed_at": "2026-08-30T00:42:31.918727+00:00",
    "proxy_at_probe": {
-    "http": null,
-    "https": null,
-    "env_http_proxy": null,
-    "env_https_proxy": null,
-    "any_proxy": false
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
    }
   },
   {
@@ -3317,6 +3794,7 @@
    "category": "基金/ETF",
    "signature": "(symbol: str = '公募基金管理公司') -> pandas.core.frame.DataFrame",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "OK",
@@ -3345,27 +3823,24 @@
     "序号": "1",
     "机构名称": "安联基金管理有限公司",
     "机构类型": "公募基金管理公司",
-    "员工人数": "66",
-    "基金从业资格": "65",
+    "员工人数": "69",
+    "基金从业资格": "68",
     "基金销售业务资格": "0",
     "基金经理": "2",
     "投资经理": "2"
    },
-   "elapsed_s": 13.39,
+   "elapsed_s": 8.98,
+   "timeout_used_s": 30,
    "attempts": null,
    "network_degraded": false,
-   "later_observations": [
-    {
-     "observed_at": "2026-08-06T16:56:44.954000+00:00",
-     "state": "FAIL_UNREACHABLE",
-     "error": "HUNG_NO_RESULT_IN_60s",
-     "timeout_used_s": 60,
-     "variant": "required_only",
-     "note": "这次没成功，但**不足以**推翻上面那次成功 —— 失败不可解释（FINDING-214）。两者都留，间歇性因此可见。"
-    }
-   ],
-   "intermittent": true,
-   "probed_at_record": "2026-08-07T05:44:43.721001+00:00"
+   "observed_at": "2026-08-30T00:42:40.896739+00:00",
+   "proxy_at_probe": {
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
+   }
   },
   {
    "lib": "akshare",
@@ -3373,24 +3848,25 @@
    "category": "基金/ETF",
    "signature": "() -> pandas.core.frame.DataFrame",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "FAIL_GATEWAY",
    "rows": null,
    "error": "JSONDecodeError: Expecting value: line 1 column 1 (char 0)",
    "traceback_tail": "on\\Python311\\site-packages\\requests\\models.py\", line 982, in json\n    raise RequestsJSONDecodeError(e.msg, e.doc, e.pos)\nrequests.exceptions.JSONDecodeError: Expecting value: line 1 column 1 (char 0)\n",
-   "bytes_received": 4100,
-   "elapsed_s": 5.65,
-   "timeout_used_s": 45,
+   "bytes_received": 4106,
+   "elapsed_s": 5.43,
+   "timeout_used_s": 30,
    "attempts": null,
    "network_degraded": false,
-   "observed_at": "2026-08-09T20:31:38.421539+00:00",
+   "observed_at": "2026-08-30T00:42:46.332128+00:00",
    "proxy_at_probe": {
-    "http": null,
-    "https": null,
-    "env_http_proxy": null,
-    "env_https_proxy": null,
-    "any_proxy": false
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
    }
   },
   {
@@ -3425,6 +3901,7 @@
    "category": "债券/可转债",
    "signature": "()",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "OK",
@@ -3441,21 +3918,18 @@
     "index": "1",
     "value": "新综合指数"
    },
-   "elapsed_s": 6.89,
+   "elapsed_s": 3.97,
+   "timeout_used_s": 30,
    "attempts": null,
    "network_degraded": false,
-   "later_observations": [
-    {
-     "observed_at": "2026-08-06T17:03:45.031012+00:00",
-     "state": "FAIL_UNREACHABLE",
-     "error": "HUNG_NO_RESULT_IN_60s",
-     "timeout_used_s": 60,
-     "variant": "required_only",
-     "note": "这次没成功，但**不足以**推翻上面那次成功 —— 失败不可解释（FINDING-214）。两者都留，间歇性因此可见。"
-    }
-   ],
-   "intermittent": true,
-   "probed_at_record": "2026-08-07T05:44:43.721001+00:00"
+   "observed_at": "2026-08-30T00:42:50.302845+00:00",
+   "proxy_at_probe": {
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
+   }
   },
   {
    "lib": "akshare",
@@ -3463,10 +3937,11 @@
    "category": "股东/股本",
    "signature": "(symbol: str = '204001')",
    "endpoint_family": "eastmoney",
+   "rate_limit_domain": "eastmoney",
    "variant": "required_only",
    "kwargs": {},
    "state": "OK",
-   "rows": 4897,
+   "rows": 4912,
    "cols": [
     "日期",
     "开盘",
@@ -3494,17 +3969,17 @@
     "成交量": "100",
     "成交额": "100000.0"
    },
-   "elapsed_s": 12.12,
-   "timeout_used_s": 60,
+   "elapsed_s": 7.35,
+   "timeout_used_s": 30,
    "attempts": null,
    "network_degraded": false,
-   "observed_at": "2026-08-09T11:44:29.245910+00:00",
+   "observed_at": "2026-08-30T00:42:57.647860+00:00",
    "proxy_at_probe": {
-    "http": null,
-    "https": null,
-    "env_http_proxy": null,
-    "env_https_proxy": null,
-    "any_proxy": false
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
    }
   },
   {
@@ -3513,6 +3988,7 @@
    "category": "债券/可转债",
    "signature": "(date: str = '20210111') -> pandas.core.frame.DataFrame",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "OK",
@@ -3538,21 +4014,18 @@
     "托管面值": "6758.46",
     "数据日期": "2021-01-11"
    },
-   "elapsed_s": 8.01,
+   "elapsed_s": 3.97,
+   "timeout_used_s": 30,
    "attempts": null,
    "network_degraded": false,
-   "later_observations": [
-    {
-     "observed_at": "2026-08-06T17:12:45.152275+00:00",
-     "state": "FAIL_UNREACHABLE",
-     "error": "HUNG_NO_RESULT_IN_60s",
-     "timeout_used_s": 60,
-     "variant": "required_only",
-     "note": "这次没成功，但**不足以**推翻上面那次成功 —— 失败不可解释（FINDING-214）。两者都留，间歇性因此可见。"
-    }
-   ],
-   "intermittent": true,
-   "probed_at_record": "2026-08-07T05:44:43.721001+00:00"
+   "observed_at": "2026-08-30T00:43:01.615635+00:00",
+   "proxy_at_probe": {
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
+   }
   },
   {
    "lib": "akshare",
@@ -3560,6 +4033,7 @@
    "category": "债券/可转债",
    "signature": "(symbol: str = '128013') -> pandas.core.frame.DataFrame",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "OK",
@@ -3588,21 +4062,18 @@
     "新转股价生效日期": "2021-02-24",
     "下修底价": "2.32"
    },
-   "elapsed_s": 5.58,
+   "elapsed_s": 4.29,
+   "timeout_used_s": 30,
    "attempts": null,
    "network_degraded": false,
-   "later_observations": [
-    {
-     "observed_at": "2026-08-06T17:17:15.203357+00:00",
-     "state": "FAIL_UNREACHABLE",
-     "error": "HUNG_NO_RESULT_IN_60s",
-     "timeout_used_s": 60,
-     "variant": "required_only",
-     "note": "这次没成功，但**不足以**推翻上面那次成功 —— 失败不可解释（FINDING-214）。两者都留，间歇性因此可见。"
-    }
-   ],
-   "intermittent": true,
-   "probed_at_record": "2026-08-07T05:44:43.721001+00:00"
+   "observed_at": "2026-08-30T00:43:05.902033+00:00",
+   "proxy_at_probe": {
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
+   }
   },
   {
    "lib": "akshare",
@@ -3610,6 +4081,7 @@
    "category": "债券/可转债",
    "signature": "() -> pandas.core.frame.DataFrame",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "OK",
@@ -3661,52 +4133,49 @@
     "avg_premium_rt": "float64"
    },
    "first_row": {
-    "price_dt": "2025-07-25",
-    "price": "2352.507",
-    "amount": "6333.18",
-    "volume": "827.8",
-    "count": "463",
-    "increase_val": "4.016",
-    "increase_rt": "0.17",
-    "avg_price": "142.833",
-    "mid_price": "129.38",
-    "mid_convert_value": "102.1",
-    "avg_dblow": "182.93",
-    "avg_premium_rt": "40.1",
-    "mid_premium_rt": "27.5",
-    "avg_ytm_rt": "-8.36",
-    "temperature": "90.83",
-    "turnover_rt": "13.07",
+    "price_dt": "2025-08-19",
+    "price": "2489.388",
+    "amount": "6255.94",
+    "volume": "1059.4",
+    "count": "449",
+    "increase_val": "9.103",
+    "increase_rt": "0.37",
+    "avg_price": "151.91",
+    "mid_price": "133.499",
+    "mid_convert_value": "106.68",
+    "avg_dblow": "192.2",
+    "avg_premium_rt": "40.29",
+    "mid_premium_rt": "27.76",
+    "avg_ytm_rt": "-10.93",
+    "temperature": "96.29",
+    "turnover_rt": "16.93",
     "price_90": "0",
-    "price_90_100": "2",
-    "price_100_110": "4",
-    "price_110_120": "79",
-    "price_120_130": "164",
-    "price_130": "214",
+    "price_90_100": "1",
+    "price_100_110": "2",
+    "price_110_120": "45",
+    "price_120_130": "129",
+    "price_130": "272",
     "increase_rt_90": "0.0",
-    "increase_rt_90_100": "-0.59",
-    "increase_rt_100_110": "-0.09",
-    "increase_rt_110_120": "0.03",
-    "increase_rt_120_130": "0.06",
-    "increase_rt_130": "0.32",
-    "idx_price": "4127.163",
-    "idx_increase_rt": "-0.53"
+    "increase_rt_90_100": "0.38",
+    "increase_rt_100_110": "0.49",
+    "increase_rt_110_120": "0.25",
+    "increase_rt_120_130": "0.11",
+    "increase_rt_130": "0.51",
+    "idx_price": "4223.374",
+    "idx_increase_rt": "-0.38"
    },
-   "elapsed_s": 7.6,
+   "elapsed_s": 4.81,
+   "timeout_used_s": 30,
    "attempts": null,
    "network_degraded": false,
-   "later_observations": [
-    {
-     "observed_at": "2026-08-06T17:20:45.251378+00:00",
-     "state": "FAIL_UNREACHABLE",
-     "error": "HUNG_NO_RESULT_IN_60s",
-     "timeout_used_s": 60,
-     "variant": "required_only",
-     "note": "这次没成功，但**不足以**推翻上面那次成功 —— 失败不可解释（FINDING-214）。两者都留，间歇性因此可见。"
-    }
-   ],
-   "intermittent": true,
-   "probed_at_record": "2026-08-07T05:44:43.721001+00:00"
+   "observed_at": "2026-08-30T00:43:10.713555+00:00",
+   "proxy_at_probe": {
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
+   }
   },
   {
    "lib": "akshare",
@@ -3714,6 +4183,7 @@
    "category": "债券/可转债",
    "signature": "(cookie: str = None) -> pandas.core.frame.DataFrame",
    "endpoint_family": "other",
+   "rate_limit_domain": "other",
    "variant": "required_only",
    "kwargs": {},
    "state": "OK",
@@ -3758,45 +4228,42 @@
     "转股溢价率": "float64"
    },
    "first_row": {
-    "代码": "123281",
-    "转债名称": "中仑转债",
+    "代码": "123284",
+    "转债名称": "强达转债",
     "现价": "100.0",
     "涨跌幅": "0.0",
-    "正股代码": "301565",
-    "正股名称": "中仑新材",
-    "正股价": "19.01",
-    "正股涨跌": "-9.0",
-    "正股PB": "3.42",
-    "转股价": "20.28",
-    "转股价值": "103.01",
-    "转股溢价率": "-2.92",
+    "正股代码": "301628",
+    "正股名称": "强达电路",
+    "正股价": "90.85",
+    "正股涨跌": "-1.86",
+    "正股PB": "5.74",
+    "转股价": "84.04",
+    "转股价值": "108.1",
+    "转股溢价率": "-7.5",
     "债券评级": "AA-",
-    "回售触发价": "14.196",
-    "强赎触发价": "26.364",
-    "转债占比": "43.9",
-    "到期时间": "2032-08-05",
-    "剩余年限": "6.003",
-    "剩余规模": "10.68",
-    "成交额": "0",
-    "换手率": "0",
-    "到期税前收益": "2.19",
-    "双低": "97.08"
+    "回售触发价": "58.828",
+    "强赎触发价": "109.252",
+    "转债占比": "20.8",
+    "到期时间": "2032-08-18",
+    "剩余年限": "5.978",
+    "剩余规模": "5.5",
+    "成交额": "0.0",
+    "换手率": "0.0",
+    "到期税前收益": "2.2",
+    "双低": "92.5"
    },
-   "elapsed_s": 13.13,
+   "elapsed_s": 7.2,
+   "timeout_used_s": 30,
    "attempts": null,
    "network_degraded": false,
-   "later_observations": [
-    {
-     "observed_at": "2026-08-06T17:24:15.289714+00:00",
-     "state": "FAIL_UNREACHABLE",
-     "error": "HUNG_NO_RESULT_IN_60s",
-     "timeout_used_s": 60,
-     "variant": "required_only",
-     "note": "这次没成功，但**不足以**推翻上面那次成功 —— 失败不可解释（FINDING-214）。两者都留，间歇性因此可见。"
-    }
-   ],
-   "intermittent": true,
-   "probed_at_record": "2026-08-07T05:44:43.721001+00:00"
+   "observed_at": "2026-08-30T00:43:17.911225+00:00",
+   "proxy_at_probe": {
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
+   }
   },
   {
    "lib": "akshare",
@@ -3804,6 +4271,7 @@
    "category": "债券/可转债",
    "signature": "(symbol: str = 'sz128039') -> pandas.core.frame.DataFrame",
    "endpoint_family": "sina",
+   "rate_limit_domain": "sina",
    "variant": "required_only",
    "kwargs": {},
    "state": "OK",
@@ -3820,21 +4288,18 @@
     "item": "债券名称",
     "value": "2018年三力士股份有限公司公开发行可转换公司债券"
    },
-   "elapsed_s": 8.51,
+   "elapsed_s": 5.68,
+   "timeout_used_s": 30,
    "attempts": null,
    "network_degraded": false,
-   "later_observations": [
-    {
-     "observed_at": "2026-08-06T17:28:45.365216+00:00",
-     "state": "FAIL_UNREACHABLE",
-     "error": "HUNG_NO_RESULT_IN_60s",
-     "timeout_used_s": 60,
-     "variant": "required_only",
-     "note": "这次没成功，但**不足以**推翻上面那次成功 —— 失败不可解释（FINDING-214）。两者都留，间歇性因此可见。"
-    }
-   ],
-   "intermittent": true,
-   "probed_at_record": "2026-08-07T05:44:43.721001+00:00"
+   "observed_at": "2026-08-30T00:43:23.597000+00:00",
+   "proxy_at_probe": {
+    "http": "http://127.0.0.1:7897",
+    "https": "http://127.0.0.1:7897",
+    "env_http_proxy": "http://127.0.0.1:7897",
+    "env_https_proxy": "http://127.0.0.1:7897",
+    "any_proxy": true
+   }
   },
   {
    "lib": "akshare",

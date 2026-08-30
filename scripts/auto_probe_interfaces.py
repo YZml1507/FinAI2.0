@@ -63,12 +63,9 @@ try:
 except ImportError:      # 以裸文件方式加载本模块时（无包上下文）
     from probe_host_attribution import HOST_ATTRIBUTION, attributed_domain
 
-# ⛔ 并发守卫（LESSONS §25.7 / FINDING-205 / FINDING-204）模块级可覆盖的 lockfile 路径。
-#    惰性导入：子进程（spawn 重 import）也不触发 `finai` 包的必需性。
-try:
-    from finai.probe_guard import probe_in_progress
-except (ImportError, SyntaxError, RuntimeError):
-    probe_in_progress = None   # 本机无守卫模块 → main() 里降级跳过（不会误拦）
+# ⛔ 并发守卫（LESSONS §25.7 / FINDING-205 / FINDING-204）。
+#    模块级导入：子进程 spawn 重 import 时同样生效（sys.path 含项目根）。
+from finai.probe_guard import probe_in_progress
 
 OUT = PROJECT_ROOT / "artifacts" / "interface_matrix"
 RAW = OUT / "interfaces_raw.json"
@@ -2182,17 +2179,12 @@ def main() -> int:
     # ⛔ 自检：另一个扫描已在跑时必须拒绝启动。
     #    否则两个扫描会互相覆盖 lockfile 与产物 —— 那正是 FINDING-204 的形状，
     #    只是加害者从"重判脚本"变成"另一个我自己"。
-    #    守卫模块缺失时降级**跳过**（该锁文件由本脚本自己维护，存在性断言仍有效）。
-    if probe_in_progress is not None:
-        _running, _reason = probe_in_progress()
-        if _running and not args.force:
-            print(f"\n⛔ 已有打点扫描在运行：{_reason}")
-            print("   两个扫描会互相覆盖产物与 lockfile。已拒绝启动。")
-            print("   等它结束，或确认要并发时加 --force（⛔ 结果的失败态将不可解释）。")
-            return 3
-    else:
-        print("⚠ finai.probe_guard 不可用（本机缺失），并发守卫已跳过 —— "
-              "lockfile 自锁仍生效（FINDING-204）")
+    _running, _reason = probe_in_progress()
+    if _running and not args.force:
+        print(f"\n⛔ 已有打点扫描在运行：{_reason}")
+        print("   两个扫描会互相覆盖产物与 lockfile。已拒绝启动。")
+        print("   等它结束，或确认要并发时加 --force（⛔ 结果的失败态将不可解释）。")
+        return 3
 
     # FINDING-204: 写 lockfile，让外部脚本能检测"打点进行中"而不是猜时序
     import atexit
