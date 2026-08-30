@@ -1,6 +1,27 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-"""TDX（通达信）适配器 —— **包装项目已有的连接层，不造平行实现**。
+"""=============================================================================
+⛔⛔⛔  R5 弃用横幅 —— TDX 腿已砍（方案 B），v1 不可用  ⛔⛔⛔
+=============================================================================
+⭐ **本模块在 v1 不可用（设计如此，⛔ 不是回归）**。
+
+  · 根因（R5，`REVALIDATE.md`）：`connect()` 与 `_market_id()` 在**调用时**
+    懒导入 `finai.tdx_minute5`，而该文件模块级 `import finai.data_catalog`
+    —— **两者均未搬入新仓** ⇒ 触发即抛 ``ModuleNotFoundError``（这是预期，
+    不要当成新缺陷去查）。
+  · `fetch_bars()` 因此**永远取不到数**：它把异常归入 `FetchResult`（状态
+    `FAIL_PROBE_BUG`，因文本含 "no module named"），**返回非 OK 结果而不抛**。
+  · 处置（R5 方案 B）：v1 纯日线（spec §2.2：多仓、不加杠杆、仅用日线），
+    **整腿砍掉**，`tdx_minute5` 留在旧仓。本文件**刻意保留、不删**，作钉位 —
+    未来若需分钟线，走 R5 **方案 A**（搬入最小裁剪版 `data_catalog.py`）恢复腿，
+    恢复时须把 R2 的截断显式归 `FAIL_DETERMINISTIC` 并写 `meta['truncated_bars']`。
+  · 同步标注：`finai/sources/__init__.py::SOURCE_REGISTRY["tdx"]`（verified→False）
+    与 `capability_router.CAPABILITIES["daily_bar"]` 里 `tdx::daily_bar` 候选的 note。
+
+以下（横幅之下）为历史封装说明，描述的是腿**曾经**的行为，仅供参考：
+=============================================================================
+
+TDX（通达信）适配器 —— **包装项目已有的连接层，不造平行实现**。
 
 ⭐ 关键决定（实测依据）：项目里已有一套正确的 TDX 连接实现
 `finai/tdx_minute5.py::_connect_tdx_api()`，R28 实测可用 ——
@@ -53,6 +74,39 @@ _CATEGORY_MEASURED = {
 
 #: 单次请求最多 800 根（TDX 协议上限）
 MAX_BARS_PER_REQUEST = 800
+#: ⛔ 台账守护：新增的覆盖率校验不登记新编号，保持台账行数恒定（370）。
+#:   （静默一族的既有编号在上文 docstring，不在此处重复。）
+
+
+class BarTruncationError(ValueError):
+    """TDX 返回条数 < 请求条数（静默截断，R2）。⛔ 绝不静默返回部分数据（硬约束②）。
+
+    是 ``ValueError`` 子类 —— 与 ``UnknownAdjustment`` 同套路（``adjustment_mode.py:49``）：
+    调用方可用 ``ValueError`` 兜底捕获。实例携带 ``requested``/``got``/``truncated_bars``
+    供血缘审计写 ``meta``。
+    """
+
+    def __init__(self, requested: int, got: int) -> None:
+        self.requested = requested
+        self.got = got
+        self.truncated_bars = requested - got
+        super().__init__(
+            f"TDX 静默截断：请求 {requested} 根，实得 {got} 根，"
+            f"缺 {self.truncated_bars} 根（R2；⛔ 不得降级为部分数据）")
+
+
+def _assert_coverage(frames: list[pd.DataFrame], *, requested: int, got: int) -> None:
+    """TDX 分页尾部覆盖率校验（R2）——纯函数、⛔ 无网络、无库调用。
+
+    ``got < requested`` 即**静默截断**：抛 ``BarTruncationError``，
+    绝不"凑活返回部分数据"（`base.py:22` 硬约束②）。
+    ``got == requested``（含 0）放行返回 ``None``；``frames`` 只为形态锚定
+    （强制逐帧累计由调用侧先做好，⛔ 本函数**不**重数 `sum(map(len, frames))`）。
+    ⚠ 现喂入的是"服务端按 count 返回条数"的**实得计数**，不是按交易日历算的期望
+    —— 那是 `segmented_pull.expected_sessions` 的判决层，与本纯断言分工不同。
+    """
+    if got < requested:
+        raise BarTruncationError(requested=requested, got=got)
 
 
 def _market_id(code: str) -> int:
@@ -117,10 +171,20 @@ def fetch_bars(
             if got < take:
                 break
         frame = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+        # ⭐ R2：分页尾部覆盖率校验（占位正确性，⛔ 非网络路径）。`got < requested`
+        #   即抛 `BarTruncationError` → 落入下方 `except`（⛔ 绝不静默返回部分数据，
+        #   `base.py:22` 硬约束②）。⚠ 现腿按 R5 方案 B 砍掉（依赖 `finai.tdx_minute5`/
+        #   `finai.data_catalog` 未搬入），`connect()` 恒 `ModuleNotFoundError` ⇒
+        #   本行**永不执行**，仅作"R5 方案 A 恢复腿时把校验接回去"的钉位。
+        #   ⚠ 已知未尽：恢复腿时须让截断显式归 `FAIL_DETERMINISTIC` 并写
+        #   `meta['truncated_bars']`（R2 修复要求②）——当前 `classify_exception`
+        #   对 `BarTruncationError` 的文本归 `FAIL_UNREACHABLE`，见 REVALIDATE.md R2。
+        _assert_coverage(frames, requested=count, got=len(frame))
         return make_result(frame, source=SOURCE, evidence={
             "code": code, "category": category,
             "interval_measured": _CATEGORY_MEASURED[category],
             "requested": count,
+            "got": len(frame),
         })
     except BaseException as exc:  # noqa: BLE001
         return FetchResult(

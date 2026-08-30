@@ -1104,10 +1104,12 @@ CAPABILITIES: dict[str, list[Candidate]] = {
                   ),
                   # ⭐ R4 §3.3：口径符号化。pinned["adjust"]="" ⇔ RAW（TDX 无复权参数）。
                   adjust=AdjustmentMode.RAW,
-                  note="2026-08-14 实测 StdQuotes().bars 0.1s/800 根·"
-                       "000001 区间 33 行不复权日线；"
+                  note="⛔ R5：TDX 腿已砍（v1 仅日线，data_catalog 未搬入）——"
+                       "connect() 触发 ModuleNotFoundError ⇒ 本候选恒失败、永不返回数据；"
+                       "如未来需要分钟线再行恢复（R5 方案 A，搬入最小裁剪 data_catalog）。"
                        "⛔ 不走 catalog（tdx 需会话初始化，见 tdx_daily_bar_adapter）；"
-                       "⭐ 同 schema=ohlcv_daily ⇒ 主源 push2his 挂时自动 fallback 到本腿"),
+                       "⭐ 同 schema=ohlcv_daily ⇒ 主源 push2his 挂时本应 fallback 到本腿"
+                       "（现已砍）"),
     ],
     # ── 资金流：实测 citydata 的 moneyflow_dc 6,038 行最厚 ──────────────
     "moneyflow": [

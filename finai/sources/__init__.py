@@ -39,8 +39,12 @@ SOURCE_REGISTRY: dict[str, dict] = {
         "covers": ["A股 5min/15min/1min/daily（沪深北）"],
         "not_covered": ["A股之外的市场"],
         "needs_credential": False,
-        "verified": True,   # 生产已在用（`scripts/staging_pull_5min.py`）
-        "note": "48 根/日栅格实测合规；首根 09:35、末根 15:00",
+        # ⛔ R5：TDX 腿已砍（v1 仅日线，`finai.tdx_minute5`/`data_catalog` 未搬入）。
+        #   调用即 ModuleNotFoundError —— 这是预期，不是回归。
+        "verified": False,
+        "note": "⛔ R5：TDX 腿已砍（v1 仅日线，data_catalog 未搬入）；"
+                "如未来需要分钟线再行恢复（R5 方案 A）。"
+                "（历史实测：48 根/日栅格合规；首根 09:35、末根 15:00）",
     },
     "tdx_ext": {
         "module": "finai.sources.tdx_ext_source",

@@ -1,7 +1,7 @@
 # REVALIDATE — FinAI2.0 已知缺陷登账（R1–R5）
 
 > 生成时间：2026-08-29
-> 状态：**只登账，不修复**（修复是下一阶段任务）
+> 状态：**R1✅ R3✅ R4✅ 已修复/关闭**；**R2 随 R5 方案 B 挂起**（离线校验已落地）；**R5✅ 已按方案 B 处置（砍腿）**
 > 来源：MIGRATION_LIST.md、旧仓实测记录、本仓库 `import` 冒烟结果
 > 前置读取：**`docs/engineering/DATA_LAYER_WORK_ORDER.md`**（旧版 DATA_LAYER_DESIGN_PRINCIPLES.md 已于 2026-08-29 被用户判定删除：未调研时期 AI 代笔）
 
@@ -19,27 +19,29 @@
 
 ---
 
-## R2 · TDX 腿静默截断缺陷
+## R2 · TDX 腿静默截断缺陷 —— 状态：随 R5 方案 B 关闭/挂起
 
 | 字段 | 内容 |
 |---|---|
 | **现象** | `tdx_source.py` 的 5min 拉取对单次响应超过 TDX 协议返回上限（约 800 根/次）的段**静默截断**——返回 DataFrame 行数 < 请求行数时无 WARNING、无 FAIL，上层读成"完整数据" |
-| **证据** | `tdx_source.py:87-95`：`raw = client.get_security_bars(...)` 后未校验 `len(raw)` 对请求区间的覆盖率；旧仓实测记录 5min 单标的 3 年段只返回 11,520 根（应为 13,824 根，截断 17%） |
-| **修复要求** | 1) 每次 `get_security_bars` 后断言 `len(raw) >= expected_min_bars`（expected 由 `date_range` × 48 根/日计算，见 `__init__.py` SOURCE_REGISTRY note）；2) 截断时返回 `FAIL_DETERMINISTIC` 并附 `meta['truncated_bars']`；3) ⛔ 不得静默降级为"部分数据"返回 |
-| **验收判据** | 对 5min 3 年段（同一标的）两次调用：一次修复前（预期行数少）一次修复后（应 FAIL 或行数完整）；FAIL 时 `FetchResult.status == FAIL_DETERMINISTIC` |
-| **优先级** | P1（数据完整性，静默截断比报错更危险） |
+| **处置** | 随 R5 方案 B 关闭/挂起。R2 的修复对象是 `fetch_bars` 的 5min/分钟腿；该腿 `connect()`/`_market_id()` 依赖未搬入的 `finai.tdx_minute5`/`finai.data_catalog`（= R5 根因），且 v1 纯日线（spec §2.2）。R5 砍腿后 `connect()` 恒 `ModuleNotFoundError`，分钟路径永不执行 ⇒ 失去修复对象。⚠ 与 `capability_router` 的 `tdx::daily_bar`（走 `tdx_daily_bar_adapter`，category 9 日线）是**不同腿**，不在本条 |
+| **已落地（离线部分）** | 纯函数 `_assert_coverage(frames, *, requested, got)`（`tdx_source.py:77`）：`got < requested` 抛 `BarTruncationError`（`ValueError` 子类，携带 `truncated_bars = requested - got`），绝不静默返回部分数据（`base.py:22` 硬约束②）。已钉在 `fetch_bars` 分页尾部（`tdx_source.py:161`）作占位正确性，供 R5 方案 A 恢复腿时接回。离线单测 `tests/test_r2_truncation.py`（4 用例全绿） |
+| **恢复腿时须补（已知未尽）** | ① 截断须显式归 `FAIL_DETERMINISTIC` 并写 `meta['truncated_bars']`——当前 `classify_exception` 对 `BarTruncationError` 文本归 `FAIL_UNREACHABLE`，需在 `except` 分支特判该异常直取 `FAIL_DETERMINISTIC` + meta；② `expected_min_bars` 按交易日历 × 48 根/日的判决层走 `segmented_pull.expected_sessions`（与本纯断言分工：本断言喂的是服务端实得计数） |
+| **验收判据** | 离线已验：`_assert_coverage` 4 用例 + 全套 15 passed。真实链路的"两次调用 5min 3 年段 ⇒ FAIL_DETERMINISTIC"验收随腿一并挂起，待 R5 方案 A 恢复腿后复测 |
+| **优先级** | 原为 P1 → **挂起**（随 R5）。若恢复腿则升回 P1 |
 
 ---
 
-## R3 · 东财 push2his 接口本机不可达复验
+## R3 · 东财 push2his 接口本机不可达复验 —— ✅ 已复验关闭（2026-08-30）
 
 | 字段 | 内容 |
 |---|---|
-| **现象** | 旧仓 `auto_probe_results.json` 记录 `push2his.eastmoney.com` 域名探测结果为 `FAIL_UNREACHABLE`（连接超时），但该结果可能为本机网络环境（防火墙/代理）所致，非源端真实不可用 |
-| **证据** | `auto_probe_results.json` 中 `push2his.eastmoney.com` 的 `probe_result` 字段为 `FAIL_UNREACHABLE`，`elapsed_ms > 30000` |
-| **修复要求** | 1) 运行 `python scripts/auto_probe_interfaces.py --domain push2his.eastmoney.com` 复测；2) 若仍超时，检查本机代理设置后重测；3) 若确认源端可用，更新 `DOMAIN_MIN_INTERVAL` 表并清除该域名的 `FAIL_UNREACHABLE` 标记；4) ⛔ 不得在未复测的情况下直接采信旧 JSON 的探测结果 |
-| **验收判据** | 复测命令输出有明确结果（`OK` 或新的 `FAIL_*`），并更新 `artifacts/interface_matrix/auto_probe_results.json` 对应条目 |
-| **优先级** | P2（影响 efinance/东财路径可用性判定） |
+| **现象（原始）** | 旧仓 `auto_probe_results.json` 曾记 `push2his.eastmoney.com` 为 `FAIL_UNREACHABLE`（连接超时），疑为本机网络/代理环境噪音而非源端不可用 |
+| **复验结论** | **证伪旧记录，关闭**。当前仓 `artifacts/interface_matrix/auto_probe_results.json`（probed_at 2026-08-30T01:13:56Z）中 `push2his`/`push2` 命中 0，不存在独立 push2his `FAIL_UNREACHABLE` 项；efinance 37 接口 = 36 OK + 1 EMPTY_OK，0 FAIL。push2his 的三个直接客户端实测成功返回非空：`efinance.stock/common.get_quote_history`（OK, rows=8453，走 push2his `kline/get`）、`efinance.common.get_history_bill`（OK, rows=120，走 push2his `fflow/daykline/get`）。另：东财可用面 network_gate `datacenter-web 3/3`。直连 `https://push2his.eastmoney.com/api/qt/stock/kline/get` 实测 HTTP 200（境内站走代理会被断连，直连正常）。 |
+| **证据** | 当前仓 probe JSON：efinance OK 36/37、push2his 0 命中、eastmoney `rate_limit_domain` 下 FAIL_UNREACHABLE 0 个；`efinance\common\getter.py:150 / :344 / :584`（push2his 三端点）；`network_gate` 东财可用面 3/3；直连 push2his 200（2026-08-30） |
+| **判定依据** | contract：`FAIL_UNREACHABLE` 为「连接层失败——⛔ 不可解释，不得记为接口不可用」。旧仓该记录即属此类环境噪音；新仓接口级 OK（行数>0，不可伪造）+ 直连 200 双重确认源端可用 |
+| **后续动作（转出 R3，另列）** | ① 5 个 akshare `*_em` 接口（`fund_money_fund_info_em`/`stock_gdfx_holding_teamwork_em`/`stock_ggcg_em`/`stock_gpzy_pledge_ratio_detail_em`/`stock_hold_management_detail_em`）为 `FAIL_UNREACHABLE` 且 host 归属 `endpoint_family=eastmoney / rate_limit_domain=None` 不一致 → 另列项复测；② efinance 未入 `scripts/probe_host_attribution.py` 的 eastmoney 家族，限流键对 efinance 不生效 → 治理侧补归属。**二者均不影响 push2his 可达判定** |
+| **状态** | ✅ **已复验关闭**（2026-08-30，复核：r3-push2his 独立复核） |
 
 ---
 
@@ -55,16 +57,17 @@
 
 ---
 
-## R5 · TDX/5min 腿不可调用：`finai.data_catalog` 缺失（已知，不立即修复）
+## R5 · TDX/5min 腿不可调用：`finai.data_catalog` 缺失 —— ✅ 已按方案 B 处置（砍腿，2026-08-30）
 
 | 字段 | 内容 |
 |---|---|
-| **现象** | `import finai.sources.capability_router` **冒烟通过**（exit 0，2026-08-29 实测）；但 `tdx_source.py` 的 TDX/5min 腿在**调用时**（非 import 时）会失败——`tdx_source.py:60/:67` 懒导入 `finai.tdx_minute5`，而 `tdx_minute5.py:23` 模块级 `import finai.data_catalog`，该模块未搬入新仓 |
-| **证据** | MIGRATION_LIST.md ①-a 表：`finai/tdx_minute5.py:23` 模块级 `import finai.data_catalog`；`tdx_source.py:60/:67` 懒导入 `tdx_minute5`；冒烟结果：import 层面无错，因懒导入推迟到调用时才触发 |
-| **修复要求** | 二选一：**A** 将 `data_catalog.py`（旧仓 1,284 行，纯 stdlib）最小裁剪后搬入，剥离其 catalog.sqlite 根假设；**B** 新仓第一版砍掉 TDX/5min 腿（`tdx_source` 的 tdx 腿、`stk_mins`、`auction` 不用），把 `tdx_minute5` 留在旧仓 |
-| **验收判据** | 对 A：`tdx_source.connect()` 调用成功且 5min 拉取返回非空 DataFrame；对 B：`capability_router` 中 `lib='tdx'` 的候选被标记为不可用并有明确注释说明原因 |
-| **优先级** | P1（影响 TDX 整条腿，但 import 层面不阻塞其他模块） |
-| **冒烟实测记录** | `python -c "import finai.sources.capability_router"` → exit 0（2026-08-29，Windows / Python 3.11） |
+| **现象** | `import finai.sources.capability_router` **冒烟通过**（exit 0）；但 `tdx_source.py` 的 TDX 腿在**调用时**（非 import 时）会失败——`tdx_source.py:93/:100` 懒导入 `finai.tdx_minute5`，而 `tdx_minute5.py:23` 模块级 `import finai.data_catalog`，两文件均未搬入新仓，触发即 `ModuleNotFoundError` |
+| **处置裁决：方案 B（砍腿）** | ① 项目 v1 纯日线（spec §2.2 多仓/不加杠杆/仅日线，回测自 2015-01-01），分钟线腿本就用不上；② 方案 A 需搬入最小裁剪版 `data_catalog.py`（旧仓约 1,284 行纯 stdlib + 剥离 catalog.sqlite 根假设），重且 v1 用不上，是纯负债；③ 砍腿零回归——唯一活消费方 `capability_router.get()` 的 `tdx::daily_bar` 旁路经 `tdx_daily_bar_adapter.fetch()` 仍走 `tdx_source.fetch_bars()`，它把异常归入 `FetchResult`（`state=FAIL_PROBE_BUG`，`.ok=False`）返回非 OK 而**不抛**，故 `get()` 静默安全降级到下一候选 |
+| **已落地标注（三处，腿留作钉位，文件未删）** | ① `tdx_source.py:3-22` 模块 docstring 顶部追加 R5 显著弃用横幅（v1 不可用、根因、`fetch_bars` 返回非 OK、方案 A 恢复路径、R2 接回要求）；② `capability_router.py:1094` `daily_bar` 的 `tdx::daily_bar` 候选 note 前置 R5 不可用标注（:1107-1112）；③ `__init__.py:37-47` `SOURCE_REGISTRY[tdx]`：`verified True→False`，note 改 R5 不可用标注（保留历史实测 48 根/日栅格合规作存档） |
+| **透明披露** | 被砍的 `tdx::daily_bar` 是一条 **daily_bar 降级域**（category 9 日线、`ohlcv_daily` schema），非纯 5min 腿。砍掉它使 `daily_bar` 可用候选从 5 减到 4（剩 akshare/efinance/citydata/baostock）。仍正确——该腿本就因缺依赖恒失败、从未真返回数据，砍掉只是如实登记既有不可用，未减少任何实际能用的冗余 |
+| **验收判据（方案 B）** | ✅ `capability_router` 中 `tdx::daily_bar` 候选已被标记为不可用并有明确注释说明原因。离线单测 `tests/test_r5_tdx_disabled.py` 4 用例全绿：import 成功 / `connect()` 抛 `ModuleNotFoundError` / `fetch_bars("000001")` 不抛且 `state==FAIL_PROBE_BUG` / router 候选含 R5 标注。全套 19 passed |
+| **恢复路径（未来若需分钟线）** | 走方案 A：搬入裁剪版 `data_catalog.py` + 恢复 `finai.tdx_minute5`，撤销三处 R5 标注，`SOURCE_REGISTRY[tdx].verified` 改回 True；并接回 R2 的 `_assert_coverage`（`tdx_source.py:77` 已钉位）+ 补 `FAIL_DETERMINISTIC`/`meta['truncated_bars']` 特判 |
+| **状态** | ✅ **已按方案 B 处置**（2026-08-30，实施：r5-tdx-limb） |
 
 ---
 
