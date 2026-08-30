@@ -1,0 +1,13 @@
+# FinAI2.0 外部依赖（迁移自母库边界）
+# 主依赖
+akshare
+efinance
+baostock
+requests
+pandas
+pyarrow
+
+# 按需（TDX 日线/分钟腿、adata 数据源；未启用则不必安装——见 REVALIDATE.md R5）
+tdxpy        # TDX 日K读取（finai/sources/tdx_daily_bar_adapter.py）
+mootdx       # TDX 行情（finai/sources/tdx_source.py 候选路径）
+adata        # 备用数据源（860 接口探测目录中的 46 条）
