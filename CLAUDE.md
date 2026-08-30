@@ -9,9 +9,9 @@
 
 A 股中低频**长仓（long-only）日线**量化系统。**代码在本仓（FinAI2.0），计划/验收在 research-finai 调研仓**——两仓分离是有意设计，别合并、别只读本仓就开干。
 
-- 母库（取数层）**R4（复权口径）✅ 与 R1（停牌脏行）✅ 已修**（commit `dd44b39`），11 个离线单测全绿。
-- **R2 / R3 / R5 未修**（见 `REVALIDATE.md`）。
-- 阶段：**Phase 0 → Phase 1（数据层）**。
+- 母库缺陷（`REVALIDATE.md` R1–R5）**已全部处置清零**（commit `af20d85`，2026-08-30）：R1 停牌脏行✅、R2 随 R5 方案 B 挂起（`_assert_coverage` 纯函数已离线落地）、R3 push2his 可达性复验关闭✅、R4 复权口径映射✅、R5 TDX 腿砍除✅。离线单测 **19 passed**（R1×5 + R2×4 + R4×6 + R5×4）。
+- ⛔ 旧仓 `D:\Projects\FinAI` **已于 2026-08-29 删除**；指向它的 10 个 `FinAI_*` Windows 计划任务**已全部禁用**（2026-08-30）。别再引用旧仓路径、旧结论（含旧测试数字、旧因子结论）。
+- 阶段：Phase 0（T101–T103）就绪，**下一步 Phase 1 数据层（T105–T110）**，起点 = 本仓已代码化的能力基座（860 接口）+ `docs/engineering/DATA_LAYER_WORK_ORDER.md`。
 
 ---
 
@@ -61,7 +61,7 @@ A 股中低频**长仓（long-only）日线**量化系统。**代码在本仓（
 2. **产物依赖**：`catalog_source.py:58-59` 读 `artifacts/interface_matrix/auto_probe_results.json`；`overseas_registry.py:32-33` 读 `interfaces_raw.json`。删即挂。
 3. **复权口径（最贵）**：`akshare adjust=''`=不复权、`efinance fqt=1`=前复权、`mootdx/tdxpy` 无参=不复权。⛔ 禁止默认调用；落盘列含 `adjust_mode`。（R4，已建 `finai/sources/adjustment_mode.py`）
 4. **停牌脏行**：baostock 停牌日返回 OHLC=前收的平推行，须 `tradestatus=='1'` 过滤，被滤行数记 `meta['suspended_rows']`。（R1，已修）
-5. **静默截断**：TDX 腿返回行数 < 请求数时无告警，须校验覆盖率。（R2，未修）
+5. **静默截断**：TDX 腿返回行数 < 请求数时无告警，须校验覆盖率。（R2：`_assert_coverage` 纯函数已离线落地；TDX 腿已按 R5 方案 B 砍除，真实链路验收随腿一并挂起）
 6. **凭据**：见上表。
 
 ---
@@ -70,7 +70,7 @@ A 股中低频**长仓（long-only）日线**量化系统。**代码在本仓（
 
 Phase 0 环境（T101–T103）→ Phase 1 数据层（T104–T110）→ Phase 2 回测 → Phase 3 策略 → Phase 4 模拟盘（≥6 个月）→ Phase 5 小资金实盘 → Phase 6 运营。
 
-**当前卡在 Phase 0→1**：先把母库 R2/R3/R5 修完，再做 T104 数据字典 / T105 日线采集器（baostock 主 + 新浪/腾讯校验）/ T106 清洗 / T107 财务对齐 / T108 股票池 / T109 增量 / T110 三源验收。
+**Phase 0→1 已打通**：母库 R1–R5 清零后，T105–T110 已解锁——T105 日线采集器（baostock 主 + 新浪/腾讯校验）/ T106 清洗 / T107 财务对齐 / T108 股票池 / T109 增量 / T110 三源验收。任务清单以 research-finai `tasks.md` 为准；T001 告警通道仍待【用户确认】。
 
 ---
 
@@ -95,3 +95,4 @@ py -3.11 -m pytest tests/ -p no:ddtrace -p no:ddtrace.pytest_bdd -p no:ddtrace.p
 | 日期 | 内容 |
 |---|---|
 | 2026-08-30 | 初版：用户批准写入（"写进去"），固化新窗口启动指令与全部硬约束。 |
+| 2026-08-30 | 收口更新（commit `af20d85`）：§0 现状、§4 红线 5、§5 路线图改为 **R1–R5 全部处置清零**、**19 离线单测绿**、10 个旧 `FinAI_*` 计划任务已禁用、Phase 1（T105–T110）解锁。 |
