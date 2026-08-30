@@ -30,6 +30,12 @@ pip install -r requirements.txt
 # 密钥走环境变量或 .env（不入库）
 ```
 
+## 权威 spec 位置
+
+- **权威版本**：`D:\Projects\research-finai\specs\001-a-stock-longonly-daily-quant\`（已链接为 git remote `research`）
+- **只读快照**：`docs\spec\001-a-stock-longonly-daily-quant\`（防挪走失锚；改动请回 research-finai 修改后重拷）
+- 拉取 spec 变更：`git fetch research`
+
 ## 红线（详见 docs/engineering/DATA_LAYER_WORK_ORDER.md §3）
 
 1. 复权口径：禁止默认调用，显式传 `adjustment`
