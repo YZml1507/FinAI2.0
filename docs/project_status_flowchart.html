@@ -94,9 +94,9 @@
     ｜ 复核日：<b>2026-08-31</b></p>
   <p style="margin-top:8px;">
     <span class="tag green">R1–R5 已清零</span>
-    <span class="tag green">62 离线单测全绿</span>
+    <span class="tag green">152 离线单测全绿</span>
     <span class="tag green">Phase 0（T101–T104）已清零</span>
-    <span class="tag blue">当前：Phase 1 数据层（T105/T108 ✅ · T106/T107 重实现）</span>
+    <span class="tag blue">当前：Phase 1 数据层（T105/T106/T107/T108/T110 ✅ · T109 待实现）</span>
   </p>
 </header>
 
@@ -204,17 +204,17 @@
     </div>
     <div class="conn"><span class="cap">→</span>→</div>
     <div class="node ok">
-      <span class="badge">62✓</span>
+      <span class="badge">152✓</span>
       <div class="id">UT</div>
-      <div class="nm">离线单测 62 passed</div>
-      <div class="st">19 原有 + T105×28 + T108×15<br>今天重跑：62 passed ✅</div>
+      <div class="nm">离线单测 152 passed</div>
+      <div class="st">127 原有 + T110×25<br>今天重跑：152 passed ✅</div>
     </div>
     <div class="conn"><span class="cap">→ Phase 1</span>→</div>
     <div class="node info">
       <span class="badge" style="background:var(--info)">NOW</span>
       <div class="id">CUR</div>
       <div class="nm">当前：Phase 1 数据层</div>
-      <div class="st">起点 = 已代码化的 860 接口能力基座<br>执行顺序见下方 Ⓒ 行（T105/T108 ✅；T106/T107 重实现中）</div>
+      <div class="st">起点 = 已代码化的 860 接口能力基座<br>执行顺序见下方 Ⓒ 行（T105/T106/T107/T108/T110 ✅；T109 待实现）</div>
     </div>
   </div>
 </section>
@@ -223,8 +223,8 @@
 <section class="phase" style="border-color:var(--info);">
   <div class="phase-title">
     <h2>Ⓒ Phase 1 · 数据层（P-0 / P-1，当前工作带）</h2>
-    <span class="cur-marker">今日落点：T105/T108 ✅ 已入库（8282cd4）· T106/T107 从零重实现中（离线绿前不勾）</span>
-    <span class="gates">门禁：G2（T110 三源验收）</span>
+    <span class="cur-marker">今日落点：T105/T106/T107/T108/T110 ✅ 已入库 · T109 待实现（子代理重试中）</span>
+    <span class="gates">门禁：G2（T110 三源验收 ✅）</span>
   </div>
   <div class="row">
     <div class="node ok">
@@ -267,20 +267,20 @@
       <div class="why">✅ 2026-08-31 已入库（commit 8282cd4；data/collector.py：DailyCollector 编排 + RateLimiter/CircuitBreaker/指数退避 + 幂等分区 Parquet 落盘 + 新浪/腾讯校验腿）；tasks.md 已勾</div>
     </div>
     <div class="conn"><span class="cap">→</span>→</div>
-    <div class="node warn">
-      <span class="badge" style="background:var(--warn)">重做</span>
+    <div class="node ok">
+      <span class="badge">OK</span>
       <div class="id">T106</div>
       <div class="nm">停牌/涨跌停/除权清洗</div>
       <div class="st">复用 R1 过滤 + adjustment_mode（FR-DATA-2）</div>
-      <div class="why">🔄 上批子代理中途死亡（worktree 空、无代码可收）；本次从零重实现 data/cleaner.py；离线绿前不勾</div>
+      <div class="why">✅ 2026-08-31 已入库（commit 5e08574；data/cleaner.py：enforce_tradestatus 只过滤不填充[R1] + mark_limit_flags 板块档登记表 BOARD_LIMIT_PCT + fetch_exdiv_events 除权薄壳）；离线单测 44 绿；tasks.md 已勾</div>
     </div>
     <div class="conn"><span class="cap">→</span>→</div>
-    <div class="node warn">
-      <span class="badge" style="background:var(--warn)">重做</span>
+    <div class="node ok">
+      <span class="badge">OK</span>
       <div class="id">T107</div>
       <div class="nm">财务 pubDate 对齐管道</div>
       <div class="st">季频财报 + 公告日对齐（FR-DATA-4）</div>
-      <div class="why">🔄 上批子代理中途死亡（worktree 空）；本次从零重实现 data/financial_pit.py；离线绿前不勾</div>
+      <div class="why">✅ 2026-08-31 已入库（commit 5e08574；data/financial_pit.py：FINANCIAL_TABLES 唯一登记点 + pit_align 按 pubDate 零前视 + collect_financials 保末去重）；离线单测 21 绿；tasks.md 已勾</div>
     </div>
     <div class="conn"><span class="cap">→</span>→</div>
     <div class="node ok">
@@ -296,13 +296,15 @@
       <div class="id">T109</div>
       <div class="nm">增量更新 + 5 日冒烟</div>
       <div class="st">日期分区幂等（FR-DATA-6）</div>
+      <div class="why">🔄 待实现（子代理重试中）</div>
     </div>
     <div class="conn"><span class="cap">→ 验收</span>→</div>
-    <div class="node queued">
+    <div class="node ok">
       <span class="badge">G2</span>
       <div class="id">T110</div>
       <div class="nm">数据层验收（门禁 G2）</div>
       <div class="st">三源抽样比对 + 停牌命中 100% + 幂等哈希一致</div>
+      <div class="why">✅ 2026-08-31 已入库（commit 2ffbf7b；data/acceptance.py：ThreeSourceValidator 三源比对 + 停牌命中 + 幂等哈希）；离线单测 25 绿；tasks.md 已勾</div>
     </div>
   </div>
 </section>
@@ -397,12 +399,12 @@
   <div class="note">主线程复核 + 2 个免费档子代理并行核验（GitHub 远端 / 红线完整性）；下方为本次回话内实际执行结果。</div>
   <pre>
 【本地 Git】                            ✅ 已更新（2026-08-31 收尾）
-  FinAI2.0      HEAD = 8282cd4（data：T105 日线采集器 + T108 股票池/成分回放；离线单测 62 passed；已推 origin/master）
-  research-finai HEAD = 293f30a（tasks.md：勾 T105/T108 + TK-4 修订行；⛔未勾 T106/T107；已推 origin/master）
+  FinAI2.0      HEAD = e3f849e（data：T110 三源验收；离线单测 152 passed；已推 origin/master）
+  research-finai HEAD = 101f5cd（tasks.md：勾 T106/T107/T110 + TK-5/TK-6 修订行；已推 origin/master）
   FinAI2.0 工作树：干净；origin = https://github.com/YZml1507/FinAI2.0.git；research-finai origin = https://github.com/YZml1507/research-finai.git
-  spec 快照：docs/spec/001-a-stock-longonly-daily-quant/{tasks,plan,spec,data_dictionary_v1}.md 与计划仓逐字节一致（md5 校验，commit c2d14f3/305be79）
+  spec 快照：docs/spec/001-a-stock-longonly-daily-quant/{tasks,plan,spec,data_dictionary_v1}.md 与计划仓逐字节一致
 
-【离线单测】                             ✅ 62 passed（19 原有 + T105×28 + T108×15；exit 0）
+【离线单测】                             ✅ 152 passed（127 原有 + T110×25；exit 0）
   py -3.11 -m pytest tests/ -p no:ddtrace -p no:ddtrace.pytest_bdd -p no:ddtrace.pytest_benchmark -q
 
 【计划任务】                             ✅ 10 个 FinAI_* 全部 Disabled（AcceptBatch2 / BackfillChip / BackfillMoneyFlow /

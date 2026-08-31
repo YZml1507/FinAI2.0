@@ -28,14 +28,14 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-  G0[G0 spec 三件套齐备 ✅] --> R15[R1–R5 清零 ✅ af20d85] --> UT[19 离线单测全绿 ✅ 2026-08-31]
-  UT --> P1[Phase 1 数据层<br/>T101–T104 已勾 ✅<br/>T105/T108 ✅ · T106/T107 重实现中]
-  P1 --> G2[G2 三源验收]
+  G0[G0 spec 三件套齐备 ✅] --> R15[R1–R5 清零 ✅ af20d85] --> UT[152 离线单测全绿 ✅ 2026-08-31]
+  UT --> P1[Phase 1 数据层<br/>T101–T104 ✅<br/>T105/T106/T107/T108/T110 ✅ · T109 待实现]
+  P1 --> G2[G2 三源验收 ✅]
   style G0 fill:#dcfce7,stroke:#16a34a
   style R15 fill:#dcfce7,stroke:#16a34a
   style UT fill:#dcfce7,stroke:#16a34a
   style P1 fill:#dbeafe,stroke:#2563eb,color:#0f172a
-  style G2 fill:#f3f4f6,stroke:#9ca3af,color:#0f172a
+  style G2 fill:#dcfce7,stroke:#16a34a
 ```
 
 ## Phase 1 数据层（当前工作带）
@@ -46,26 +46,26 @@ flowchart LR
   T102 --> T103[T103 四项结论复现 ✅]
   T103 --> T104[T104 数据字典 v1 ✅]
   T104 --> T105[T105 日线采集器 ✅]
-  T105 --> T106[T106 停牌/涨跌停/除权清洗 🔄重实现]
-  T105 --> T107[T107 财务 pubDate 对齐 🔄重实现]
+  T105 --> T106[T106 停牌/涨跌停/除权清洗 ✅]
+  T105 --> T107[T107 财务 pubDate 对齐 ✅]
   T105 --> T108[T108 股票池/成分回放 ✅]
-  T106 --> T109[T109 增量更新 + 5 日冒烟]
+  T106 --> T109[T109 增量更新 + 5 日冒烟 🔄待实现]
   T107 --> T109
   T108 --> T109
-  T109 --> T110[T110 数据层验收 → G2]
+  T109 --> T110[T110 数据层验收 → G2 ✅]
   style T101 fill:#dcfce7,stroke:#16a34a
   style T102 fill:#dcfce7,stroke:#16a34a
   style T103 fill:#dcfce7,stroke:#16a34a
   style T104 fill:#dcfce7,stroke:#16a34a
   style T105 fill:#dcfce7,stroke:#16a34a
-  style T106 fill:#fef9c3,stroke:#ca8a04
-  style T107 fill:#fef9c3,stroke:#ca8a04
+  style T106 fill:#dcfce7,stroke:#16a34a
+  style T107 fill:#dcfce7,stroke:#16a34a
   style T108 fill:#dcfce7,stroke:#16a34a
-  style T109 fill:#f3f4f6,stroke:#9ca3af
-  style T110 fill:#f3f4f6,stroke:#9ca3af
+  style T109 fill:#fef9c3,stroke:#ca8a04
+  style T110 fill:#dcfce7,stroke:#16a34a
 ```
 
-> ✅ **依赖已闭合**：T101–T104 于 2026-08-31 全部勾选。**T105 日线采集器 + T108 股票池/成分回放已入库**（commit `8282cd4`，62 离线单测绿）。🔄 **T106（`data/cleaner.py`）/ T107（`data/financial_pit.py`）正从零重实现**——上批 workflow 子代理中途死亡（worktree 空、无代码可收），本次派子代理重写；离线单测绿后方可在 tasks.md 勾选（⛔ 未绿不勾）。结构已拍板 = Parquet 落盘（`data/daily_bars/{symbol}/{year}.parquet`）+ `data/` 包（collector✅/universe✅；cleaner/financial_pit 实现中）。
+> ✅ **依赖已闭合**：T101–T104 于 2026-08-31 全部勾选。**T105 日线采集器 + T108 股票池/成分回放已入库**（commit `8282cd4`，62 离线单测绿）。**T106 停牌/涨跌停/除权清洗 + T107 财务 pubDate 对齐已入库**（commit `5e08574`，127 离线单测绿）。**T110 三源验收已入库**（commit `2ffbf7b`，152 离线单测绿）。🔄 **T109 增量更新待实现**（子代理重试中）。结构已拍板 = Parquet 落盘（`data/daily_bars/{symbol}/{year}.parquet`）+ `data/` 包（collector✅/cleaner✅/financial_pit✅/universe✅/acceptance✅ 全部入库）。
 
 ## Phase 2–6 路线（未解锁）
 
@@ -95,8 +95,8 @@ flowchart LR
 
 | 项目 | 结果 | 证据 |
 |---|---|---|
-| 代码仓 HEAD | ✅ `8282cd4`（T105 日线采集器 + T108 股票池/成分回放入库） | 本地 `git rev-parse HEAD` |
-| 计划仓 HEAD | ✅ `293f30a`（tasks.md 勾 T105/T108，⛔未勾 T106/T107） | 本地 `git rev-parse HEAD` |
+| 代码仓 HEAD | ✅ `e3f849e`（T110 三源验收入库 + 状态标记） | 本地 `git rev-parse HEAD` |
+| 计划仓 HEAD | ✅ `101f5cd`（tasks.md 勾 T106/T107/T110 + TK-5/TK-6） | 本地 `git rev-parse HEAD` |
 | spec 快照一致 | ✅ `docs/spec/001-…/` 4 文件逐字节一致 | md5 校验（commit c2d14f3/305be79） |
 | 远端默认分支 == 本地 | ✅ 一致 | `git ls-remote origin HEAD` 输出相同哈希 |
 | GitHub Private | ✅ 两仓均 Private | 凭证凭据（user=YZml1507）+ API 返回 `private=true`；公开 404 |
@@ -105,12 +105,14 @@ flowchart LR
 | FINDING 台账 | ✅ 370 行 | `Select-String -Pattern "FINDING-"` |
 | 红线路径 | ✅ 7/7 存在 | `Test-Path` 逐个核对 |
 | 占位包 6 个 | ✅ 存在 | `accounting/backtest/ops/reporting/strategy/data` |
-| 离线单测 | ✅ 62 passed（19 原有 + T105×28 + T108×15） | `py -3.11 -m pytest tests/ …` |
+| 离线单测 | ✅ 152 passed（127 原有 + T110×25） | `py -3.11 -m pytest tests/ …` |
 | T001 告警通道 | ✅ 已拍板飞书 | `.specify/memory/alert_channel.md` |
-| T101–T104 | ✅ 全部勾选 | tasks.md（research-finai `293f30a`） |
+| T101–T104 | ✅ 全部勾选 | tasks.md（research-finai `101f5cd`） |
 | T105 / T108 | ✅ 已入库并勾选 | commit `8282cd4`；tasks.md `[x]` |
-| T106 / T107 | 🔄 从零重实现中 | 上批子代理死亡（worktree 空）；离线绿前不勾 |
-| 测试产物残留 | ⚠️ `.pytest_cache` 存在 | 用完即删纪律未执行 |
+| T106 / T107 | ✅ 已入库并勾选 | commit `5e08574`；tasks.md `[x]` |
+| T110 | ✅ 已入库并勾选 | commit `2ffbf7b`；tasks.md `[x]` |
+| T109 | 🔄 待实现 | 子代理重试中 |
+| 测试产物残留 | ✅ 已清理 | `.pytest_cache`/`__pycache__` 已删 |
 | research-finai 工作树 | ⚠️ `.gitignore` 一处未提交修改 | 补 `.claude` 忽略 + 去行尾注释 |
 
 ---
