@@ -10,7 +10,7 @@
 
 ## Setup（P-M0）
 
-- [ ] [T001] 确定告警通道（FR-OPS-3；用既有渠道，不注册新账号）【用户确认】→ 写 `.specify/memory` 备查
+- [x] [T001] 确定告警通道（FR-OPS-3；用既有渠道，不注册新账号）【用户确认】→ 写 `.specify/memory` 备查 — 2026-08-31 ✅ 用户拍板**飞书**（经 hermes_orchestrator MCP），见 `.specify/memory/alert_channel.md`
 - [ ] [T002] 项目骨架：`git init` + `.gitignore`（venv/密钥/缓存/私有数据）+ README 段落
 - [ ] [T003] 环境变量方案：密钥与账户信息改环境变量；扫描仓库无明文（FR-OPS-4）
 - [ ] [T004] 六包骨架：`data/ backtest/ strategy/ accounting/ reporting/ ops/`（模块占位 + 导入冒烟）
@@ -20,7 +20,7 @@
 - [ ] [T101] 工作站环境清单照 12 号附录 A 再过一遍（Python 3.11/venv/代理）（P-0.1）
 - [ ] [T102] 东财 push2his 可达性复测（附录 A.5 探测 ×3）（P-0.2）→ 结论写回 12 号附录 A.5 修订日志
 - [ ] [T103] 复现 12 号 §9-A 四项实测核心结论（停牌脏行/复权一致性/公告日/增量冒烟）（P-0.3）
-- [ ] [T104] 数据字典 v1：字段清单 + 复权语义 + 可得日期 + pubDate 对齐规则（FR-DATA-1~5）
+- [x] [T104] 数据字典 v1：字段清单 + 复权语义 + 可得日期 + pubDate 对齐规则（FR-DATA-1~5） — 2026-08-31 ✅ v1.0.0 落盘本目录 `data_dictionary_v1.md`；含 2026-08-31 本机实测（1990 年段 `turn`/`isST` 可用、R1 停牌脏行三组实证）
 - [ ] [T105] 日线采集器（baostock 主；新浪/腾讯校验；限速四件套）（FR-DATA-7；T101/T104）
 - [ ] [T106] 停牌/涨跌停/除权清洗入库（FR-DATA-2）
 - [ ] [T107] 财务 pubDate 对齐管道（FR-DATA-4）

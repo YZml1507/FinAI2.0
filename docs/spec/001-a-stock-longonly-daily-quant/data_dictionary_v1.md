@@ -14,11 +14,11 @@
 
 ### 1.1 主源：baostock `query_history_k_data_plus`
 
-**实测基准**（12 号 §9-A-4，2026-08-29 复现确认）：
+**实测基准**（12 号 §9-A-4，2026-08-29 复现确认 + 2026-08-31 补测 `sh.600601` 1990 年段）：
 
 | 字段 | 类型 | 语义 | 复权口径 | 可得起始 | 备注 |
 |---|---|---|---|---|---|
-| `date` | str (YYYY-mm-dd) | 交易日 | 无关 | 1990‑12‑19 | 索引列 |
+| `date` | str (YYYY-mm-dd) | 交易日 | 无关 | 1990‑12‑19 | 索引列；⭐ 2026-08-31 本机实测 `sh.600601`（延中实业/老八股）首行 `1990-12-19`，`tradestatus` 全程 `'1'`（264 行/1990-12-19~1991-12-31） |
 | `open` | float64 | 开盘价（元） | 随 `adjustflag` | 同左 | ⛔ 含停牌日脏行（前收平推），须 `tradestatus` 过滤 |
 | `high` | float64 | 最高价（元） | 随 `adjustflag` | 同左 | 同上 |
 | `low` | float64 | 最低价（元） | 随 `adjustflag` | 同左 | 同上 |
@@ -26,10 +26,10 @@
 | `preclose` | float64 | 昨收（元） | 随 `adjustflag` | 同左 | 复权后 ≠ 前日 close（股改对价/除权） |
 | `volume` | float64 | 成交量（股） | 无关 | 同左 | 停牌日=0 |
 | `amount` | float64 | 成交额（元） | 无关 | 同左 | 停牌日=0 |
-| `turn` | float64 | 换手率（%） | 无关 | 2010‑01‑01 前缺失 | 部分早期股无数据 |
+| `turn` | float64 | 换手率（%） | 无关 | 1990‑12‑19 起可用 | ⭐ 2026-08-31 本机实测 `sh.600601` 1990 年 `turn` 全程非空 |
 | `pctChg` | float64 | 涨跌幅（%） | 随 `adjustflag` | 同左 | 即 `(close - preclose) / preclose` |
 | `tradestatus` | str | `'1'`=正常交易、`'0'`=停牌 | 无关 | 同左 | **R1 强制过滤列**；缺失则无法过滤脏行 |
-| `isST` | str | `'1'`=ST/\*ST、`'0'`=正常 | 无关 | 2010‑01‑01 前缺失 | |
+| `isST` | str | `'1'`=ST/\*ST、`'0'`=正常 | 无关 | 1990‑12‑19 起可用 | ⭐ 2026-08-31 本机实测 `sh.600601` 1990 年 `isST` 全程非空 |
 | `adjustflag` | str | 返回数据的复权档 | 见下文 | 同 `date` | baostock 入参，非输出字段 |
 | `code` | str | 股票代码（如 `sh.600000`） | 无关 | 同左 | baostock 格式 |
 | `time` | str | 复用时间戳 | 无关 | 同左 | 固定值，可忽略 |
@@ -51,7 +51,7 @@ filtered = df[df.tradestatus == "1"].copy()
 suspended_rows = len(df) - len(filtered)
 meta["suspended_rows"] = suspended_rows   # 记入血缘
 ```
-停牌日 baostock 返回 OHLC=前收平推、volume=0、tradestatus=`'0'`，100% 命中（12 号 §9-A ②）。**不报错不告警，必须显式过滤**。
+停牌日 baostock 返回 OHLC=前收平推、volume=0（或空）、tradestatus=`'0'`，100% 命中（12 号 §9-A ②，2026-08-31 本机实测 `sz.002508` 2015-07-08/09：`tradestatus='0'`，OHLC=33.03=前收，`volume=0`）。**不报错不告警，必须显式过滤**。
 
 ### 1.2 校验源：新浪 `akshare::stock_zh_a_hist`
 
