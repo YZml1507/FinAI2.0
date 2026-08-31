@@ -22,8 +22,8 @@
 - [x] [T103] 复现 12 号 §9-A 四项实测核心结论（停牌脏行/复权一致性/公告日/增量冒烟）（P-0.3） — 2026-08-31 ✅ 经 R1（停牌脏行，`_drop_suspended`+test_baostock_suspension×5）/ R4（复权一致性，adjustment_mode.py+test_adjustment_mode×6）/ 12 号 §9-A 公告日与增量冒烟复现（19 离线单测绿），T104 字典 §1.1/§2.1/§9 已含实测结论
 - [x] [T104] 数据字典 v1：字段清单 + 复权语义 + 可得日期 + pubDate 对齐规则（FR-DATA-1~5） — 2026-08-31 ✅ v1.0.0 落盘本目录 `data_dictionary_v1.md`；含 2026-08-31 本机实测（1990 年段 `turn`/`isST` 可用、R1 停牌脏行三组实证）
 - [x] [T105] 日线采集器（baostock 主；新浪/腾讯校验；限速四件套）（FR-DATA-7；T101/T104） — 2026-08-31 ✅ `data/collector.py` 实现并入库（DailyCollector 编排 + RateLimiter/CircuitBreaker/指数退避限速四件套 + 幂等分区 Parquet 落盘 + 新浪/腾讯校验腿）；离线单测绿；commit `8282cd4`
-- [ ] [T106] 停牌/涨跌停/除权清洗入库（FR-DATA-2）
-- [ ] [T107] 财务 pubDate 对齐管道（FR-DATA-4）
+- [x] [T106] 停牌/涨跌停/除权清洗入库（FR-DATA-2） — 2026-08-31 ✅ `data/cleaner.py` 重实现并入库（enforce_tradestatus 只过滤不填充[R1] + assert_no_prevfill_suspicious 前收平推签名检测；mark_limit_flags 板块档登记表 BOARD_LIMIT_PCT(前缀→配置字段)+LimitFlagsConfig 覆盖[FR-EXT-6]，主板±10%/创业板30xx/科创板68xx±20%/ST±5%/首日无涨跌停，eps 只吸浮点噪声不改档位归属；fetch_exdiv_events 薄壳走母库 baostock_source.fetch 既有 kind，EMPTY_OK=无事件/FAIL_* 即 raise/畸形除权日 fail-closed；clean_daily_bars 编排+CleanResult 计数自检）；离线单测 44 绿；commit `5e08574`
+- [x] [T107] 财务 pubDate 对齐管道（FR-DATA-4） — 2026-08-31 ✅ `data/financial_pit.py` 重实现并入库（_query_financial_once 登录→查询→_drain→登出复用母库原语+universe 同形，run_with_timeout 挂死保护；FINANCIAL_TABLES 表→baostock 接口映射唯一登记点，未登记即 raise；pit_align 纯函数按 pubDate[⛔非 statDate] PIT 对齐零前视；collect_financials 批量 (code,pubDate) 保末去重 → FetchResult，source 进 meta 血缘）；离线单测 21 绿；commit `5e08574`
 - [x] [T108] 股票池/成分回放（FR-DATA-5；T104） — 2026-08-31 ✅ `data/universe.py` 实现并入库（`alive_universe` 纯函数：ipoDate/outDate/type=='1'，⛔禁用 status 列防幸存者偏差；指数成分回放默认拒绝未验证 hs300/zz500/sz50，zz1000 无接口抛 IndexNotReplayableError）；离线单测绿；commit `8282cd4`
 - [ ] [T109] 增量更新（日期分区幂等，FR-DATA-6）+ 5 日冒烟
 - [ ] [T110] 数据层验收：三源抽样比对 + 停牌命中 100% + 幂等哈希一致（G2）

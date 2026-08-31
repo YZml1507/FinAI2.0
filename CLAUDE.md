@@ -13,7 +13,7 @@ A 股中低频**长仓（long-only）日线**量化系统。**代码在本仓（
 - ⛔ 旧仓 `D:\Projects\FinAI` **已于 2026-08-29 删除**；指向它的 10 个 `FinAI_*` Windows 计划任务**已全部禁用**（2026-08-30）。别再引用旧仓路径、旧结论（含旧测试数字、旧因子结论）。
 - 阶段：✅ **Phase 0（T101–T104）已全部完成**（2026-08-31）：T001 飞书告警✅、T102/T103 实证补勾✅（R3/R1/R4）、T104 数据字典 v1✅、**T101 环境清单补验✅**（12 号附录 A 逐项复验：Python 3.11.5/依赖齐备/代理 7897 通/baostock login+交易日确认/akshare 修复 bs4+tqdm 后新浪腾讯连通/东财不可达符合 A.5.1）。**Phase 1 数据层（T105–T110）全部解锁**。结构已拍板：**落盘=Parquet（pyarrow 已装）、新模块归 data/ 占位包**（collector/cleaner/financial_pit/universe）。
 - ✅ **T105 日线采集器（`data/collector.py`）+ T108 股票池/成分回放（`data/universe.py`）已完成并入库**（2026-08-31，commit `8282cd4`；离线单测累计 **62 passed** = 19 原有 + T105×28 + T108×15）。技术口径锁死：Parquet 落盘 `data/daily_bars/{symbol}/{year}.parquet`；baostock 复权只经 `to_kwargs(mode,"baostock")` 映射（⛔禁手写字面量）；R1 停牌滤 `tradestatus=='1'`+记 `meta['suspended_rows']`。
-- 🔄 **T106（`data/cleaner.py` 停牌/涨跌停/除权清洗，FR-DATA-2）+ T107（`data/financial_pit.py` 财务 pubDate 对齐，FR-DATA-4）正在重实现**——上批 workflow 两子代理中途死亡（worktree 空、无代码可收），本次派子代理从零重写，离线单测绿后方可在 tasks.md 勾选。⛔ 未绿前绝不勾 T106/T107。其后接 T109 增量 + T110 三源验收（G2）。
+- ✅ **T106 停牌/涨跌停/除权清洗（`data/cleaner.py`，FR-DATA-2）+ T107 财务 pubDate 对齐（`data/financial_pit.py`，FR-DATA-4）已完成并入库**（2026-08-31，commit `5e08574`；离线单测累计 **127 passed** = 62 原有 + T106×44 + T107×21）。落点：T106 板块档登记表 `BOARD_LIMIT_PCT`(前缀→`LimitFlagsConfig` 字段)+配置覆盖（FR-EXT-6）、除权薄壳走母库既有 kind（adjust_factor+dividend 按年×yearType）、畸形除权日 fail-closed、`exdiv_sources` 血缘=声明非动态推导；T107 `FINANCIAL_TABLES` 唯一登记点、`pit_align` 按 pubDate（⛔非 statDate）PIT 零前视、`collect_financials` (code,pubDate) 保末去重→`FetchResult`。其后接 T109 增量 + T110 三源验收（G2）。
 
 ---
 
@@ -73,7 +73,7 @@ A 股中低频**长仓（long-only）日线**量化系统。**代码在本仓（
 
 Phase 0 环境（T101–T103）→ Phase 1 数据层（T104–T110）→ Phase 2 回测 → Phase 3 策略 → Phase 4 模拟盘（≥6 个月）→ Phase 5 小资金实盘 → Phase 6 运营。
 
-**Phase 0→1 进行中**：T001 飞书告警 ✅、T104 数据字典 v1 ✅（2026-08-31）。**T105 日线采集器 + T108 股票池/成分回放 ✅**（2026-08-31，commit `8282cd4`，62 离线单测绿）。🔄 **T106 清洗 + T107 财务对齐 重实现中**（上批子代理死亡，从零重写）。数据层任务以 research-finai `tasks.md` 为准：T105 日线采集器 / T106 清洗 / T107 财务对齐 / T108 股票池 / T109 增量 / T110 三源验收。结构已拍板：Parquet 落盘 + data/ 包（collector✅/universe✅ 已入库；cleaner/financial_pit 实现中）。
+**Phase 0→1 进行中**：T001 飞书告警 ✅、T104 数据字典 v1 ✅（2026-08-31）。**T105 日线采集器 + T108 股票池/成分回放 ✅**（2026-08-31，commit `8282cd4`，62 离线单测绿）。**T106 停牌/涨跌停/除权清洗 + T107 财务 pubDate 对齐 ✅**（2026-08-31，commit `5e08574`，127 离线单测绿）。数据层任务以 research-finai `tasks.md` 为准：T105 日线采集器 ✅ / T106 清洗 ✅ / T107 财务对齐 ✅ / T108 股票池 ✅ / T109 增量 / T110 三源验收。结构已拍板：Parquet 落盘 + data/ 包（collector✅/cleaner✅/financial_pit✅/universe✅ 全部入库）。
 
 ---
 
@@ -102,3 +102,5 @@ py -3.11 -m pytest tests/ -p no:ddtrace -p no:ddtrace.pytest_bdd -p no:ddtrace.p
 | 2026-08-31 | Phase 1 启动：T001 飞书告警 + T104 数据字典 v1 完成；T102/T103 补勾（实证=R3/R1/R4），T101 待单独补验；结构拍板 **Parquet 落盘 + data/ 包**（collector/cleaner/financial_pit/universe）；T105–T108 经 workflow 并行实现中。FINDING 台账基线复测=370。 |
 | 2026-08-31 | **Phase 0 清零**：T101 环境清单补验通过（12 号附录 A 逐项复验全绿，含修复 akshare 缺的 bs4/tqdm 依赖）；§1 两仓表格补 GitHub 远程列（origin=对应 github.com/YZml1507/{FinAI2.0,research-finai}）；§3 子代理模型表按用户重映射更新（haiku→GLM-5.3、默认兜底→qwen3.8-max）。 |
 | 2026-08-31 | **T105/T108 入库**（commit `8282cd4`，62 离线单测绿 = 19 原有 + T105×28 + T108×15）；research-finai `tasks.md` 已勾 T105/T108（commit `293f30a`，⛔未勾 T106/T107）。**T106（cleaner.py）/T107（financial_pit.py）上批 workflow 子代理中途死亡（worktree 空），本次派子代理从零重实现**——离线单测绿前 tasks.md 不勾。技术口径锁死：Parquet 落盘 `data/daily_bars/{symbol}/{year}.parquet`；复权只经 `to_kwargs(mode,"baostock")`；R1 滤 `tradestatus=='1'`+记 `meta['suspended_rows']`；财务 PIT 键=`pubDate` 永不 `statDate`。 |
+| 2026-08-31 | **T106/T107 入库**（commit `5e08574`，127 离线单测绿 = 62 原有 + T106×44 + T107×21）；research-finai `tasks.md` 已勾 T106/T107（commit `f7c94bd`）；spec 快照同步（`docs/spec/.../tasks.md` 与 research-finai 逐字节一致）；本仓已推送（`0f11862..5e08574`），计划仓已推送（`293f30a..f7c94bd`）。落点：T106 板块档登记表 `BOARD_LIMIT_PCT`(前缀→配置字段)+`LimitFlagsConfig` 覆盖（FR-EXT-6），eps 只吸浮点噪声不改档位归属，除权薄壳走母库既有 kind+畸形日 fail-closed，`exdiv_sources` 血缘=声明非动态推导；T107 `FINANCIAL_TABLES` 唯一登记点，`pit_align` 按 pubDate 零前视，`collect_financials` 保末去重→`FetchResult`。 |
+| 2026-08-31 | **T106/T107 入库**（commit `5e08574`，127 离线单测绿 = 62 原有 + T106×44 + T107×21）；research-finai `tasks.md` 已勾 T106/T107（commit `f7c94bd`）；spec 快照同步（`docs/spec/.../tasks.md` 与 research-finai 逐字节一致）；本仓已推送（`0f11862..5e08574`），计划仓已推送（`293f30a..f7c94bd`）。落点：T106 板块档登记表 `BOARD_LIMIT_PCT`(前缀→配置字段)+`LimitFlagsConfig` 覆盖（FR-EXT-6），eps 只吸浮点噪声不改档位归属，除权薄壳走母库既有 kind+畸形日 fail-closed，`exdiv_sources` 血缘=声明非动态推导；T107 `FINANCIAL_TABLES` 唯一登记点，`pit_align` 按 pubDate 零前视，`collect_financials` 保末去重→`FetchResult`。 |
