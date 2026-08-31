@@ -94,9 +94,9 @@
     ｜ 复核日：<b>2026-08-31</b></p>
   <p style="margin-top:8px;">
     <span class="tag green">R1–R5 已清零</span>
-    <span class="tag green">19 离线单测全绿</span>
+    <span class="tag green">62 离线单测全绿</span>
     <span class="tag green">Phase 0（T101–T104）已清零</span>
-    <span class="tag blue">当前：Phase 1 数据层（T105–T108 实现中）</span>
+    <span class="tag blue">当前：Phase 1 数据层（T105/T108 ✅ · T106/T107 重实现）</span>
   </p>
 </header>
 
@@ -117,7 +117,7 @@
       <span class="badge">OK</span>
       <div class="id">REPO-1</div>
       <div class="nm">代码仓 FinAI2.0</div>
-      <div class="st">GitHub 私有仓 YZml1507/FinAI2.0<br>本地 HEAD 1da2b2d（今天已复核）</div>
+      <div class="st">GitHub 私有仓 YZml1507/FinAI2.0<br>本地 HEAD 8282cd4（今天已复核）</div>
       <div class="why">origin = github.com/YZml1507/FinAI2.0.git；已推送</div>
     </div>
     <div class="conn"><span class="cap">remote research →</span>→</div>
@@ -125,8 +125,8 @@
       <span class="badge">OK</span>
       <div class="id">REPO-2</div>
       <div class="nm">计划仓 research-finai</div>
-      <div class="st">GitHub 私有仓 YZml1507/research-finai<br>本地 HEAD 5f7e38f（今天已复核）</div>
-      <div class="why">spec/plan/tasks + 宪法三件套；T101 已补验（TK-3），已推送</div>
+      <div class="st">GitHub 私有仓 YZml1507/research-finai<br>本地 HEAD 293f30a（今天已复核）</div>
+      <div class="why">spec/plan/tasks + 宪法三件套；T105/T108 已勾（TK-4），已推送</div>
     </div>
     <div class="conn"><span class="cap">旧仓已删 →</span>→</div>
     <div class="node queued deleted">
@@ -204,17 +204,17 @@
     </div>
     <div class="conn"><span class="cap">→</span>→</div>
     <div class="node ok">
-      <span class="badge">19✓</span>
+      <span class="badge">62✓</span>
       <div class="id">UT</div>
-      <div class="nm">离线单测 19 passed</div>
-      <div class="st">R1×5 + R2×4 + R4×6 + R5×4<br>今天重跑：19 passed in 2.93s ✅</div>
+      <div class="nm">离线单测 62 passed</div>
+      <div class="st">19 原有 + T105×28 + T108×15<br>今天重跑：62 passed ✅</div>
     </div>
     <div class="conn"><span class="cap">→ Phase 1</span>→</div>
     <div class="node info">
       <span class="badge" style="background:var(--info)">NOW</span>
       <div class="id">CUR</div>
       <div class="nm">当前：Phase 1 数据层</div>
-      <div class="st">起点 = 已代码化的 860 接口能力基座<br>执行顺序见下方 Ⓒ 行（T101–T104 已清零，T105 依赖解除）</div>
+      <div class="st">起点 = 已代码化的 860 接口能力基座<br>执行顺序见下方 Ⓒ 行（T105/T108 ✅；T106/T107 重实现中）</div>
     </div>
   </div>
 </section>
@@ -223,7 +223,7 @@
 <section class="phase" style="border-color:var(--info);">
   <div class="phase-title">
     <h2>Ⓒ Phase 1 · 数据层（P-0 / P-1，当前工作带）</h2>
-    <span class="cur-marker">今日落点：T105–T108 并行实现中（worktree 隔离 + 对抗校验）</span>
+    <span class="cur-marker">今日落点：T105/T108 ✅ 已入库（8282cd4）· T106/T107 从零重实现中（离线绿前不勾）</span>
     <span class="gates">门禁：G2（T110 三源验收）</span>
   </div>
   <div class="row">
@@ -259,36 +259,36 @@
       <div class="why">✅ 2026-08-31 v1.0.0 落盘（research-finai specs/…/data_dictionary_v1.md，快照已同步 FinAI2.0 docs/spec/）；T105 依赖解除</div>
     </div>
     <div class="conn"><span class="cap">→ T105 前置</span>→</div>
-    <div class="node info">
-      <span class="badge" style="background:var(--info)">实现中</span>
+    <div class="node ok">
+      <span class="badge">OK</span>
       <div class="id">T105</div>
       <div class="nm">日线采集器</div>
       <div class="st">baostock 主 + 新浪/腾讯校验；限速四件套（FR-DATA-7）</div>
-      <div class="why">🔄 worktree 隔离实现 + 对抗校验中（wf_48169b41）；data/collector.py；复用 baostock_source.py</div>
+      <div class="why">✅ 2026-08-31 已入库（commit 8282cd4；data/collector.py：DailyCollector 编排 + RateLimiter/CircuitBreaker/指数退避 + 幂等分区 Parquet 落盘 + 新浪/腾讯校验腿）；tasks.md 已勾</div>
     </div>
     <div class="conn"><span class="cap">→</span>→</div>
-    <div class="node info">
-      <span class="badge" style="background:var(--info)">实现中</span>
+    <div class="node warn">
+      <span class="badge" style="background:var(--warn)">重做</span>
       <div class="id">T106</div>
       <div class="nm">停牌/涨跌停/除权清洗</div>
       <div class="st">复用 R1 过滤 + adjustment_mode（FR-DATA-2）</div>
-      <div class="why">🔄 worktree 实现中；data/cleaner.py</div>
+      <div class="why">🔄 上批子代理中途死亡（worktree 空、无代码可收）；本次从零重实现 data/cleaner.py；离线绿前不勾</div>
     </div>
     <div class="conn"><span class="cap">→</span>→</div>
-    <div class="node info">
-      <span class="badge" style="background:var(--info)">实现中</span>
+    <div class="node warn">
+      <span class="badge" style="background:var(--warn)">重做</span>
       <div class="id">T107</div>
       <div class="nm">财务 pubDate 对齐管道</div>
       <div class="st">季频财报 + 公告日对齐（FR-DATA-4）</div>
-      <div class="why">🔄 worktree 实现中；data/financial_pit.py</div>
+      <div class="why">🔄 上批子代理中途死亡（worktree 空）；本次从零重实现 data/financial_pit.py；离线绿前不勾</div>
     </div>
     <div class="conn"><span class="cap">→</span>→</div>
-    <div class="node info">
-      <span class="badge" style="background:var(--info)">实现中</span>
+    <div class="node ok">
+      <span class="badge">OK</span>
       <div class="id">T108</div>
       <div class="nm">股票池/成分回放</div>
       <div class="st">FR-DATA-5；依赖 T104 字典</div>
-      <div class="why">🔄 worktree 实现中；data/universe.py</div>
+      <div class="why">✅ 2026-08-31 已入库（commit 8282cd4；data/universe.py：alive_universe 纯函数 ⛔禁 status 列；指数成分回放默认拒绝未验证接口）；tasks.md 已勾</div>
     </div>
     <div class="conn"><span class="cap">→</span>→</div>
     <div class="node queued">
@@ -397,12 +397,12 @@
   <div class="note">主线程复核 + 2 个免费档子代理并行核验（GitHub 远端 / 红线完整性）；下方为本次回话内实际执行结果。</div>
   <pre>
 【本地 Git】                            ✅ 已更新（2026-08-31 收尾）
-  FinAI2.0      HEAD = 1da2b2d（CLAUDE.md：两仓 GitHub 远端 + 子代理模型重映射 + Phase 0 清零声明；已推 origin/master）
-  research-finai HEAD = 5f7e38f（tasks.md：T101 补验 + T101–T104 全勾 + TK-3 修订行；已推 origin/master）
+  FinAI2.0      HEAD = 8282cd4（data：T105 日线采集器 + T108 股票池/成分回放；离线单测 62 passed；已推 origin/master）
+  research-finai HEAD = 293f30a（tasks.md：勾 T105/T108 + TK-4 修订行；⛔未勾 T106/T107；已推 origin/master）
   FinAI2.0 工作树：干净；origin = https://github.com/YZml1507/FinAI2.0.git；research-finai origin = https://github.com/YZml1507/research-finai.git
   spec 快照：docs/spec/001-a-stock-longonly-daily-quant/{tasks,plan,spec,data_dictionary_v1}.md 与计划仓逐字节一致（md5 校验，commit c2d14f3/305be79）
 
-【离线单测】                             ✅ 19 passed in 2.93s（exit 0）
+【离线单测】                             ✅ 62 passed（19 原有 + T105×28 + T108×15；exit 0）
   py -3.11 -m pytest tests/ -p no:ddtrace -p no:ddtrace.pytest_bdd -p no:ddtrace.pytest_benchmark -q
 
 【计划任务】                             ✅ 10 个 FinAI_* 全部 Disabled（AcceptBatch2 / BackfillChip / BackfillMoneyFlow /
@@ -417,7 +417,9 @@
   ✅ T104 数据字典 v1 已勾选并落盘（research-finai specs/…/data_dictionary_v1.md v1.0.0，2026-08-31）→ T105 依赖解除
   ✅ T101–T104 在 tasks.md 全部 [x]（T101 于 2026-08-31 本机补验全绿：Python 3.11.5 / 依赖 / 代理 7897 / baostock login / 新浪腾讯连通 / 东财不可达）
   ✅ T001 告警通道已拍板 = 飞书（hermes_orchestrator MCP，.specify/memory/alert_channel.md）
-  🔄 T105–T108：Parquet 落盘 + data/ 包结构已拍板；经 workflow wf_48169b41（worktree 隔离 + 对抗校验）并行实现中
+  ✅ T105 日线采集器（data/collector.py）+ T108 股票池/成分回放（data/universe.py）已入库并勾选（commit 8282cd4，62 离线单测绿）
+  🔄 T106（data/cleaner.py 停牌/涨跌停/除权清洗）+ T107（data/financial_pit.py 财务 pubDate 对齐）：上批 workflow 子代理中途死亡（worktree 空、无代码可收），本次派子代理从零重实现；离线单测绿前方可在 tasks.md 勾选（⛔ 未绿不勾）
+  ⏭ 后续：T106/T107 绿后 → T109 增量更新 + T110 三源验收（G2）
   </pre>
 </details>
 
