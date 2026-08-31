@@ -11,7 +11,7 @@ A 股中低频**长仓（long-only）日线**量化系统。**代码在本仓（
 
 - 母库缺陷（`REVALIDATE.md` R1–R5）**已全部处置清零**（commit `af20d85`，2026-08-30）：R1 停牌脏行✅、R2 随 R5 方案 B 挂起（`_assert_coverage` 纯函数已离线落地）、R3 push2his 可达性复验关闭✅、R4 复权口径映射✅、R5 TDX 腿砍除✅。离线单测 **19 passed**（R1×5 + R2×4 + R4×6 + R5×4）。
 - ⛔ 旧仓 `D:\Projects\FinAI` **已于 2026-08-29 删除**；指向它的 10 个 `FinAI_*` Windows 计划任务**已全部禁用**（2026-08-30）。别再引用旧仓路径、旧结论（含旧测试数字、旧因子结论）。
-- 阶段：Phase 0（T101–T103）就绪，**下一步 Phase 1 数据层（T105–T110）**，起点 = 本仓已代码化的能力基座（860 接口）+ `docs/engineering/DATA_LAYER_WORK_ORDER.md`。
+- 阶段：Phase 0（T101–T103）就绪，**下一步 Phase 1 数据层**。✅ **T001 飞书告警、T104 数据字典 v1 已完成**（2026-08-31）；**T102/T103 已补勾**（实证=R3/R1/R4，见 tasks.md）；仅 **T101（环境清单）待单独补验**。T105 依赖=T101+T104，故 **T105 采集器已可实现、勾 done 待 T101**。结构已拍板：**落盘=Parquet（pyarrow 已装）、新模块归 data/ 占位包**（collector/cleaner/financial_pit/universe）。
 
 ---
 
@@ -70,7 +70,7 @@ A 股中低频**长仓（long-only）日线**量化系统。**代码在本仓（
 
 Phase 0 环境（T101–T103）→ Phase 1 数据层（T104–T110）→ Phase 2 回测 → Phase 3 策略 → Phase 4 模拟盘（≥6 个月）→ Phase 5 小资金实盘 → Phase 6 运营。
 
-**Phase 0→1 已打通**：母库 R1–R5 清零后，T105–T110 已解锁——T105 日线采集器（baostock 主 + 新浪/腾讯校验）/ T106 清洗 / T107 财务对齐 / T108 股票池 / T109 增量 / T110 三源验收。任务清单以 research-finai `tasks.md` 为准；T001 告警通道仍待【用户确认】。
+**Phase 0→1 进行中**：T001 飞书告警 ✅、T104 数据字典 v1 ✅（2026-08-31）。数据层任务以 research-finai `tasks.md` 为准：T105 日线采集器（baostock 主 + 新浪/腾讯校验）/ T106 清洗 / T107 财务对齐 / T108 股票池 / T109 增量 / T110 三源验收。T105–T108 代码实现进行中（结构已拍板：Parquet 落盘 + data/ 包）。
 
 ---
 
@@ -96,3 +96,4 @@ py -3.11 -m pytest tests/ -p no:ddtrace -p no:ddtrace.pytest_bdd -p no:ddtrace.p
 |---|---|
 | 2026-08-30 | 初版：用户批准写入（"写进去"），固化新窗口启动指令与全部硬约束。 |
 | 2026-08-30 | 收口更新（commit `af20d85`）：§0 现状、§4 红线 5、§5 路线图改为 **R1–R5 全部处置清零**、**19 离线单测绿**、10 个旧 `FinAI_*` 计划任务已禁用、Phase 1（T105–T110）解锁。 |
+| 2026-08-31 | Phase 1 启动：T001 飞书告警 + T104 数据字典 v1 完成；T102/T103 补勾（实证=R3/R1/R4），T101 待单独补验；结构拍板 **Parquet 落盘 + data/ 包**（collector/cleaner/financial_pit/universe）；T105–T108 经 workflow 并行实现中。FINDING 台账基线复测=370。 |
