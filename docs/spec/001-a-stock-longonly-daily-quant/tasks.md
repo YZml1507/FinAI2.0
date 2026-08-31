@@ -17,7 +17,7 @@
 
 ## Foundational（P-0、P-1 数据层）
 
-- [ ] [T101] 工作站环境清单照 12 号附录 A 再过一遍（Python 3.11/venv/代理）（P-0.1）<!-- T102/T103 已有实证补勾（2026-08-31）；T101 待单独补验 -->
+- [x] [T101] 工作站环境清单照 12 号附录 A 再过一遍（Python 3.11/venv/代理）（P-0.1） — 2026-08-31 ✅ 本机复验全绿：Python 3.11.5、pyarrow 25.0.0/pandas 2.2.2/baostock 0.9.2/numpy 2.4.6 齐备、代理 127.0.0.1:7897 走通（curl baidu HTTP 200）、baostock login success + 2026-08-31 为交易日、akshare 1.18.64 修复 bs4/tqdm 依赖后新浪/腾讯校验源连通、东财 stock_zh_a_hist 实测不可达（ConnectionError，符合 A.5.1→主源走 baostock）。环境缺口（akshare 缺 bs4/tqdm）已补装。
 - [x] [T102] 东财 push2his 可达性复测（附录 A.5 探测 ×3）（P-0.2）→ 结论写回 12 号附录 A.5 修订日志 — 2026-08-31 ✅ 同项已由 R3 复验关闭（REVALIDATE.md §R3：efinance 37 接口 36 OK、push2his 直连 HTTP 200、12 号 A.5 探测 3 次 ProxyError 属代理噪音），结论已写回 12 号附录 A.5（R-12-11/第四轮修订日志）
 - [x] [T103] 复现 12 号 §9-A 四项实测核心结论（停牌脏行/复权一致性/公告日/增量冒烟）（P-0.3） — 2026-08-31 ✅ 经 R1（停牌脏行，`_drop_suspended`+test_baostock_suspension×5）/ R4（复权一致性，adjustment_mode.py+test_adjustment_mode×6）/ 12 号 §9-A 公告日与增量冒烟复现（19 离线单测绿），T104 字典 §1.1/§2.1/§9 已含实测结论
 - [x] [T104] 数据字典 v1：字段清单 + 复权语义 + 可得日期 + pubDate 对齐规则（FR-DATA-1~5） — 2026-08-31 ✅ v1.0.0 落盘本目录 `data_dictionary_v1.md`；含 2026-08-31 本机实测（1990 年段 `turn`/`isST` 可用、R1 停牌脏行三组实证）
@@ -83,3 +83,4 @@
 |---|---|---|---|
 | TK-1 | 2026-08-29 | v0.1 草案（依赖序任务清单） | constitution + spec v0.1 + plan v0.1 |
 | TK-2 | 2026-08-29 | **v1.0.0 定稿**：T201 明确按 SDD-1~3 落地（Broker 接口 / TimeSource / 七态状态机 / append-only 双账本）；T401 复用 SDD-1 PaperBroker；新增 T110 验收含"SDD-5 实验 registry 一次性"；T603 策略迭代流程按 SDD-3 全事件驱动单引擎；T605 扩市场触发机制按 SDD-7（韩股反向 ETF 视普通多头 / 美股留口低成本档） | spec v1.0.0（SDD-1~7），检索日 2026-08-29 |
+| TK-3 | 2026-08-31 | **T101 环境清单补验通过**：Phase 0（T101–T104）至此全部清零。本机复验 12 号附录 A 各项全绿——Python 3.11.5、pyarrow 25.0.0/pandas 2.2.2/baostock 0.9.2/numpy 2.4.6、代理 7897 走通、baostock login 成功（2026-08-31=交易日）、akshare 1.18.64 修复 bs4/tqdm 依赖后新浪/腾讯校验源连通、东财 stock_zh_a_hist 实测不可达（符合 A.5.1→主源走 baostock）。**Phase 1 数据层（T105–T110）全部解锁**。 | 12 号附录 A（A.1–A.5）逐项复验，本机第一手实测，2026-08-31 |
