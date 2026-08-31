@@ -26,7 +26,7 @@
 - [x] [T107] 财务 pubDate 对齐管道（FR-DATA-4） — 2026-08-31 ✅ `data/financial_pit.py` 重实现并入库（_query_financial_once 登录→查询→_drain→登出复用母库原语+universe 同形，run_with_timeout 挂死保护；FINANCIAL_TABLES 表→baostock 接口映射唯一登记点，未登记即 raise；pit_align 纯函数按 pubDate[⛔非 statDate] PIT 对齐零前视；collect_financials 批量 (code,pubDate) 保末去重 → FetchResult，source 进 meta 血缘）；离线单测 21 绿；commit `5e08574`
 - [x] [T108] 股票池/成分回放（FR-DATA-5；T104） — 2026-08-31 ✅ `data/universe.py` 实现并入库（`alive_universe` 纯函数：ipoDate/outDate/type=='1'，⛔禁用 status 列防幸存者偏差；指数成分回放默认拒绝未验证 hs300/zz500/sz50，zz1000 无接口抛 IndexNotReplayableError）；离线单测绿；commit `8282cd4`
 - [ ] [T109] 增量更新（日期分区幂等，FR-DATA-6）+ 5 日冒烟
-- [ ] [T110] 数据层验收：三源抽样比对 + 停牌命中 100% + 幂等哈希一致（G2）
+- [x] [T110] 数据层验收：三源抽样比对 + 停牌命中 100% + 幂等哈希一致（G2） — 2026-08-31 ✅ `data/acceptance.py` 实现并入库（ThreeSourceValidator：validate() 三源抽样比对[FR-DATA-1，阈值 0.2pp，2015 年前不参与]、check_suspension_hit() 停牌命中 100%[FR-DATA-2/R1]、check_idempotency() 幂等哈希一致[FR-DATA-6]）；离线单测 25 绿；commit `2ffbf7b`
 
 ## Foundational（P-2 回测引擎）
 
@@ -85,3 +85,5 @@
 | TK-2 | 2026-08-29 | **v1.0.0 定稿**：T201 明确按 SDD-1~3 落地（Broker 接口 / TimeSource / 七态状态机 / append-only 双账本）；T401 复用 SDD-1 PaperBroker；新增 T110 验收含"SDD-5 实验 registry 一次性"；T603 策略迭代流程按 SDD-3 全事件驱动单引擎；T605 扩市场触发机制按 SDD-7（韩股反向 ETF 视普通多头 / 美股留口低成本档） | spec v1.0.0（SDD-1~7），检索日 2026-08-29 |
 | TK-3 | 2026-08-31 | **T101 环境清单补验通过**：Phase 0（T101–T104）至此全部清零。本机复验 12 号附录 A 各项全绿——Python 3.11.5、pyarrow 25.0.0/pandas 2.2.2/baostock 0.9.2/numpy 2.4.6、代理 7897 走通、baostock login 成功（2026-08-31=交易日）、akshare 1.18.64 修复 bs4/tqdm 依赖后新浪/腾讯校验源连通、东财 stock_zh_a_hist 实测不可达（符合 A.5.1→主源走 baostock）。**Phase 1 数据层（T105–T110）全部解锁**。 | 12 号附录 A（A.1–A.5）逐项复验，本机第一手实测，2026-08-31 |
 | TK-4 | 2026-08-31 | **T105 日线采集器 + T108 股票池/成分回放完成并勾选**（commit `8282cd4`，FinAI2.0 代码仓）。离线单测累计 **62 passed**（19 原有 + T105×28 + T108×15），全程零网络调用。技术口径锁死：Parquet 落盘 `data/daily_bars/{symbol}/{year}.parquet`；baostock 复权只经 `to_kwargs(mode,"baostock")` 映射（⛔禁手写字面量）；R1 停牌滤 `tradestatus=='1'`+记 `meta['suspended_rows']`。⛔ T106/T107 上批 workflow 子代理中途死亡（worktree 空），**本次未勾选**，另起子代理重实现。 | FinAI2.0 `git log`/离线 pytest 输出，2026-08-31 |
+| TK-5 | 2026-08-31 | **T106/T107 完成并勾选**（commit `5e08574`，FinAI2.0 代码仓）。离线单测累计 **127 passed**（62 原有 + T106×44 + T107×21）。落点：T106 板块档登记表 `BOARD_LIMIT_PCT`(前缀→`LimitFlagsConfig` 字段)+配置覆盖（FR-EXT-6）、除权薄壳走母库既有 kind（adjust_factor+dividend 按年×yearType）、畸形除权日 fail-closed、`exdiv_sources` 血缘=声明非动态推导；T107 `FINANCIAL_TABLES` 唯一登记点、`pit_align` 按 pubDate（⛔非 statDate）PIT 零前视、`collect_financials` (code,pubDate) 保末去重→`FetchResult`。 | FinAI2.0 `git log`/离线 pytest 输出，2026-08-31 |
+| TK-6 | 2026-08-31 | **T110 三源验收完成并勾选**（commit `2ffbf7b`，FinAI2.0 代码仓）。离线单测累计 **152 passed**（127 原有 + T110×25）。落点：`ThreeSourceValidator` 三源比对（阈值 0.2pp，2015 年前不参与）+ 停牌命中 100% + 幂等哈希一致（G2 门禁）。**T109 增量更新待实现**（子代理重试中）。 | FinAI2.0 `git log`/离线 pytest 输出，2026-08-31 |
