@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="420" font-family="Consolas,monospace" font-size="12">
+<rect width="860" height="420" fill="#ffffff"/>
+<text x="70" y="26" font-size="14" font-weight="bold" fill="#0f172a">T204 敏感度对比 · 同一策略 3 价格口径 × 3 滑点档（合成 5 日上行，初始 120,000）</text>
+<text x="70" y="44" font-size="11" fill="#64748b">线=口径，虚实=滑点档位（实 0 / 短划 5bps / 点划 15bps）｜数据= tests/test_t204_price_model.py 实测</text>
+<line x1="70" y1="58.0" x2="844" y2="58.0" stroke="#e2e8f0" stroke-width="1"/>
+<text x="64" y="62.0" text-anchor="end" fill="#94a3b8" font-size="10">121453.94</text>
+<line x1="70" y1="138.0" x2="844" y2="138.0" stroke="#e2e8f0" stroke-width="1"/>
+<text x="64" y="142.0" text-anchor="end" fill="#94a3b8" font-size="10">121083.47</text>
+<line x1="70" y1="218.0" x2="844" y2="218.0" stroke="#e2e8f0" stroke-width="1"/>
+<text x="64" y="222.0" text-anchor="end" fill="#94a3b8" font-size="10">120713.00</text>
+<line x1="70" y1="298.0" x2="844" y2="298.0" stroke="#e2e8f0" stroke-width="1"/>
+<text x="64" y="302.0" text-anchor="end" fill="#94a3b8" font-size="10">120342.52</text>
+<line x1="70" y1="378.0" x2="844" y2="378.0" stroke="#e2e8f0" stroke-width="1"/>
+<text x="64" y="382.0" text-anchor="end" fill="#94a3b8" font-size="10">119972.05</text>
+<text x="70.0" y="394" text-anchor="middle" fill="#94a3b8" font-size="10">1-2</text>
+<text x="263.5" y="394" text-anchor="middle" fill="#94a3b8" font-size="10">1-3</text>
+<text x="457.0" y="394" text-anchor="middle" fill="#94a3b8" font-size="10">1-4</text>
+<text x="650.5" y="394" text-anchor="middle" fill="#94a3b8" font-size="10">1-5</text>
+<text x="844.0" y="394" text-anchor="middle" fill="#94a3b8" font-size="10">1-6</text>
+<polyline points="70.0,372.0 263.5,321.4 457.0,213.4 650.5,105.5 844.0,60.6" fill="none" stroke="#2563eb" stroke-width="1.8" />
+<polyline points="70.0,372.0 263.5,332.2 457.0,224.2 650.5,116.3 844.0,82.2" fill="none" stroke="#2563eb" stroke-width="1.8" stroke-dasharray="6,3"/>
+<polyline points="70.0,372.0 263.5,343.0 457.0,235.0 650.5,127.1 844.0,103.8" fill="none" stroke="#2563eb" stroke-width="1.8" stroke-dasharray="2,2"/>
+<polyline points="70.0,372.0 263.5,375.4 457.0,267.4 650.5,159.5 844.0,60.7" fill="none" stroke="#dc2626" stroke-width="1.8" />
+<polyline points="70.0,372.0 263.5,375.4 457.0,267.4 650.5,159.5 844.0,60.7" fill="none" stroke="#dc2626" stroke-width="1.8" stroke-dasharray="6,3"/>
+<polyline points="70.0,372.0 263.5,375.4 457.0,267.4 650.5,159.5 844.0,60.7" fill="none" stroke="#dc2626" stroke-width="1.8" stroke-dasharray="2,2"/>
+<polyline points="70.0,372.0 263.5,353.8 457.0,245.8 650.5,137.9 844.0,60.7" fill="none" stroke="#16a34a" stroke-width="1.8" />
+<polyline points="70.0,372.0 263.5,353.8 457.0,245.8 650.5,137.9 844.0,71.4" fill="none" stroke="#16a34a" stroke-width="1.8" stroke-dasharray="6,3"/>
+<polyline points="70.0,372.0 263.5,364.6 457.0,256.6 650.5,148.7 844.0,93.0" fill="none" stroke="#16a34a" stroke-width="1.8" stroke-dasharray="2,2"/>
+<rect x="78" y="64" width="10" height="3" fill="#2563eb"/><text x="92" y="69" font-size="11" fill="#334155">open</text>
+<rect x="142" y="64" width="10" height="3" fill="#dc2626"/><text x="156" y="69" font-size="11" fill="#334155">close</text>
+<rect x="206" y="64" width="10" height="3" fill="#16a34a"/><text x="220" y="69" font-size="11" fill="#334155">vwap</text>
+<line x1="270" y1="66" x2="290" y2="66" stroke="#64748b" stroke-width="1.8" /><text x="294" y="69" font-size="11" fill="#334155">0 bps</text>
+<line x1="348" y1="66" x2="368" y2="66" stroke="#64748b" stroke-width="1.8" stroke-dasharray="6,3"/><text x="372" y="69" font-size="11" fill="#334155">5 bps</text>
+<line x1="426" y1="66" x2="446" y2="66" stroke="#64748b" stroke-width="1.8" stroke-dasharray="2,2"/><text x="450" y="69" font-size="11" fill="#334155">15 bps</text>
+<text x="70" y="412" font-size="10" fill="#94a3b8">滑点单调向下；口径间差 &lt; 0.3 元（本温和上行场景）。仅文档展示用，非交易依据。</text>
+</svg>

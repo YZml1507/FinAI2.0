@@ -25,6 +25,10 @@
 
 ## 3. 敏感度对比（合成 5 日温和上行场景，初始现金 120,000）
 
+**对比曲线（FR-BT-6 验收物）**：`docs/t204_sensitivity_curve.svg`（由 `scripts/t204_sensitivity_curve.py` 重新生成；数据与下表同源 = `TestSensitivityReportFixture` 固化值）。
+
+![T204 敏感度对比曲线](t204_sensitivity_curve.svg)
+
 策略：T1 尾盘挂 BUY 5,000 股（T2 开盘成交）→ T4 尾盘挂 SELL 5,000 股（T5 开盘成交）。
 三价格口径：**open**（次一开盘，默认）/ **close**（次一收盘，挑战口径）/ **vwap**（日内 (open+close)/2 中枢近似——声明：日线无真 VWAP）。
 滑点档：0 / 5bps / 15bps。
