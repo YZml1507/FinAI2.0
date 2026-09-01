@@ -30,8 +30,8 @@
 
 ## Foundational（P-2 回测引擎）
 
-- [ ] [T201] 事件驱动引擎核心：时钟/数据源/撮合/订单状态机抽象（SDD-1~3 回填后实施）（T110）
-- [ ] [T202] **5 必挂用例测试套件**（涨停买入/跌停卖出/停牌日下单/除权日持仓/T+1 当日买卖）（FR-BT-1~5）
+- [x] [T201] 事件驱动引擎核心：时钟/数据源/撮合/订单状态机抽象（SDD-1~3 回填后实施）（T110） — 2026-09-01 ✅ `backtest/` 引擎核心入库（契约 `backtest/T201_design.md` + constants/types/order_fsm/ledger/feed/matching/broker/settle/engine 九模块：七态状态机迁移表 fail-closed、双账本 Journal append-only[tx_hash 幂等]+BookView 推导、ParquetDailyFeed 停牌=缺席+涨跌停/除权派生+日历注入点、撮合 8 规则按序 fail-closed[停牌/涨停/跌停/T+1/整手/零股/资金/次一开盘成交]、先撮合后信号、settle_day 停牌市值冻结+除权 NAV 无跳变）；离线单测 140 绿；commit `8fca14f`
+- [x] [T202] **5 必挂用例测试套件**（涨停买入/跌停卖出/停牌日下单/除权日持仓/T+1 当日买卖）（FR-BT-1~5） — 2026-09-01 ✅ `tests/test_t202_must_fail.py`（17 单测）五用例全过：①涨停买入 REJECTED+NAV 水平线；②跌停卖出 REJECTED+持仓保留；③停牌日 REJECTED+NAV 冻结平直（SETTLE meta 快照核对）；④10送10+派现0.5 → 股数×2/现金+50/成本减半/NAV 无跳变；⑤T+1 当日卖 REJECTED、次日正常成交；commit `8fca14f`
 - [ ] [T203] 费用模型模块（佣金 5 元最低/印花税分段/过户费/经手费分市场/滑点）（FR-BT-7；07 号核对表）
 - [ ] [T204] 成交模型默认次一开盘 + 显式声明与敏感度对比（FR-BT-6）
 - [ ] [T205] 绩效与风控指标模块（收益/波动/回撤/夏普/换手/费用/胜率/月度热力图）（FR-REP-1）
@@ -88,3 +88,4 @@
 | TK-5 | 2026-08-31 | **T106/T107 完成并勾选**（commit `5e08574`，FinAI2.0 代码仓）。离线单测累计 **127 passed**（62 原有 + T106×44 + T107×21）。落点：T106 板块档登记表 `BOARD_LIMIT_PCT`(前缀→`LimitFlagsConfig` 字段)+配置覆盖（FR-EXT-6）、除权薄壳走母库既有 kind（adjust_factor+dividend 按年×yearType）、畸形除权日 fail-closed、`exdiv_sources` 血缘=声明非动态推导；T107 `FINANCIAL_TABLES` 唯一登记点、`pit_align` 按 pubDate（⛔非 statDate）PIT 零前视、`collect_financials` (code,pubDate) 保末去重→`FetchResult`。 | FinAI2.0 `git log`/离线 pytest 输出，2026-08-31 |
 | TK-6 | 2026-08-31 | **T110 三源验收完成并勾选**（commit `2ffbf7b`，FinAI2.0 代码仓）。离线单测累计 **152 passed**（127 原有 + T110×25）。落点：`ThreeSourceValidator` 三源比对（阈值 0.2pp，2015 年前不参与）+ 停牌命中 100% + 幂等哈希一致（G2 门禁）。**T109 增量更新待实现**（子代理重试中）。 | FinAI2.0 `git log`/离线 pytest 输出，2026-08-31 |
 | TK-7 | 2026-08-31 | **T109 增量更新完成并勾选**（commit `c5d75bf`，FinAI2.0 代码仓）。离线单测累计 **162 passed**（152 原有 + T109×10）。落点：`IncrementalUpdater` 增量续采（水位续采 + 首次全量）+ 5 日冒烟 fail-closed。**Phase 1 数据层（T101–T110）至此全部清零，G2 门禁通过**。 | FinAI2.0 `git log`/离线 pytest 输出，2026-08-31 |
+| TK-8 | 2026-09-01 | **T201 事件驱动引擎核心 + T202 五必挂用例完成并勾选**（commit `8fca14f`，FinAI2.0 代码仓）。离线单测累计 **319 passed**（162 原有 + T201×140 + T202×17）。落点：SDD-1~3 契约化（`backtest/T201_design.md`）→ 九模块引擎；七态状态机迁移表 fail-closed；append-only 双账本（tx_hash 幂等）+可重算视图；撮合 8 规则按序 fail-closed；先撮合后信号；停牌市值冻结 NAV 平直；除权股数×factor/现金+派现/NAV 无跳变；T+1 可卖校验。五必挂用例全绿。执行方式：DSH 主线程定契约 + 前台串行子代理实现（并行子代理 6/6 死于 API 不稳，串行 5/5 存活）。**T203 费用模型进行中**（`backtest/fees.py` 草稿在库未验证，不提交）。 | FinAI2.0 `git log`/离线 pytest 输出，2026-09-01 |

@@ -1,4 +1,4 @@
-# FinAI2.0 · 项目状态流程图（2026-08-31 复核）
+# FinAI2.0 · 项目状态流程图（2026-09-01 复核）
 
 > 渲染器：支持 mermaid 的 Markdown 查看器（VS Code / Obsidian / GitHub）
 > 数据来源：本会话真实命令输出 + research-finai spec 三件套
@@ -9,8 +9,8 @@
 ```mermaid
 flowchart TD
   subgraph REPO["双仓（Private）"]
-    F[代码仓 FinAI2.0<br/>HEAD 8282cd4 ✅<br/>origin=github.com/YZml1507/FinAI2.0] 
-    R[计划仓 research-finai<br/>HEAD 293f30a ✅<br/>origin=github.com/YZml1507/research-finai]
+    F[代码仓 FinAI2.0<br/>HEAD 8fca14f + 状态标记 ✅<br/>origin=github.com/YZml1507/FinAI2.0] 
+    R[计划仓 research-finai<br/>HEAD fd67351 ✅<br/>origin=github.com/YZml1507/research-finai]
     F -->|git fetch research（本地路径）| R
     F -->|docs/spec 快照 逐字节一致| R
   end
@@ -28,17 +28,19 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-  G0[G0 spec 三件套齐备 ✅] --> R15[R1–R5 清零 ✅ af20d85] --> UT[152 离线单测全绿 ✅ 2026-08-31]
-  UT --> P1[Phase 1 数据层<br/>T101–T104 ✅<br/>T105/T106/T107/T108/T110 ✅ · T109 待实现]
+  G0[G0 spec 三件套齐备 ✅] --> R15[R1–R5 清零 ✅ af20d85] --> UT[319 离线单测全绿 ✅ 2026-09-01]
+  UT --> P1[Phase 1 数据层 ✅ 全清零<br/>T101–T110 全 ✅]
   P1 --> G2[G2 三源验收 ✅]
+  G2 --> P2C[Phase 2 回测引擎 ⏵当前<br/>T201 ✅ T202 ✅ · T203 🔄进行中<br/>T204–T207 待启动]
   style G0 fill:#dcfce7,stroke:#16a34a
   style R15 fill:#dcfce7,stroke:#16a34a
   style UT fill:#dcfce7,stroke:#16a34a
-  style P1 fill:#dbeafe,stroke:#2563eb,color:#0f172a
+  style P1 fill:#dcfce7,stroke:#16a34a
   style G2 fill:#dcfce7,stroke:#16a34a
+  style P2C fill:#dbeafe,stroke:#2563eb,color:#0f172a
 ```
 
-## Phase 1 数据层（当前工作带）
+## Phase 1 数据层（已清零 ✅ 2026-08-31）
 
 ```mermaid
 flowchart LR
@@ -49,7 +51,7 @@ flowchart LR
   T105 --> T106[T106 停牌/涨跌停/除权清洗 ✅]
   T105 --> T107[T107 财务 pubDate 对齐 ✅]
   T105 --> T108[T108 股票池/成分回放 ✅]
-  T106 --> T109[T109 增量更新 + 5 日冒烟 🔄待实现]
+  T106 --> T109[T109 增量更新 + 5 日冒烟 ✅]
   T107 --> T109
   T108 --> T109
   T109 --> T110[T110 数据层验收 → G2 ✅]
@@ -61,22 +63,22 @@ flowchart LR
   style T106 fill:#dcfce7,stroke:#16a34a
   style T107 fill:#dcfce7,stroke:#16a34a
   style T108 fill:#dcfce7,stroke:#16a34a
-  style T109 fill:#fef9c3,stroke:#ca8a04
+  style T109 fill:#dcfce7,stroke:#16a34a
   style T110 fill:#dcfce7,stroke:#16a34a
 ```
 
-> ✅ **依赖已闭合**：T101–T104 于 2026-08-31 全部勾选。**T105 日线采集器 + T108 股票池/成分回放已入库**（commit `8282cd4`，62 离线单测绿）。**T106 停牌/涨跌停/除权清洗 + T107 财务 pubDate 对齐已入库**（commit `5e08574`，127 离线单测绿）。**T110 三源验收已入库**（commit `2ffbf7b`，152 离线单测绿）。🔄 **T109 增量更新待实现**（子代理重试中）。结构已拍板 = Parquet 落盘（`data/daily_bars/{symbol}/{year}.parquet`）+ `data/` 包（collector✅/cleaner✅/financial_pit✅/universe✅/acceptance✅ 全部入库）。
+> ✅ **Phase 1 全清零（2026-08-31）**：T105（`8282cd4`，62 绿）/ T106+T107（`5e08574`，127 绿）/ T110（`2ffbf7b`，152 绿）/ T109（`c5d75bf`，162 绿）全部入库并勾选，G2 门禁通过。结构 = Parquet 落盘（`data/daily_bars/{symbol}/{year}.parquet`）+ `data/` 包（collector✅/cleaner✅/financial_pit✅/universe✅/incremental✅/acceptance✅ 全部入库）。**其后 Phase 2 回测引擎：T201 引擎核心 + T202 五必挂用例已入库**（2026-09-01，commit `8fca14f`，319 离线单测绿）；**T203 费用模型进行中**（`backtest/fees.py` 草稿在库未验证，不入提交）。
 
-## Phase 2–6 路线（未解锁）
+## Phase 2–6 路线（Phase 2 进行中）
 
 ```mermaid
 flowchart LR
-  P2[Phase 2 回测引擎<br/>T201–T207 / G3] --> P3[Phase 3 策略与组合<br/>T301–T305 / G4]
+  P2[Phase 2 回测引擎 ⏵当前<br/>T201 ✅ T202 ✅ / T203 🔄 / T204–T207 / G3] --> P3[Phase 3 策略与组合<br/>T301–T305 / G4]
   P3 --> P4[Phase 4 模拟盘 ≥6 个月<br/>T401–T406 / G5 前半]
   P4 --> P5[Phase 5 小额实盘<br/>T501–T505 / G6]
   P5 --> P6[Phase 6 运营迭代<br/>T601–T605]
   P5 -.->|T501 用户书面确认| USER[用户确认]
-  style P2 fill:#f3f4f6,stroke:#9ca3af
+  style P2 fill:#dbeafe,stroke:#2563eb,color:#0f172a
   style P3 fill:#f3f4f6,stroke:#9ca3af
   style P4 fill:#f3f4f6,stroke:#9ca3af
   style P5 fill:#fee2e2,stroke:#dc2626
@@ -91,29 +93,32 @@ flowchart LR
 | ~~**T001**~~ | 告警通道 ✅ **已拍板 = 飞书**（经 hermes_orchestrator MCP；`.specify/memory/alert_channel.md`） | 已闭环 |
 | **T501 / P-5.0** | 用户书面确认实盘（券商 / 金额 / 日期） | 远期，2027 年段 |
 
-## 复核摘要（2026-08-31）
+## 复核摘要（2026-09-01）
 
 | 项目 | 结果 | 证据 |
 |---|---|---|
-| 代码仓 HEAD | ✅ `e3f849e`（T110 三源验收入库 + 状态标记） | 本地 `git rev-parse HEAD` |
-| 计划仓 HEAD | ✅ `101f5cd`（tasks.md 勾 T106/T107/T110 + TK-5/TK-6） | 本地 `git rev-parse HEAD` |
-| spec 快照一致 | ✅ `docs/spec/001-…/` 4 文件逐字节一致 | md5 校验（commit c2d14f3/305be79） |
-| 远端默认分支 == 本地 | ✅ 一致 | `git ls-remote origin HEAD` 输出相同哈希 |
-| GitHub Private | ✅ 两仓均 Private | 凭证凭据（user=YZml1507）+ API 返回 `private=true`；公开 404 |
+| 代码仓 HEAD | ✅ `8fca14f`（T201 引擎核心 + T202 五必挂入库）+ 本状态标记提交 | 本地 `git rev-parse HEAD` |
+| 计划仓 HEAD | ✅ `fd67351`（tasks.md 勾 T201/T202 + TK-8 修订日志） | 本地 `git rev-parse HEAD` |
+| spec 快照一致 | ✅ `docs/spec/001-…/tasks.md` 与计划仓逐字节一致 | SHA-256 双端同值（2026-09-01） |
+| 两仓已推送 | ✅ FinAI2.0（`14d5da9..8fca14f` + 本提交）/ research-finai（`e7b638a..fd67351`） | `git push origin master` 输出 |
+| GitHub Private | ✅ 两仓均 Private | 凭证凭据（user=YZml1507） |
 | 旧仓 FinAI | ✅ 已删除 | `Test-Path D:\Projects\FinAI = False` |
-| 10 个计划任务 | ✅ 全部 Disabled | `Get-ScheduledTask` 输出 |
-| FINDING 台账 | ✅ 370 行 | `Select-String -Pattern "FINDING-"` |
+| 10 个计划任务 | ✅ 全部 Disabled（2026-09-01 复测） | `Get-ScheduledTask` 输出 |
+| FINDING 台账 | ✅ 370 行（2026-09-01 复测） | `Select-String -Pattern "FINDING-"` |
 | 红线路径 | ✅ 7/7 存在 | `Test-Path` 逐个核对 |
 | 占位包 6 个 | ✅ 存在 | `accounting/backtest/ops/reporting/strategy/data` |
-| 离线单测 | ✅ 152 passed（127 原有 + T110×25） | `py -3.11 -m pytest tests/ …` |
+| 离线单测 | ✅ **319 passed**（162 原有 + T201×140 + T202×17；2026-09-01 本窗复跑实证 exit 0） | `py -3.11 -m pytest tests/ …` |
 | T001 告警通道 | ✅ 已拍板飞书 | `.specify/memory/alert_channel.md` |
-| T101–T104 | ✅ 全部勾选 | tasks.md（research-finai `101f5cd`） |
+| T101–T104 | ✅ 全部勾选 | tasks.md（research-finai） |
 | T105 / T108 | ✅ 已入库并勾选 | commit `8282cd4`；tasks.md `[x]` |
 | T106 / T107 | ✅ 已入库并勾选 | commit `5e08574`；tasks.md `[x]` |
+| T109 | ✅ 已入库并勾选 | commit `c5d75bf`；tasks.md `[x]` |
 | T110 | ✅ 已入库并勾选 | commit `2ffbf7b`；tasks.md `[x]` |
-| T109 | 🔄 待实现 | 子代理重试中 |
-| 测试产物残留 | ✅ 已清理 | `.pytest_cache`/`__pycache__` 已删 |
-| research-finai 工作树 | ⚠️ `.gitignore` 一处未提交修改 | 补 `.claude` 忽略 + 去行尾注释 |
+| T201 / T202 | ✅ 已入库并勾选（2026-09-01） | commit `8fca14f`；tasks.md `[x]` + TK-8 |
+| T203 费用模型 | 🔄 进行中 | `backtest/fees.py` 草稿在库未验证（15KB），不入提交直至验收绿 |
+| T204–T207 | ⬜ 待启动 | T204 成交模型 / T205 指标 / T206 registry / T207 门禁 G3 |
+| 测试产物残留 | ✅ 无新增残留 | 测试走 tmp_path；审计临时目录用完即删 |
+| research-finai 工作树 | ✅ 干净（`fd67351` 已提交） | `git status` |
 
 ---
 
