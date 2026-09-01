@@ -14,6 +14,8 @@ from pathlib import Path
 
 import pytest
 
+from backtest.constants import OrderSide, OrderType
+from backtest.types import Order
 from reporting.registry import ExperimentRegistry, RegistryError
 
 D = Decimal
@@ -148,3 +150,104 @@ class TestGuards:
         assert [r["seed"] for r in runs] == [1, 2]                  # 按时间升序非写入序
         assert runs[0]["cagr"] == "0.122001"
         assert runs[0]["max_drawdown"] == "0.05"
+
+
+# ======================================================================
+# FR-REP-2 验收判据：同参重跑一致（真跑引擎两遍，registry 记录逐字段比对）
+# ======================================================================
+
+_D0 = date(2024, 1, 2)
+_DAYS = [_D0 + timedelta(days=i) for i in range(5)]
+_SY = "sh.600777"
+
+
+def _rows() -> list[dict]:
+    rows = []
+    for i, d in enumerate(_DAYS):
+        o = D("10.00") + D("0.10") * i
+        c = o + D("0.05")
+        p = (D("10.00") + D("0.10") * (i - 1)) if i > 0 else D("9.90")
+        rows.append({
+            "date": d, "open": float(o), "high": float(c), "low": float(o),
+            "close": float(c), "preclose": float(p), "volume": 1_000_000.0,
+            "amount": float(c * D("1000000")), "turn": 1.0,
+            "pctChg": float((c - p) / p * D("100")), "tradestatus": "1",
+            "isST": "0", "code": _SY, "adjust_mode": "hfq", "source": "baostock",
+        })
+    return rows
+
+
+class _ToyStrategy:
+    def __init__(self) -> None:
+        self.watchlist = [_SY]
+
+    def on_bar(self, day, bars, book, broker) -> None:
+        if day == _DAYS[0]:
+            broker.submit(Order(
+                client_order_id="t206-buy", symbol=_SY, side=OrderSide.BUY,
+                order_type=OrderType.MARKET, volume=1000, price=None,
+                created_date=day))
+        elif day == _DAYS[3]:
+            broker.submit(Order(
+                client_order_id="t206-sell", symbol=_SY, side=OrderSide.SELL,
+                order_type=OrderType.MARKET, volume=1000, price=None,
+                created_date=day))
+
+
+def _run_once() -> object:
+    """跑一遍玩具回测（同数据同参数 ⇒ 同结果，引擎确定性由 T204 敏感度矩阵侧证）。"""
+    import pandas as pd  # 局部导入：测试内一次性
+
+    from backtest.broker import BacktestBroker
+    from backtest.engine import BacktestEngine
+    from backtest.feed import ParquetDailyFeed
+    from backtest.fees import make_fee_model
+    from backtest.ledger import Ledger
+    from backtest.matching import MatchEngine
+    from backtest.metrics import compute_metrics
+
+    frame = pd.DataFrame(_rows(), columns=[
+        "date", "open", "high", "low", "close", "preclose", "volume",
+        "amount", "turn", "pctChg", "tradestatus", "isST", "code",
+        "adjust_mode", "source"])
+    feed = ParquetDailyFeed(
+        preloaded={_SY: frame},
+        trade_calendar=lambda s, e: [d for d in _DAYS if s <= d <= e])
+    ledger = Ledger(D("120000"), date=_DAYS[0])
+    broker = BacktestBroker(
+        MatchEngine(fee_model=make_fee_model()), ledger, feed)
+    result = BacktestEngine(broker, feed).run(
+        _ToyStrategy(), _DAYS[0], _DAYS[-1])
+    return compute_metrics(result, risk_free_annual=D("0.02"))
+
+
+class TestSameParamRerunConsistency:
+    """FR-REP-2 核心验收：同参重跑两条登记，除 run_id/timestamp 外逐字段一致。"""
+
+    def test_rerun_identical_except_run_id_and_time(self, tmp_path) -> None:
+        params = {"strategy": "toy", "cash": D("120000"), "seed_note": "hd50"}
+        report_a = _run_once()
+        report_b = _run_once()                       # 第二遍：独立重建全栈
+
+        clocks = iter([_clock(d=1), _clock(d=2)])    # 逐次推进的注入时钟
+        reg = ExperimentRegistry(
+            tmp_path / "exp", code_version="abc1234",
+            data_version="sha256:fixture-frame-v1",
+            clock=lambda: next(clocks)())
+
+        rid_a = reg.record_run(params, report_a, seed=7)
+        rid_b = reg.record_run(params, report_b, seed=7)
+        assert rid_a != rid_b                        # run_id 唯一（时间戳分量不同）
+
+        runs_dir = tmp_path / "exp" / "runs"
+        a = json.loads((runs_dir / f"{rid_a}.json").read_text("utf-8"))
+        b = json.loads((runs_dir / f"{rid_b}.json").read_text("utf-8"))
+        # 同参重跑一致：参数 hash / 指标 / 出处三件套 / 种子全同
+        for key in ("params_hash", "params", "metrics",
+                    "code_version", "data_version", "seed", "status"):
+            assert a[key] == b[key], f"字段 {key} 不一致：{a[key]!r} vs {b[key]!r}"
+        # 时间戳必须不同（否则撞 run_id）
+        assert a["timestamp"] != b["timestamp"]
+        # ISO 8601 带偏移可解析（FR-REP-2 时间戳口径）
+        from datetime import datetime as _dt
+        assert _dt.fromisoformat(a["timestamp"]).tzinfo is not None
