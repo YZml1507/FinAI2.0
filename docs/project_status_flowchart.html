@@ -94,9 +94,9 @@
     ｜ 复核日：<b>2026-09-01</b></p>
   <p style="margin-top:8px;">
     <span class="tag green">R1–R5 已清零</span>
-    <span class="tag green">352 离线单测全绿（2026-09-01 复跑实证）</span>
+    <span class="tag green">370 离线单测全绿（2026-09-01 复跑实证）</span>
     <span class="tag green">Phase 1 数据层（T101–T110）已清零 · G2 通过</span>
-    <span class="tag blue">当前：Phase 2 回测引擎（T201/T202/T203 ✅ · T204–T207 待启动）</span>
+    <span class="tag blue">当前：Phase 2 回测引擎（T201–T204 ✅ · T205–T207 待启动）</span>
   </p>
 </header>
 
@@ -117,7 +117,7 @@
       <span class="badge">OK</span>
       <div class="id">REPO-1</div>
       <div class="nm">代码仓 FinAI2.0</div>
-      <div class="st">GitHub 私有仓 YZml1507/FinAI2.0<br>本地 HEAD edd8d2f + 状态标记提交（2026-09-01 已复核并推送）</div>
+      <div class="st">GitHub 私有仓 YZml1507/FinAI2.0<br>本地 HEAD ccd693c + 状态标记提交（2026-09-01 已复核并推送）</div>
       <div class="why">origin = github.com/YZml1507/FinAI2.0.git；已推送</div>
     </div>
     <div class="conn"><span class="cap">remote research →</span>→</div>
@@ -125,8 +125,8 @@
       <span class="badge">OK</span>
       <div class="id">REPO-2</div>
       <div class="nm">计划仓 research-finai</div>
-      <div class="st">GitHub 私有仓 YZml1507/research-finai<br>本地 HEAD 05ba8cf（2026-09-01 已复核并推送）</div>
-      <div class="why">spec/plan/tasks + 宪法三件套；T101–T110 / T201–T203 已勾（至 TK-9），已推送</div>
+      <div class="st">GitHub 私有仓 YZml1507/research-finai<br>本地 HEAD 25ce4fc（2026-09-01 已复核并推送）</div>
+      <div class="why">spec/plan/tasks + 宪法三件套；T101–T110 / T201–T204 已勾（至 TK-10），已推送</div>
     </div>
     <div class="conn"><span class="cap">旧仓已删 →</span>→</div>
     <div class="node queued deleted">
@@ -204,17 +204,17 @@
     </div>
     <div class="conn"><span class="cap">→</span>→</div>
     <div class="node ok">
-      <span class="badge">352✓</span>
+      <span class="badge">370✓</span>
       <div class="id">UT</div>
-      <div class="nm">离线单测 352 passed</div>
-      <div class="st">162 原有 + T201×140 + T202×17 + T203×33<br>2026-09-01 复跑：352 passed ✅（exit 0）</div>
+      <div class="nm">离线单测 370 passed</div>
+      <div class="st">162 原有 + T201×140 + T202×17 + T203×33 + T204×18<br>2026-09-01 复跑：370 passed ✅（exit 0）</div>
     </div>
     <div class="conn"><span class="cap">→ Phase 2</span>→</div>
     <div class="node info">
       <span class="badge" style="background:var(--info)">NOW</span>
       <div class="id">CUR</div>
       <div class="nm">当前：Phase 2 回测引擎</div>
-      <div class="st">Phase 1 数据层 T101–T110 全 ✅（G2 通过）<br>T201/T202 ✅（8fca14f）· T203 费用模型 ✅（edd8d2f，352 绿）· T204 成交模型待启动</div>
+      <div class="st">Phase 1 数据层 T101–T110 全 ✅（G2 通过）<br>T201/T202 ✅（8fca14f）· T203 ✅（edd8d2f）· T204 ✅（ccd693c，370 绿）· T205 指标待启动</div>
     </div>
   </div>
 </section>
@@ -311,7 +311,7 @@
 
 <!-- ═══════════ 后续阶段 ═══════════ -->
 <section class="phase" style="border-color:var(--info);">
-  <div class="phase-title"><h2>Ⓓ Phase 2 · 回测引擎（T201–T207）</h2><span class="cur-marker">当前工作带：T201–T203 ✅ · T204 待启动</span><span class="gates">G3</span></div>
+  <div class="phase-title"><h2>Ⓓ Phase 2 · 回测引擎（T201–T207）</h2><span class="cur-marker">当前工作带：T201–T204 ✅ · T205 待启动</span><span class="gates">G3</span></div>
   <div class="row">
     <div class="node ok">
       <span class="badge">OK</span>
@@ -334,14 +334,20 @@
       <div class="st">佣金 5 元最低/印花税/过户费/经手费/滑点（07 号核对表）</div>
       <div class="why">✅ 2026-09-01 已入库（commit edd8d2f）：六科目带生效日分段费率唯一登记点 + 逐项 ROUND_HALF_UP 到分 + make_fee_model 注入撮合（规则 7 万三垫→精确费用；黄金算例 10 万往返 112.82 元）；离线单测 33 绿；tasks.md 已勾（TK-9）</div>
     </div>
-    <div class="node info">
-      <span class="badge" style="background:var(--info)">NOW</span>
+    <div class="node ok">
+      <span class="badge">OK</span>
       <div class="id">T204</div>
       <div class="nm">成交模型默认次一开盘</div>
       <div class="st">显式声明 + 敏感度对比（FR-BT-6）</div>
-      <div class="why">🔄 待启动：price_model 注入点（对称 fee_model，契约 T201 §7 已预留）+ 滑点入价（fees.apply_slippage，不越涨跌停）+ 口径敏感度对比（次一开盘/次一收盘/VWAP 近似 × 滑点 0/5/15bps）</div>
+      <div class="why">✅ 2026-09-01 已入库（commit ccd693c）：price_model 注入点（默认 bar.open 向后兼容）+ make_price_model（滑点 + tick 0.01 + 可选涨跌停限幅）+ 九宫格敏感度对比 docs/t204_price_model_sensitivity.md；离线单测 18 绿；tasks.md 已勾（TK-10）</div>
     </div>
-    <div class="node queued"><div class="id">T205</div><div class="nm">绩效与风控指标</div><div class="st">收益/波动/回撤/夏普/换手/胜率/热力图（FR-REP-1）</div></div>
+    <div class="node info">
+      <span class="badge" style="background:var(--info)">NOW</span>
+      <div class="id">T205</div>
+      <div class="nm">绩效与风控指标</div>
+      <div class="st">收益/波动/回撤/夏普/换手/胜率/热力图（FR-REP-1）</div>
+      <div class="why">🔄 待启动：backtest/metrics.py 纯函数 compute_metrics(result)——CAGR / 年化波动 / 最大回撤（peak/trough/recovery 区间）/ 夏普（R_f 可配置显式声明）/ 单边年换手 / 费用汇总 / 胜率（FIFO 配对）/ 月度热力图矩阵</div>
+    </div>
     <div class="node queued"><div class="id">T206</div><div class="nm">实验 registry</div><div class="st">参数/代码/数据版本/指标/时间戳（FR-REP-2）</div></div>
     <div class="node queued"><div class="id">T207</div><div class="nm">门禁 G3</div><div class="st">5 必挂全绿（已过 ✅）+ 成本逐项核对（费用模型已入库 ✅，待出逐项核对报告 + 红利税简化项评估）</div></div>
   </div>
@@ -423,11 +429,11 @@
   <div class="note">2026-09-01 复核窗口实测；另说明：上一窗口（09-01 白天）完成 T201/T202 代码后在「留痕收口」中途被中断，本窗补齐标记、流程图与推送。</div>
   <pre>
 【本地 Git（2026-09-01 复核）】            ✅ 两仓一致且已推送
-  FinAI2.0      HEAD = edd8d2f（backtest：T203 费用模型入库）+ 状态标记提交；已推 origin/master
-  research-finai HEAD = 05ba8cf（tasks.md：勾 T203 + TK-9 修订行）；已推 origin/master
-  此前：8fca14f（T201/T202）/ fd67351（T201/T202 勾选 TK-8）
+  FinAI2.0      HEAD = ccd693c（backtest：T204 成交模型入库）+ 状态标记提交；已推 origin/master
+  research-finai HEAD = 25ce4fc（tasks.md：勾 T204 + TK-10 修订行）；已推 origin/master
+  此前：edd8d2f（T203）/ 05ba8cf（T203 勾选 TK-9）；8fca14f / fd67351（T201/T202 + TK-8）
 
-【离线单测】                             ✅ 352 passed（162 原有 + T201×140 + T202×17 + T203×33；2026-09-01 本窗复跑 exit 0）
+【离线单测】                             ✅ 370 passed（162 原有 + T201×140 + T202×17 + T203×33 + T204×18；2026-09-01 复跑 exit 0）
   py -3.11 -m pytest tests/ -p no:ddtrace -p no:ddtrace.pytest_bdd -p no:ddtrace.pytest_benchmark -q
 
 【计划任务】                             ✅ 10 个 FinAI_* 全部 Disabled（2026-09-01 Get-ScheduledTask 复测）
@@ -446,8 +452,10 @@
   ✅ T203 费用模型（tests/test_t203_fees.py 33 例）：六科目分段费率逐项透视（佣金 ¥5 最低 / 印花税仅卖分段 /
      过户费双边分段 / 经手费沪深与北交所独立路径 / 证管费 / 滑点 5bps·15bps 压测）+ make_fee_model 注入撮合
      （规则 7 万三垫→精确费用）；07 号黄金算例核对：10 万往返逐项口径 112.82 元（vs 含规费全佣 102.00）
-  ⏭ 后续：T204 成交模型（价格模型注入点 + 滑点入价 + 敏感度对比）→ T205 指标 → T206 registry → T207 门禁 G3
-     （成本逐项核对报告 + 红利税简化项评估）
+  ✅ T204 成交模型（tests/test_t204_price_model.py 18 例）：price_model 注入点（默认 bar.open 兼容）+
+     make_price_model（滑点 + tick 0.01 + 可选涨跌停限幅）；九宫格敏感度对比固化
+     docs/t204_price_model_sensitivity.md（改口径即红）
+  ⏭ 后续：T205 绩效指标 → T206 registry → T207 门禁 G3（成本逐项核对报告 + 红利税简化项评估）
   </pre>
 </details>
 
