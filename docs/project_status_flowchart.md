@@ -31,7 +31,7 @@ flowchart LR
   G0[G0 spec 三件套齐备 ✅] --> R15[R1–R5 清零 ✅ af20d85] --> UT[319 离线单测全绿 ✅ 2026-09-01]
   UT --> P1[Phase 1 数据层 ✅ 全清零<br/>T101–T110 全 ✅]
   P1 --> G2[G2 三源验收 ✅]
-  G2 --> P2C[Phase 2 回测引擎 ⏵当前<br/>T201–T205 ✅ 全入库<br/>T206–T207 待启动]
+  G2 --> P2C[Phase 2 回测引擎 ⏵当前<br/>T201–T206 ✅ 全入库<br/>T207 门禁 G3 待启动]
   style G0 fill:#dcfce7,stroke:#16a34a
   style R15 fill:#dcfce7,stroke:#16a34a
   style UT fill:#dcfce7,stroke:#16a34a
@@ -67,13 +67,13 @@ flowchart LR
   style T110 fill:#dcfce7,stroke:#16a34a
 ```
 
-> ✅ **Phase 1 全清零（2026-08-31）**：T105（`8282cd4`，62 绿）/ T106+T107（`5e08574`，127 绿）/ T110（`2ffbf7b`，152 绿）/ T109（`c5d75bf`，162 绿）全部入库并勾选，G2 门禁通过。结构 = Parquet 落盘（`data/daily_bars/{symbol}/{year}.parquet`）+ `data/` 包（collector✅/cleaner✅/financial_pit✅/universe✅/incremental✅/acceptance✅ 全部入库）。**其后 Phase 2 回测引擎：T201 引擎核心 + T202 五必挂用例已入库**（2026-09-01，commit `8fca14f`，319 离线单测绿）；**T203 费用模型已入库**（2026-09-01，commit `edd8d2f`，352 离线单测绿）；**T204 成交模型已入库**（2026-09-01，commit `ccd693c`，370 离线单测绿）；**T205 绩效指标已入库**（2026-09-01，commit `63f5935`，383 离线单测绿：`backtest/metrics.py` 纯函数 compute_metrics → PerformanceReport 全指标）；T206–T207 待启动。
+> ✅ **Phase 1 全清零（2026-08-31）**：T105（`8282cd4`，62 绿）/ T106+T107（`5e08574`，127 绿）/ T110（`2ffbf7b`，152 绿）/ T109（`c5d75bf`，162 绿）全部入库并勾选，G2 门禁通过。结构 = Parquet 落盘（`data/daily_bars/{symbol}/{year}.parquet`）+ `data/` 包（collector✅/cleaner✅/financial_pit✅/universe✅/incremental✅/acceptance✅ 全部入库）。**其后 Phase 2 回测引擎：T201 引擎核心 + T202 五必挂用例已入库**（2026-09-01，commit `8fca14f`，319 离线单测绿）；**T203 费用模型已入库**（2026-09-01，commit `edd8d2f`，352 离线单测绿）；**T204 成交模型已入库**（2026-09-01，commit `ccd693c`，370 离线单测绿）；**T205 绩效指标已入库**（2026-09-01，commit `63f5935`+`7eed8e3`，383 离线单测绿）；**T206 实验 registry 已入库**（2026-09-01，commit `59a127b`，394 离线单测绿：`reporting/registry.py` 出处三件套+run_id 幂等拒重+原子写+index.jsonl）；T207 门禁待启动。
 
 ## Phase 2–6 路线（Phase 2 进行中）
 
 ```mermaid
 flowchart LR
-  P2[Phase 2 回测引擎 ⏵当前<br/>T201–T205 ✅ / T206 / T207 / G3] --> P3[Phase 3 策略与组合<br/>T301–T305 / G4]
+  P2[Phase 2 回测引擎 ⏵当前<br/>T201–T206 ✅ / T207 / G3] --> P3[Phase 3 策略与组合<br/>T301–T305 / G4]
   P3 --> P4[Phase 4 模拟盘 ≥6 个月<br/>T401–T406 / G5 前半]
   P4 --> P5[Phase 5 小额实盘<br/>T501–T505 / G6]
   P5 --> P6[Phase 6 运营迭代<br/>T601–T605]
@@ -97,17 +97,17 @@ flowchart LR
 
 | 项目 | 结果 | 证据 |
 |---|---|---|
-| 代码仓 HEAD | ✅ `63f5935`（T205 绩效指标入库）+ 本状态标记提交 | 本地 `git rev-parse HEAD` |
-| 计划仓 HEAD | ✅ `f337f0e`（tasks.md 勾 T205 + TK-11 修订日志） | 本地 `git rev-parse HEAD` |
+| 代码仓 HEAD | ✅ `59a127b`（T206 registry 入库 + T205 Calmar 补丁）+ 本状态标记提交 | 本地 `git rev-parse HEAD` |
+| 计划仓 HEAD | ✅ `c72d132`（tasks.md 勾 T206 + TK-12 修订日志） | 本地 `git rev-parse HEAD` |
 | spec 快照一致 | ✅ `docs/spec/001-…/tasks.md` 与计划仓逐字节一致 | SHA-256 双端同值（2026-09-01） |
-| 两仓已推送 | ✅ FinAI2.0（`ccd693c..63f5935` + 本提交）/ research-finai（`25ce4fc..f337f0e`） | `git push origin master` 输出 |
+| 两仓已推送 | ✅ FinAI2.0（`63f5935..59a127b` + 本提交）/ research-finai（`f337f0e..c72d132`） | `git push origin master` 输出 |
 | GitHub Private | ✅ 两仓均 Private | 凭证凭据（user=YZml1507） |
 | 旧仓 FinAI | ✅ 已删除 | `Test-Path D:\Projects\FinAI = False` |
 | 10 个计划任务 | ✅ 全部 Disabled（2026-09-01 复测） | `Get-ScheduledTask` 输出 |
 | FINDING 台账 | ✅ 370 行（2026-09-01 复测） | `Select-String -Pattern "FINDING-"` |
 | 红线路径 | ✅ 7/7 存在 | `Test-Path` 逐个核对 |
 | 占位包 6 个 | ✅ 存在 | `accounting/backtest/ops/reporting/strategy/data` |
-| 离线单测 | ✅ **383 passed**（162 原有 + T201×140 + T202×17 + T203×33 + T204×18 + T205×13；2026-09-01 复跑 exit 0） | `py -3.11 -m pytest tests/ …` |
+| 离线单测 | ✅ **394 passed**（162 原有 + T201×140 + T202×17 + T203×33 + T204×18 + T205×13+Calmar×1 + T206×10；复跑 exit 0） | `py -3.11 -m pytest tests/ …` |
 | T001 告警通道 | ✅ 已拍板飞书 | `.specify/memory/alert_channel.md` |
 | T101–T104 | ✅ 全部勾选 | tasks.md（research-finai） |
 | T105 / T108 | ✅ 已入库并勾选 | commit `8282cd4`；tasks.md `[x]` |
@@ -117,10 +117,11 @@ flowchart LR
 | T201 / T202 | ✅ 已入库并勾选（2026-09-01） | commit `8fca14f`；tasks.md `[x]` + TK-8 |
 | T203 费用模型 | ✅ 已入库并勾选（2026-09-01） | commit `edd8d2f`；tasks.md `[x]` + TK-9；07 号逐项核对（黄金算例 10 万往返逐项口径 112.82 元） |
 | T204 成交模型 | ✅ 已入库并勾选（2026-09-01） | commit `ccd693c`；tasks.md `[x]` + TK-10；敏感度对比 `docs/t204_price_model_sensitivity.md` |
-| T205 绩效指标 | ✅ 已入库并勾选（2026-09-01） | commit `63f5935`；tasks.md `[x]` + TK-11 |
-| T206–T207 | ⬜ 待启动 | T206 registry / T207 门禁 G3（成本逐项核对 + 红利税简化项评估） |
+| T205 绩效指标 | ✅ 已入库并勾选（2026-09-01；含 Calmar 补丁） | commit `63f5935`+`7eed8e3`；tasks.md `[x]` + TK-11 |
+| T206 实验 registry | ✅ 已入库并勾选（2026-09-01） | commit `59a127b`；tasks.md `[x]` + TK-12 |
+| T207 门禁 G3 | ⬜ 待启动 | 五必挂复跑（已过 ✅）+ 成本逐项核对报告 + 红利税简化项评估 |
 | 测试产物残留 | ✅ 无新增残留 | 测试走 tmp_path；审计临时目录用完即删 |
-| research-finai 工作树 | ✅ 干净（`f337f0e` 已提交） | `git status` |
+| research-finai 工作树 | ✅ 干净（`c72d132` 已提交） | `git status` |
 
 ---
 

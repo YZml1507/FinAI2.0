@@ -94,9 +94,9 @@
     ｜ 复核日：<b>2026-09-01</b></p>
   <p style="margin-top:8px;">
     <span class="tag green">R1–R5 已清零</span>
-    <span class="tag green">383 离线单测全绿（2026-09-01 复跑实证）</span>
+    <span class="tag green">394 离线单测全绿（2026-09-01 复跑实证）</span>
     <span class="tag green">Phase 1 数据层（T101–T110）已清零 · G2 通过</span>
-    <span class="tag blue">当前：Phase 2 回测引擎（T201–T205 ✅ · T206 / T207 待启动）</span>
+    <span class="tag blue">当前：Phase 2 回测引擎（T201–T206 ✅ · T207 门禁 G3 待启动）</span>
   </p>
 </header>
 
@@ -117,7 +117,7 @@
       <span class="badge">OK</span>
       <div class="id">REPO-1</div>
       <div class="nm">代码仓 FinAI2.0</div>
-      <div class="st">GitHub 私有仓 YZml1507/FinAI2.0<br>本地 HEAD 63f5935 + 状态标记提交（2026-09-01 已复核并推送）</div>
+      <div class="st">GitHub 私有仓 YZml1507/FinAI2.0<br>本地 HEAD 59a127b + 状态标记提交（2026-09-01 已复核并推送）</div>
       <div class="why">origin = github.com/YZml1507/FinAI2.0.git；已推送</div>
     </div>
     <div class="conn"><span class="cap">remote research →</span>→</div>
@@ -125,8 +125,8 @@
       <span class="badge">OK</span>
       <div class="id">REPO-2</div>
       <div class="nm">计划仓 research-finai</div>
-      <div class="st">GitHub 私有仓 YZml1507/research-finai<br>本地 HEAD f337f0e（2026-09-01 已复核并推送）</div>
-      <div class="why">spec/plan/tasks + 宪法三件套；T101–T110 / T201–T205 已勾（至 TK-11），已推送</div>
+      <div class="st">GitHub 私有仓 YZml1507/research-finai<br>本地 HEAD c72d132（2026-09-01 已复核并推送）</div>
+      <div class="why">spec/plan/tasks + 宪法三件套；T101–T110 / T201–T206 已勾（至 TK-12），已推送</div>
     </div>
     <div class="conn"><span class="cap">旧仓已删 →</span>→</div>
     <div class="node queued deleted">
@@ -204,17 +204,17 @@
     </div>
     <div class="conn"><span class="cap">→</span>→</div>
     <div class="node ok">
-      <span class="badge">383✓</span>
+      <span class="badge">394✓</span>
       <div class="id">UT</div>
-      <div class="nm">离线单测 383 passed</div>
-      <div class="st">162 原有 + T201×140 + T202×17 + T203×33 + T204×18 + T205×13<br>2026-09-01 复跑：383 passed ✅（exit 0）</div>
+      <div class="nm">离线单测 394 passed</div>
+      <div class="st">162 原有 + T201×140 + T202×17 + T203×33 + T204×18 + T205×13+Calmar×1 + T206×10<br>2026-09-01 复跑：394 passed ✅（exit 0）</div>
     </div>
     <div class="conn"><span class="cap">→ Phase 2</span>→</div>
     <div class="node info">
       <span class="badge" style="background:var(--info)">NOW</span>
       <div class="id">CUR</div>
       <div class="nm">当前：Phase 2 回测引擎</div>
-      <div class="st">Phase 1 数据层 T101–T110 全 ✅（G2 通过）<br>T201/T202 ✅ · T203 ✅ · T204 ✅ · T205 指标 ✅（63f5935，383 绿）· T206 registry 待启动</div>
+      <div class="st">Phase 1 数据层 T101–T110 全 ✅（G2 通过）<br>T201–T205 ✅ · T206 registry ✅（59a127b，394 绿）· T207 门禁 G3 待启动</div>
     </div>
   </div>
 </section>
@@ -311,7 +311,7 @@
 
 <!-- ═══════════ 后续阶段 ═══════════ -->
 <section class="phase" style="border-color:var(--info);">
-  <div class="phase-title"><h2>Ⓓ Phase 2 · 回测引擎（T201–T207）</h2><span class="cur-marker">当前工作带：T201–T205 ✅ · T206 待启动</span><span class="gates">G3</span></div>
+  <div class="phase-title"><h2>Ⓓ Phase 2 · 回测引擎（T201–T207）</h2><span class="cur-marker">当前工作带：T201–T206 ✅ · T207 门禁 G3 待启动</span><span class="gates">G3</span></div>
   <div class="row">
     <div class="node ok">
       <span class="badge">OK</span>
@@ -348,14 +348,20 @@
       <div class="st">收益/波动/回撤/夏普/换手/胜率/热力图（FR-REP-1）</div>
       <div class="why">✅ 2026-09-01 已入库（commit 63f5935）：metrics.py 纯函数 compute_metrics → PerformanceReport（CAGR/年化波动/回撤三日期/夏普 R_f 显式声明/单边换手/FIFO 胜率/费用六键汇总/月度矩阵）；离线单测 13 绿；tasks.md 已勾（TK-11）</div>
     </div>
-    <div class="node info">
-      <span class="badge" style="background:var(--info)">NOW</span>
+    <div class="node ok">
+      <span class="badge">OK</span>
       <div class="id">T206</div>
       <div class="nm">实验 registry</div>
       <div class="st">参数/代码/数据版本/指标/时间戳（FR-REP-2）</div>
-      <div class="why">🔄 待启动：reporting/registry.py（引擎外层包装，不动 T201 契约）；run_id=时间戳-git短哈希；参数 canonical 复用 ledger tx_hash 尺；原子写 .tmp→os.replace；同 run_id 拒重</div>
+      <div class="why">✅ 2026-09-01 已入库（commit 59a127b）：reporting/registry.py 引擎外层包装；出处三件套注入式 + run_id 幂等拒重 + canonical 同 tx_hash 尺 + 原子写 + index.jsonl；离线单测 10 绿；tasks.md 已勾（TK-12）</div>
     </div>
-    <div class="node queued"><div class="id">T207</div><div class="nm">门禁 G3</div><div class="st">5 必挂全绿（已过 ✅）+ 成本逐项核对（费用模型已入库 ✅，待出逐项核对报告 + 红利税简化项评估）</div></div>
+    <div class="node info">
+      <span class="badge" style="background:var(--info)">NOW</span>
+      <div class="id">T207</div>
+      <div class="nm">门禁 G3</div>
+      <div class="st">5 必挂全绿（已过 ✅）+ 成本逐项核对</div>
+      <div class="why">🔄 待启动：复跑五必挂确认 + 出成本逐项核对报告（07 号表 vs T203 实测）+ 红利税简化项评估（T3 开启与否的量化影响）+ Phase 2 收尾标记</div>
+    </div>
   </div>
 </section>
 
@@ -435,11 +441,11 @@
   <div class="note">2026-09-01 复核窗口实测；另说明：上一窗口（09-01 白天）完成 T201/T202 代码后在「留痕收口」中途被中断，本窗补齐标记、流程图与推送。</div>
   <pre>
 【本地 Git（2026-09-01 复核）】            ✅ 两仓一致且已推送
-  FinAI2.0      HEAD = 63f5935（backtest：T205 绩效指标入库）+ 状态标记提交；已推 origin/master
-  research-finai HEAD = f337f0e（tasks.md：勾 T205 + TK-11 修订行）；已推 origin/master
-  此前链：8fca14f(T201/T202) → edd8d2f(T203) → ccd693c(T204) → 63f5935(T205)
+  FinAI2.0      HEAD = 59a127b（reporting：T206 registry 入库）+ 状态标记提交；已推 origin/master
+  research-finai HEAD = c72d132（tasks.md：勾 T206 + TK-12 修订行）；已推 origin/master
+  链：8fca14f(T201/T202) → edd8d2f(T203) → ccd693c(T204) → 63f5935(T205) → 7eed8e3(Calmar) → 59a127b(T206)
 
-【离线单测】                             ✅ 383 passed（162 原有 + T201×140 + T202×17 + T203×33 + T204×18 + T205×13；复跑 exit 0）
+【离线单测】                             ✅ 394 passed（162 原有 + T201×140 + T202×17 + T203×33 + T204×18 + T205×13+Calmar×1 + T206×10；exit 0）
   py -3.11 -m pytest tests/ -p no:ddtrace -p no:ddtrace.pytest_bdd -p no:ddtrace.pytest_benchmark -q
 
 【计划任务】                             ✅ 10 个 FinAI_* 全部 Disabled（2026-09-01 Get-ScheduledTask 复测）
@@ -461,9 +467,11 @@
   ✅ T204 成交模型（tests/test_t204_price_model.py 18 例）：price_model 注入点（默认 bar.open 兼容）+
      make_price_model（滑点 + tick 0.01 + 可选涨跌停限幅）；九宫格敏感度对比固化
      docs/t204_price_model_sensitivity.md（改口径即红）
-  ✅ T205 绩效指标（tests/test_t205_metrics.py 13 例）：metrics.py 纯函数 compute_metrics → PerformanceReport；
-     CAGR/波动/回撤三日期/夏普（R_f 显式）/换手/FIFO 胜率/费用六键/月度矩阵；fail-closed 全 raise
-  ⏭ 后续：T206 实验 registry → T207 门禁 G3（成本逐项核对报告 + 红利税简化项评估）
+  ✅ T205 绩效指标（tests/test_t205_metrics.py 13+1 例）：metrics.py 纯函数 → PerformanceReport；
+     CAGR/波动/回撤三日期/夏普（R_f 显式）/换手/FIFO 胜率/费用六键/月度矩阵 + Calmar 补丁
+  ✅ T206 实验 registry（tests/test_t206_registry.py 10 例）：reporting/registry.py；run_id 幂等拒重 /
+     出处三件套 / canonical 参数尺 / 原子写 / 状态机三态
+  ⏭ 后续：T207 门禁 G3（复跑五必挂 + 成本逐项核对报告 + 红利税简化项评估）→ Phase 2 清零
   </pre>
 </details>
 
