@@ -132,17 +132,30 @@ class MatchContext:
 #: 费用模型注入点（T203）：``(order, fill_price, volume, bar) -> {FeeItem: Decimal}``。
 FeeModelFn = Callable[[Order, Decimal, int, Bar], Mapping[FeeItem, Decimal]]
 
+#: 成交价模型注入点（T204）：``(order, bar) -> 实际成交价``。
+#: ``None`` ⇒ 默认 ``bar.open``（次一开盘，FR-BT-6）。语义声明 + 敏感度对比
+#: 见 ``docs/t204_price_model_sensitivity.md``。
+PriceModelFn = Callable[[Order, Bar], Decimal]
+
 
 class MatchEngine:
     """纯函数撮合，无状态 —— 可安全共享单例、可跨环境复用。"""
 
-    def __init__(self, fee_model: FeeModelFn | None = None) -> None:
+    def __init__(
+        self,
+        fee_model: FeeModelFn | None = None,
+        price_model: PriceModelFn | None = None,
+    ) -> None:
         """
         Args:
             fee_model: 可选费用模型（T203 落地后注入）。``None`` ⇒ 四个必填科目
                 置 0，规则 7 用 ``PREFLIGHT_FEE_RATE`` 做保守垫。
+            price_model: 可选成交价模型（T204）。``None`` ⇒ 规则 8 恒取
+                ``bar.open``（次一开盘，默认口径不变）；注入后由模型产出实际
+                成交价（如 开盘+滑点），规则 7 资金校验与 Trade.price 同步跟随。
         """
         self.fee_model = fee_model
+        self.price_model = price_model
 
     # ------------------------------------------------------------------ 公开 API
 
@@ -192,8 +205,15 @@ class MatchEngine:
         ):
             return MatchResult.REJECTED, None, REJECT_ODD_LOT_SELL
 
-        # 成交价 = 次一开盘（FR-BT-6；T204 可配置滑点/成交价模型）。
-        fill_price = bar.open
+        # 成交价：默认 = 次一开盘（FR-BT-6）；T204 起可由 price_model 注入
+        # （如 开盘+滑点）。规则 2/3 的涨跌停拒绝在价格模型**之前**（一字板语义），
+        # 滑点限幅由价格模型自身负责（13 号：滑点后成交价不越涨跌停价）。
+        fill_price = (
+            self.price_model(order, bar) if self.price_model is not None else bar.open
+        )
+        if not isinstance(fill_price, Decimal):
+            raise TypeError(
+                f"price_model 必须返回 Decimal（⛔ 禁 float）: {fill_price!r}")
         fees = self._fees(order, fill_price, volume, bar)
         total_fees = sum(fees.values(), _ZERO)
 

@@ -76,12 +76,17 @@ __all__ = [
     "compute_fees",
     "apply_slippage",
     "make_fee_model",
+    "make_price_model",
+    "TICK_SIZE",
 ]
 
 _ZERO = Decimal("0")
 _ONE = Decimal("1")
 #: 金额取整单位：分。A 股费用逐项计到分。
 MONEY_QUANT = Decimal("0.01")
+
+#: A 股价格最小变动单位（tick_size = 0.01 元，13 号 §7.46：成交价必须是合法 tick 的倍数）。
+TICK_SIZE = Decimal("0.01")
 
 #: 北交所代码前缀（07 号 §D）。``43``=新三板精选层平移、``83/87``=北交所新股、``92``=北交所存量。
 BJ_CODE_PREFIXES: tuple[str, ...] = ("43", "83", "87", "92")
@@ -401,3 +406,54 @@ def make_fee_model(
         )
 
     return _fee_model
+
+
+def make_price_model(
+    config: FeeConfig | None = None,
+    *,
+    limit_pct: Decimal | None = None,
+) -> Callable[[Order, Bar], Decimal]:
+    """T204 成交价模型 = 次一开盘 + 滑点 + tick 取整 + 可选涨跌停限幅（FR-BT-6 / FR-BT-7 / 13 号红线）。
+
+    步骤：``anchor = bar.open``（次一开盘 = 默认口径）→ :func:`apply_slippage`
+    按方向推价（BUY 更贵 / SELL 更贱）→ 按 ``TICK_SIZE``（0.01 元）ROUND_HALF_UP
+    取整（13 号：成交价必须是合法 tick 的倍数）→ ``limit_pct`` 非空时限幅到
+    ``[preclose×(1-pct), preclose×(1+pct)]``（同样 tick 取整；13 号：滑点后
+    成交价不得越涨跌停价）。
+
+    ⛔ 限幅是**价格层面**的最后闸，与撮合规则 2/3 的一字板拒单语义独立：
+    规则 2/3 处理「封板不可成交」，本层处理「非封板时滑点不越界」。
+
+    Args:
+        config: 费率配置（滑点率来源）；``None`` ⇒ :func:`default_fee_config`（5bps）。
+        limit_pct: 可选涨跌停幅度（如 ``Decimal("0.1")``）。``None`` ⇒ 只推价+取整，
+            不做限幅（调用方/数据层未提供幅度时的安全默认）。
+
+    Returns:
+        ``(order, bar) -> Decimal`` 纯函数闭包（``matching.PriceModelFn`` 形状）。
+    """
+    cfg = default_fee_config() if config is None else config
+    if limit_pct is not None:
+        if not isinstance(limit_pct, Decimal):
+            raise FeeError(f"limit_pct 须为 Decimal（⛔ 禁 float）: {limit_pct!r}")
+        if limit_pct <= _ZERO or limit_pct >= _ONE:
+            raise FeeError(f"limit_pct 须在 (0, 1) 内: {limit_pct}")
+
+    def _tick_round(p: Decimal) -> Decimal:
+        return p.quantize(TICK_SIZE, rounding=ROUND_HALF_UP)
+
+    def _price_model(order: Order, bar: Bar) -> Decimal:
+        slipped = apply_slippage(bar.open, order.side, cfg)
+        price = _tick_round(slipped)
+        if limit_pct is None:
+            return price
+        # 涨跌停限幅（13 号：滑点后成交价不越界）
+        limit_up = _tick_round(bar.preclose * (_ONE + limit_pct))
+        limit_down = _tick_round(bar.preclose * (_ONE - limit_pct))
+        if order.side is OrderSide.BUY and price > limit_up:
+            return limit_up
+        if order.side is OrderSide.SELL and price < limit_down:
+            return limit_down
+        return price
+
+    return _price_model
