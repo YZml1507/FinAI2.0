@@ -70,6 +70,7 @@ class PerformanceReport:
     max_dd_recovery: _date | None         # trough 后首个 nav≥peak 的日；未恢复 ⇒ None
     # —— 风险调整 ——
     sharpe_ratio: Decimal | None          # std=0 ⇒ None
+    calmar_ratio: Decimal | None          # CAGR / MDD（MDD=0 ⇒ None）；03 号建议项
     risk_free_annual: Decimal             # 回显口径（显式声明，spec 未钉值）
     # —— 活动与成本 ——
     annual_turnover: Decimal | None       # 平均 NAV=0 ⇒ None
@@ -296,6 +297,9 @@ def compute_metrics(
         max_drawdown=max_dd, max_dd_peak=dd_peak, max_dd_trough=dd_trough,
         max_dd_recovery=dd_recovery,
         sharpe_ratio=sharpe, risk_free_annual=risk_free_annual,
+        calmar_ratio=(
+            _q6(float(cagr) / float(max_dd)) if max_dd > 0 else None
+        ),
         annual_turnover=annual_turnover,
         win_rate=win_rate, round_trips=round_trips,
         fees_total=fees_total, fees_sum=fees_sum,

@@ -136,6 +136,17 @@ class TestSharpe:
         r = compute_metrics(_Result(_nav(_GOLD)), risk_free_annual=D("0.02"))
         assert r.sharpe_ratio == expected and r.risk_free_annual == D("0.02")
 
+    def test_calmar_ratio(self) -> None:
+        # Calmar = CAGR / MDD（03 号建议项）；MDD=0 ⇒ None（⛔ 不产 inf）
+        r = compute_metrics(_Result(_nav(_GOLD)), risk_free_annual=D("0.02"))
+        assert r.max_drawdown == D("0.25") and r.cagr == D0       # 5 日归零 ⇒ Calmar 0
+        assert r.calmar_ratio == D("0.000000")
+        up = compute_metrics(_Result(_nav([100, 110, 90, 130])), risk_free_annual=D("0.02"))
+        assert up.max_drawdown > 0 and up.cagr > 0
+        assert up.calmar_ratio is not None
+        flat_up = compute_metrics(_Result(_nav([100, 110, 120])), risk_free_annual=D("0.02"))
+        assert flat_up.max_drawdown == D0 and flat_up.calmar_ratio is None
+
 
 # ======================================================================
 # D. 换手 / 费用 / 胜率
