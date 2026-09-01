@@ -66,6 +66,6 @@ class FeeItem(str, Enum):
     COMMISSION = "COMMISSION"          # 佣金
     STAMP_TAX = "STAMP_TAX"            # 印花税（卖出单边 0.05%）
     TRANSFER_FEE = "TRANSFER_FEE"      # 过户费
-    HANDLING_FEE = "HANDLING_FEE"      # 经手费 / 证管费等规费
-    MANAGEMENT_FEE = "MANAGEMENT_FEE"  # 管理费（模拟组合层面摊销）
+    HANDLING_FEE = "HANDLING_FEE"      # 经手费（沪深 / 北交所分站费率，fees.py 逐项透视）
+    MANAGEMENT_FEE = "MANAGEMENT_FEE"  # 证管费（证监会规费 0.02‰ 双边；名含"管理"实为规费拆项，见 fees.py）
     SLIPPAGE = "SLIPPAGE"              # 滑点（建模为成本项，便于归因）
