@@ -96,7 +96,8 @@
     <span class="tag green">R1–R5 已清零</span>
     <span class="tag green">394 离线单测全绿（2026-09-01 复跑实证）</span>
     <span class="tag green">Phase 1 数据层（T101–T110）已清零 · G2 通过</span>
-    <span class="tag blue">当前：Phase 2 回测引擎（T201–T206 ✅ · T207 门禁 G3 待启动）</span>
+    <span class="tag green">Phase 2 回测引擎（T201–T207）已清零 · G3 通过</span>
+    <span class="tag blue">当前：Phase 3 策略与组合（T301–T305）待启动</span>
   </p>
 </header>
 
@@ -117,7 +118,7 @@
       <span class="badge">OK</span>
       <div class="id">REPO-1</div>
       <div class="nm">代码仓 FinAI2.0</div>
-      <div class="st">GitHub 私有仓 YZml1507/FinAI2.0<br>本地 HEAD 59a127b + 状态标记提交（2026-09-01 已复核并推送）</div>
+      <div class="st">GitHub 私有仓 YZml1507/FinAI2.0<br>本地 HEAD 0c52168 + 状态标记提交（2026-09-01 已复核并推送）</div>
       <div class="why">origin = github.com/YZml1507/FinAI2.0.git；已推送</div>
     </div>
     <div class="conn"><span class="cap">remote research →</span>→</div>
@@ -125,8 +126,8 @@
       <span class="badge">OK</span>
       <div class="id">REPO-2</div>
       <div class="nm">计划仓 research-finai</div>
-      <div class="st">GitHub 私有仓 YZml1507/research-finai<br>本地 HEAD c72d132（2026-09-01 已复核并推送）</div>
-      <div class="why">spec/plan/tasks + 宪法三件套；T101–T110 / T201–T206 已勾（至 TK-12），已推送</div>
+      <div class="st">GitHub 私有仓 YZml1507/research-finai<br>本地 HEAD 4adc368（2026-09-01 已复核并推送）</div>
+      <div class="why">spec/plan/tasks + 宪法三件套；T101–T110 / T201–T207 已勾（至 TK-13），已推送</div>
     </div>
     <div class="conn"><span class="cap">旧仓已删 →</span>→</div>
     <div class="node queued deleted">
@@ -214,7 +215,7 @@
       <span class="badge" style="background:var(--info)">NOW</span>
       <div class="id">CUR</div>
       <div class="nm">当前：Phase 2 回测引擎</div>
-      <div class="st">Phase 1 数据层 T101–T110 全 ✅（G2 通过）<br>T201–T205 ✅ · T206 registry ✅（59a127b，394 绿）· T207 门禁 G3 待启动</div>
+      <div class="st">Phase 2 回测引擎 T201–T207 全 ✅（G3 通过）<br>394 单测绿；五必挂逐项 PASS + 成本逐项核对 vs 07 号一致<br>Phase 3 策略层（T301–T305）待启动</div>
     </div>
   </div>
 </section>
@@ -310,8 +311,8 @@
 </section>
 
 <!-- ═══════════ 后续阶段 ═══════════ -->
-<section class="phase" style="border-color:var(--info);">
-  <div class="phase-title"><h2>Ⓓ Phase 2 · 回测引擎（T201–T207）</h2><span class="cur-marker">当前工作带：T201–T206 ✅ · T207 门禁 G3 待启动</span><span class="gates">G3</span></div>
+<section class="phase">
+  <div class="phase-title"><h2>Ⓓ Phase 2 · 回测引擎（T201–T207）✅ 已清零</h2><span class="tag green">T201–T207 全部入库并勾选 · G3 门禁通过</span><span class="gates">G3 → 已解锁 Phase 3</span></div>
   <div class="row">
     <div class="node ok">
       <span class="badge">OK</span>
@@ -355,18 +356,18 @@
       <div class="st">参数/代码/数据版本/指标/时间戳（FR-REP-2）</div>
       <div class="why">✅ 2026-09-01 已入库（commit 59a127b）：reporting/registry.py 引擎外层包装；出处三件套注入式 + run_id 幂等拒重 + canonical 同 tx_hash 尺 + 原子写 + index.jsonl；离线单测 10 绿；tasks.md 已勾（TK-12）</div>
     </div>
-    <div class="node info">
-      <span class="badge" style="background:var(--info)">NOW</span>
+    <div class="node ok">
+      <span class="badge">OK</span>
       <div class="id">T207</div>
       <div class="nm">门禁 G3</div>
-      <div class="st">5 必挂全绿（已过 ✅）+ 成本逐项核对</div>
-      <div class="why">🔄 待启动：复跑五必挂确认 + 出成本逐项核对报告（07 号表 vs T203 实测）+ 红利税简化项评估（T3 开启与否的量化影响）+ Phase 2 收尾标记</div>
+      <div class="st">5 必挂全绿 ✅ + 成本逐项核对</div>
+      <div class="why">✅ 2026-09-01 通过（commit 0c52168）：验收报告 docs/t207_g3_gate_acceptance.md——五必挂 17 例逐项 PASS + 成本六科目 vs 07 号逐项一致（黄金算例 112.82 元）+ 红利税评估 ≈0.4%/年 上限可接受</div>
     </div>
   </div>
 </section>
 
-<section class="phase">
-  <div class="phase-title"><h2>Ⓔ Phase 3 · 策略与组合（T301–T305）</h2><span class="meta">⛔ 依赖 G3 后解锁</span><span class="gates">G4（T305 技术评审汇报 → 交用户知会）</span></div>
+<section class="phase" style="border-color:var(--info);">
+  <div class="phase-title"><h2>Ⓔ Phase 3 · 策略与组合（T301–T305）</h2><span class="cur-marker">当前工作带：G3 已过，待启动 T301 组合管理器</span><span class="gates">G4（T305 技术评审汇报 → 交用户知会）</span></div>
   <div class="row">
     <div class="node queued"><div class="id">T301</div><div class="nm">组合管理器</div><div class="st">3-8 只/默认 5/硬顶 10/单票 ≥2 万/流动性过滤</div></div>
     <div class="node queued"><div class="id">T302</div><div class="nm">候选策略 v1</div><div class="st">日线中低频（多因子/动量组合）</div></div>
@@ -441,9 +442,10 @@
   <div class="note">2026-09-01 复核窗口实测；另说明：上一窗口（09-01 白天）完成 T201/T202 代码后在「留痕收口」中途被中断，本窗补齐标记、流程图与推送。</div>
   <pre>
 【本地 Git（2026-09-01 复核）】            ✅ 两仓一致且已推送
-  FinAI2.0      HEAD = 59a127b（reporting：T206 registry 入库）+ 状态标记提交；已推 origin/master
-  research-finai HEAD = c72d132（tasks.md：勾 T206 + TK-12 修订行）；已推 origin/master
-  链：8fca14f(T201/T202) → edd8d2f(T203) → ccd693c(T204) → 63f5935(T205) → 7eed8e3(Calmar) → 59a127b(T206)
+  FinAI2.0      HEAD = 0c52168（docs：T207 门禁 G3 验收报告入库）+ 状态标记提交；已推 origin/master
+  research-finai HEAD = 4adc368（tasks.md：勾 T207 + TK-13 修订行）；已推 origin/master
+  链：… → 63f5935(T205) → 7eed8e3(Calmar) → 59a127b(T206) → 0c52168(T207 门禁 G3 验收)；
+  Phase 2 全清零、G3 通过、Phase 3 解锁
 
 【离线单测】                             ✅ 394 passed（162 原有 + T201×140 + T202×17 + T203×33 + T204×18 + T205×13+Calmar×1 + T206×10；exit 0）
   py -3.11 -m pytest tests/ -p no:ddtrace -p no:ddtrace.pytest_bdd -p no:ddtrace.pytest_benchmark -q
@@ -471,7 +473,9 @@
      CAGR/波动/回撤三日期/夏普（R_f 显式）/换手/FIFO 胜率/费用六键/月度矩阵 + Calmar 补丁
   ✅ T206 实验 registry（tests/test_t206_registry.py 10 例）：reporting/registry.py；run_id 幂等拒重 /
      出处三件套 / canonical 参数尺 / 原子写 / 状态机三态
-  ⏭ 后续：T207 门禁 G3（复跑五必挂 + 成本逐项核对报告 + 红利税简化项评估）→ Phase 2 清零
+  ✅ T207 门禁 G3（docs/t207_g3_gate_acceptance.md）：五必挂 17 例逐项 PASS + 成本逐项核对
+     （六科目 vs 07 号全一致，黄金算例 112.82 元）+ 红利税简化项评估（≈0.4%/年 上限，策略层红旗）
+  ⏭ 后续：Phase 3 策略层 T301 组合管理器（3-8 只 / 默认 5 / 硬顶 10 / 单票 ≥2 万 / 流动性过滤）待启动
   </pre>
 </details>
 
