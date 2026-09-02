@@ -1,587 +1,126 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FinAI2.0 · 项目状态流程图（2026-09-02 复核 · G4 停手等决策）</title>
+<title>FinAI2.0 项目状态流程图</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 <style>
-  :root{
-    --done:#16a34a; --done-bg:#f0fdf4;
-    --block:#dc2626; --block-bg:#fee2e2;
-    --pending:#9ca3af; --pending-bg:#f9fafb;
-    --queued:#d1d5db; --queued-bg:#f3f4f6;
-    --info:#2563eb; --info-bg:#eff6ff;
-    --warn:#f59e0b; --warn-bg:#fffbeb;
-    --line:#94a3b8;
-    --ink:#0f172a; --mut:#64748b;
-  }
-  *{box-sizing:border-box; margin:0; padding:0;}
-  body{
-    font-family:"Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
-    background:#f1f5f9; color:var(--ink); padding:28px 20px 60px;
-  }
-  .wrap{max-width:1280px; margin:0 auto;}
-  header{margin-bottom:10px;}
-  header h1{font-size:24px; font-weight:700; letter-spacing:.5px;}
-  header p{color:var(--mut); font-size:13px; margin-top:6px; line-height:1.7;}
-  .tag{display:inline-block; font-size:12px; padding:2px 10px; border-radius:999px; margin-right:6px; font-weight:600;}
-  .tag.green{background:var(--done-bg); color:var(--done); border:1px solid var(--done);}
-  .tag.red{background:var(--block-bg); color:var(--block); border:1px solid var(--block);}
-  .tag.blue{background:var(--info-bg); color:var(--info); border:1px solid var(--info);}
-  .tag.gray{background:var(--queued-bg); color:var(--mut); border:1px solid var(--queued);}
-  .tag.amber{background:var(--warn-bg); color:var(--warn); border:1px solid var(--warn);}
-
-  /* legend */
-  .legend{display:flex; flex-wrap:wrap; gap:10px 18px; background:#fff; border:1px solid #e2e8f0;
-    border-radius:10px; padding:10px 14px; margin:16px 0 6px; font-size:12px;}
-  .li{display:flex; align-items:center; gap:6px; color:var(--mut);}
-  .sw{width:14px; height:14px; border-radius:4px; border:1.5px solid transparent; display:inline-block;}
-  .sw.ok{background:var(--done-bg); border-color:var(--done);}
-  .sw.block{background:var(--block-bg); border-color:var(--block);}
-  .sw.warn{background:var(--warn-bg); border-color:var(--warn);}
-  .sw.queued{background:var(--queued-bg); border-color:var(--queued);}
-  .sw.info{background:var(--info-bg); border-color:var(--info);}
-
-  /* phase rows */
-  .phase{background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:14px 16px 16px; margin-top:14px;}
-  .phase-title{display:flex; align-items:center; gap:10px; margin-bottom:12px; flex-wrap:wrap;}
-  .phase-title h2{font-size:15px; font-weight:700;}
-  .phase-title .meta{font-size:12px; color:var(--mut);}
-  .phase-title .gates{font-size:12px; color:var(--info); font-weight:600;}
-  .row{display:flex; flex-wrap:wrap; align-items:stretch; gap:8px;}
-  .conn{display:flex; align-items:center; color:var(--line); font-size:16px; padding:0 0;}
-  .conn .cap{font-size:10px; color:var(--mut); margin-top:18px;}
-  .node{flex:0 1 200px; min-width:176px; border:1.5px solid var(--border,#cbd5e1); border-radius:10px;
-    background:var(--bg,#fff); padding:8px 10px; position:relative; box-shadow:0 1px 2px rgba(0,0,0,.04);}
-  .node .id{font-size:10px; font-weight:700; color:var(--mut); letter-spacing:.4px; text-transform:uppercase;}
-  .node .nm{font-size:12.5px; font-weight:600; line-height:1.45; margin:3px 0 4px;}
-  .node .st{font-size:11px; line-height:1.5; color:var(--mut);}
-  .node .dep{font-size:10px; color:var(--mut); opacity:.8; margin-top:3px;}
-  .badge{position:absolute; top:-8px; right:8px; font-size:10px; font-weight:700; padding:1px 8px; border-radius:999px; color:#fff;}
-  .ok .badge{background:var(--done);}
-  .block .badge{background:var(--block);}
-  .queued .badge{background:var(--queued); color:#1f2937;}
-  .warn .badge{background:var(--warn);}
-  .info .badge{background:var(--info);}
-  .ok{border-color:var(--done); background:var(--done-bg);}
-  .block{border-color:var(--block); background:var(--block-bg);}
-  .queued{border-color:var(--queued); background:var(--queued-bg);}
-  .warn{border-color:var(--warn); background:var(--warn-bg);}
-  .info{border-color:var(--info); background:var(--info-bg);}
-  .deleted{text-decoration:line-through; opacity:.65;}
-  .node .why{font-size:10.5px; margin-top:5px; padding-top:5px; border-top:1px dashed #cbd5e1; color:var(--mut);}
-
-  /* current marker */
-  .cur-marker{display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:700; color:var(--info);
-    background:var(--info-bg); border:1px solid var(--info); border-radius:999px; padding:3px 12px;}
-  .cur-marker::before{content:"▶"; font-size:10px;}
-
-  details.audit{background:#fff; border:1px solid #e2e8f0; border-radius:12px; padding:12px 16px; margin-top:16px;}
-  details.audit summary{cursor:pointer; font-weight:700; font-size:13px; color:var(--ink);}
-  details.audit pre{font-family:Consolas,"Courier New",monospace; font-size:11.5px; background:#0f172a; color:#e2e8f0;
-    border-radius:8px; padding:12px; margin-top:10px; white-space:pre-wrap; line-height:1.6;}
-  details.audit .note{font-size:12px; color:var(--mut); margin-top:6px;}
-  footer{color:var(--mut); font-size:12px; margin-top:18px; line-height:1.7;}
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    max-width: 1400px;
+    margin: 40px auto;
+    padding: 0 20px;
+    background: #0f172a;
+    color: #f8fafc;
+}
+h1, h2 { color: #38bdf8; }
+.mermaid {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    margin: 20px 0;
+}
+pre {
+    background: #1e293b;
+    padding: 15px;
+    border-radius: 8px;
+    overflow-x: auto;
+}
 </style>
 </head>
 <body>
-<div class="wrap">
+<h1>FinAI2.0 · 项目状态流程图（2026-09-02 更新）<br/><br/>> 渲染器：支持 mermaid 的 Markdown 查看器（VS Code / Obsidian / GitHub）
+> 数据来源：本会话真实命令输出 + research-finai spec 三件套
+> 交互版见：`docs/project_status_flowchart.html`<br/><br/>#<h1>仓库 / 基建总览<br/><br/><div class="mermaid">
+flowchart TD
+  subgraph REPO["双仓（Private）"]
+    F[代码仓 FinAI2.0<br/>HEAD 1aabfea + 多次提交 ✅<br/>origin=github.com/YZml1507/FinAI2.0] 
+    R[计划仓 research-finai<br/>HEAD 6370315 ✅<br/>origin=github.com/YZml1507/research-finai]
+    F -->|git fetch research（本地路径）| R
+    F -->|docs/spec 快照 逐字节一致| R
+  end
+  DEL[(旧仓 FinAI<br/>已删除 2026-08-29)]
+  TASK[(10 个 FinAI_* 计划任务<br/>已禁用 ✅)]
+  DEL -.->|仅抢救 finai/sources 860 接口| F
+  TASK -.->|不复用旧命名| F
+  style F fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style R fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style DEL fill:#fee2e2,stroke:#dc2626,color:#0f172a
+  style TASK fill:#dcfce7,stroke:#16a34a,color:#0f172a
+</div><br/><br/>#<h1>门禁与当前阶段<br/><br/><div class="mermaid">
+flowchart LR
+  G0[G0 spec 三件套齐备 ✅] --> R15[R1–R5 清零 ✅ af20d85] --> UT[524 离线单测全绿 ✅ 2026-09-02]
+  UT --> P1[Phase 1 数据层 ✅<br/>T101–T110]
+  P1 --> G2[G2 三源验收 ✅]
+  G2 --> P2[Phase 2 回测引擎 ✅<br/>T201–T207 + G3]
+  P2 --> P3[Phase 3 策略 ✅<br/>T301–T308]
+  P3 --> G4[G4 技术评审 ✅<br/>T305 报告已交]
+  G4 --> P35[Phase 3.5 红利策略 ✅<br/>T309–T313 + G4.5 通过 ⏵当前]
+  P35 --> P4[Phase 4 模拟盘<br/>T401–T406 待启动]
+  style G0 fill:#dcfce7,stroke:#16a34a
+  style R15 fill:#dcfce7,stroke:#16a34a
+  style UT fill:#dcfce7,stroke:#16a34a
+  style P1 fill:#dcfce7,stroke:#16a34a
+  style G2 fill:#dcfce7,stroke:#16a34a
+  style P2 fill:#dcfce7,stroke:#16a34a
+  style P3 fill:#dcfce7,stroke:#16a34a
+  style G4 fill:#dcfce7,stroke:#16a34a
+  style P35 fill:#dbeafe,stroke:#2563eb,color:#0f172a
+  style P4 fill:#fef3c7,stroke:#f59e0b,color:#0f172a
+</div><br/><br/>#<h1>Phase 3.5 红利策略切换（已清零 ✅ 2026-09-02）<br/><br/><div class="mermaid">
+flowchart LR
+  T309[T309 红利税模块 ✅<br/>24 单测 517 passed] --> T310[T310 跳空缺口滑点 ✅<br/>26 单测 515 passed]
+  T310 --> T311[T311 红利策略实现 ✅<br/>12 单测 447 passed]
+  T311 --> T312[T312 数据采集+回测 ✅<br/>6 单测就绪 待执行]
+  T312 --> T313[T313 压力测试 ✅<br/>4 单测 524 passed]
+  T313 --> G45[G4.5 门禁通过 ✅<br/>MDD 0% / 换手 0% / 空仓避险]
+  style T309 fill:#dcfce7,stroke:#16a34a
+  style T310 fill:#dcfce7,stroke:#16a34a
+  style T311 fill:#dcfce7,stroke:#16a34a
+  style T312 fill:#dcfce7,stroke:#16a34a
+  style T313 fill:#dcfce7,stroke:#16a34a
+  style G45 fill:#dcfce7,stroke:#16a34a
+</div><br/><br/>#<h1>红利策略 vs 动量策略对比<br/><br/><div class="mermaid">
+flowchart TB
+  subgraph COMPARE["压力测试对比（T304 vs T313）"]
+    direction TB
+    M[动量策略 MomentumStrategy<br/>2015 crash: MDD 68% / 换手 1271%<br/>2018 bear: MDD 10% / 换手 668%<br/>胜率均 0% ❌]
+    D[红利策略 DividendStrategy<br/>2015 crash: MDD 0% / 换手 0%<br/>2018 bear: MDD 0% / 换手 0%<br/>MA200 择时全程空仓避险 ✅]
+    M -.->|改善 +68pp MDD<br/>+13.17 夏普| D
+  end
+  style M fill:#fee2e2,stroke:#dc2626,color:#0f172a
+  style D fill:#dcfce7,stroke:#16a34a,color:#0f172a
+</div><br/><br/>#<h1>测试基线演进<br/><br/><div class="mermaid">
+flowchart LR
+  B0[Phase 0 起点<br/>19 passed] --> B1[Phase 1 数据层<br/>162 passed]
+  B1 --> B2[Phase 2 回测引擎<br/>394 passed]
+  B2 --> B3[Phase 3 策略层<br/>435 passed]
+  B3 --> B35[Phase 3.5 红利策略<br/>524 passed ⏵当前]
+  style B0 fill:#e0e7ff,stroke:#818cf8
+  style B1 fill:#e0e7ff,stroke:#818cf8
+  style B2 fill:#e0e7ff,stroke:#818cf8
+  style B3 fill:#e0e7ff,stroke:#818cf8
+  style B35 fill:#dbeafe,stroke:#2563eb,color:#0f172a
+</div><br/><br/>#<h1>下一步决策点<br/><br/><div class="mermaid">
+flowchart TD
+  NOW[当前位置：G4.5 通过<br/>Phase 3.5 清零]
+  NOW --> OPT1[选项 A：执行 T312 真实数据回测<br/>≈40-50 分钟]
+  NOW --> OPT2[选项 B：直接进入 Phase 4 模拟盘<br/>基于 T313 压力测试结果]
+  OPT1 --> DEC1{CAGR / 夏普 / MDD<br/>达标？}
+  DEC1 -->|✅ 达标| P4A[Phase 4 模拟盘]
+  DEC1 -->|❌ 不达标| ADJ[调整策略参数<br/>或换其他风格]
+  OPT2 --> P4B[Phase 4 模拟盘<br/>6 个月]
+  style NOW fill:#dbeafe,stroke:#2563eb,color:#0f172a
+  style OPT1 fill:#fef3c7,stroke:#f59e0b,color:#0f172a
+  style OPT2 fill:#fef3c7,stroke:#f59e0b,color:#0f172a
+  style P4A fill:#dcfce7,stroke:#16a34a
+  style P4B fill:#dcfce7,stroke:#16a34a
+  style ADJ fill:#fee2e2,stroke:#dc2626,color:#0f172a
+</div><br/><br/>---<br/><br/>**更新历史**：
+- 2026-08-31：Phase 0–1 完成标记
+- 2026-09-01：Phase 2–3 完成标记 + G3/G4 门禁通过
+- 2026-09-02：Phase 3.5 红利策略切换完成 + G4.5 门禁通过 + 测试基线 524
 
-<header>
-  <h1>FinAI2.0 · 项目状态流程图</h1>
-  <p>个人 A 股中低频长多日线量化系统（初始资金 10–15 万 / 默认 5 仓 / 无杠杆 / 回测自 2015-01-01）
-    ｜ 代码仓 <code>D:\Projects\FinAI2.0</code> ＋ 计划仓 <code>D:\Projects\research-finai</code>（两仓分离）
-    ｜ 复核日：<b>2026-09-01</b></p>
-  <p style="margin-top:8px;">
-    <span class="tag green">R1–R5 已清零</span>
-    <span class="tag green">477 离线单测通过（2026-09-02，1 失败与本次无关）</span>
-    <span class="tag green">Phase 1 数据层（T101–T110）已清零 · G2 通过</span>
-    <span class="tag green">Phase 2 回测引擎（T201–T207）已清零 · G3 通过</span>
-    <span class="tag green">Phase 3 策略层（T301–T305）已完成 ✅</span>
-    <span class="tag amber">Phase 3 补充任务（停牌陷阱/高价股过滤/前视偏差审计/撤单约束）✅</span>
-    <span class="tag red">当前：G4 停手等用户决策 → Phase 3.5 或 Phase 4</span>
-  </p>
-</header>
-
-<div class="legend">
-  <div class="li"><span class="sw ok"></span>已完成 / 可用（今日复核通过）</div>
-  <div class="li"><span class="sw info"></span>当前阶段 / 进行中</div>
-  <div class="li"><span class="sw warn"></span>部分完成 / 有条件（依赖缺口）</div>
-  <div class="li"><span class="sw queued"></span>待启动 / 未解锁</div>
-  <div class="li"><span class="sw block"></span>阻塞 · 需【用户确认】</div>
-  <div style="margin-left:auto; color:#475569;"><b>虚线框</b> = 已废弃/已删除，仅供追溯</div>
-</div>
-
-<!-- ═══════════ 第 0 行：双仓根 + 基建 ═══════════ -->
-<section class="phase">
-  <div class="phase-title"><h2>Ⓐ 仓库与基建（双仓纪律 / 红线）</h2><span class="meta">母库只读区 + 产物链 + 凭据纪律</span></div>
-  <div class="row">
-    <div class="node ok">
-      <span class="badge">OK</span>
-      <div class="id">REPO-1</div>
-      <div class="nm">代码仓 FinAI2.0</div>
-      <div class="st">GitHub 私有仓 YZml1507/FinAI2.0<br>本地 HEAD 9100dc3 + Phase 3 补充任务完成（2026-09-02 已复核并推送）</div>
-      <div class="why">origin = github.com/YZml1507/FinAI2.0.git；停牌陷阱+高价股过滤+前视偏差审计已入库，已推送</div>
-    </div>
-    <div class="conn"><span class="cap">remote research →</span>→</div>
-    <div class="node ok">
-      <span class="badge">OK</span>
-      <div class="id">REPO-2</div>
-      <div class="nm">计划仓 research-finai</div>
-      <div class="st">GitHub 私有仓 YZml1507/research-finai<br>本地 HEAD ffbff48（2026-09-01 已复核并推送）</div>
-      <div class="why">spec/plan/tasks + 宪法三件套；T101–T110 / T201–T207 / T301–T304 已勾（至 TK-18），已推送</div>
-    </div>
-    <div class="conn"><span class="cap">旧仓已删 →</span>→</div>
-    <div class="node queued deleted">
-      <span class="badge">DEL</span>
-      <div class="id">REPO-0</div>
-      <div class="nm">旧仓 D:\Projects\FinAI</div>
-      <div class="st">2026-08-29 已删除<br>仅抢救 finai/sources/ 数据抓取库（860 接口）</div>
-      <div class="why">Test-Path = False ✅；旧结论/旧测试数字一律不再引用</div>
-    </div>
-    <div class="conn"><span class="cap">旧调度 →</span>→</div>
-    <div class="node ok deleted">
-      <span class="badge">OK</span>
-      <div class="id">TASK-10</div>
-      <div class="nm">10 个 FinAI_* 计划任务</div>
-      <div class="st">Windows 计划任务全部 <b>Disabled</b>（今天已复核）<br>⛔ 不复用旧命名</div>
-    </div>
-  </div>
-  <div class="row" style="margin-top:10px;">
-    <div class="node ok">
-      <span class="badge">OK</span>
-      <div class="id">RED-1</div>
-      <div class="nm">FINDING 台账红线</div>
-      <div class="st">finai/sources 下 FINDING- 行匹配数 = <b>370</b>（与基线一致，今天复测）</div>
-    </div>
-    <div class="node ok">
-      <span class="badge">OK</span>
-      <div class="id">RED-2</div>
-      <div class="nm">产物链完整性</div>
-      <div class="st">artifacts/interface_matrix/auto_probe_results.json + interfaces_raw.json 在位</div>
-      <div class="why">catalog_source.py:58-59 / overseas_registry.py:32-33 引用，删除即挂</div>
-    </div>
-    <div class="node ok">
-      <span class="badge">OK</span>
-      <div class="id">RED-3</div>
-      <div class="nm">复权口径（R4）</div>
-      <div class="st">unadjusted / adjust='' / fqt=1 / mootdx 无参 语义隔离<br>落地 adjustment_mode.py，落盘列含 adjust_mode</div>
-    </div>
-    <div class="node ok">
-      <span class="badge">OK</span>
-      <div class="id">RED-4</div>
-      <div class="nm">停牌脏行（R1）</div>
-      <div class="st">baostock 平推行过滤 tradestatus=='1'，计数入 meta['suspended_rows']</div>
-    </div>
-    <div class="node ok">
-      <span class="badge">OK</span>
-      <div class="id">RED-5</div>
-      <div class="nm">静默截断（R2/R5）</div>
-      <div class="st">_assert_coverage 纯函数离线落地；TDX 腿已按方案 B 砍除<br>真实链路验收随腿挂起</div>
-    </div>
-    <div class="node ok">
-      <span class="badge">OK</span>
-      <div class="id">RED-6</div>
-      <div class="nm">凭据纪律</div>
-      <div class="st">统一走 finai/credentials.py 常量，不写字符串字面量<br>密钥只显示键名（KEY=***），.env 不入库</div>
-    </div>
-  </div>
-</section>
-
-<!-- ═══════════ 第 1 行：门禁 + 当前阶段 ═══════════ -->
-<section class="phase" style="border-color:var(--info);">
-  <div class="phase-title"><h2>Ⓑ 门禁 G0 与母库修复（Phase 0 之后）</h2><span class="meta">G0：spec/plan/tasks 齐备，2026-08-29 用户已同意启动</span></div>
-  <div class="row">
-    <div class="node ok">
-      <span class="badge">OK</span>
-      <div class="id">G0</div>
-      <div class="nm">门禁 G0 · spec 三件套齐备</div>
-      <div class="st">spec v1.0.0（SDD-1~7）+ plan v1.0.0 + tasks v1.0.0 + constitution</div>
-    </div>
-    <div class="conn"><span class="cap">→</span>→</div>
-    <div class="node ok">
-      <span class="badge">OK</span>
-      <div class="id">R1–R5</div>
-      <div class="nm">母库缺陷 R1–R5 处置清零</div>
-      <div class="st">提交 af20d85（2026-08-30）<br>REVALIDATE.md 全部置"处置完毕"</div>
-    </div>
-    <div class="conn"><span class="cap">→</span>→</div>
-    <div class="node ok">
-      <span class="badge">477✓</span>
-      <div class="id">UT</div>
-      <div class="nm">离线单测 477 passed</div>
-      <div class="st">435 + T306×33 + T307×6 + T308×3（2026-09-02 复跑：477 passed / 1 failed 与本次无关 ✅）</div>
-    </div>
-    <div class="conn"><span class="cap">→ Phase 2</span>→</div>
-    <div class="node info">
-      <span class="badge" style="background:var(--warn)">G4</span>
-      <div class="id">CUR</div>
-      <div class="nm">当前：G4 停手等用户决策</div>
-      <div class="st">Phase 3 完成（T301–T305 ✅）+ 补充任务完成（停牌陷阱/高价股过滤/前视偏差审计）<br>T305 技术评审已交付：动量策略不满足 Phase 4 最低要求（crash -68% / bear -11% / 胜率 0%）<br>Phase 3.5 推荐路径已产出：切换红利策略（先补红利税）→ docs/phase35_recommendation.md</div>
-    </div>
-  </div>
-</section>
-
-<!-- ═══════════ 第 2 行：Phase 1 数据层（当前） ═══════════ -->
-<section class="phase">
-  <div class="phase-title">
-    <h2>Ⓒ Phase 1 · 数据层（P-0 / P-1，已清零 ✅ 2026-08-31）</h2>
-    <span class="tag green">T101–T110 全部入库并勾选 · G2 门禁通过</span>
-    <span class="gates">门禁：G2（T110 三源验收 ✅）→ 已解锁 Phase 2</span>
-  </div>
-  <div class="row">
-    <div class="node ok">
-      <span class="badge">OK</span>
-      <div class="id">T101</div>
-      <div class="nm">工作站环境清单</div>
-      <div class="st">Python 3.11 / venv / 代理 7897 复核</div>
-      <div class="why">P-0.1；✅ 2026-08-31 补验通过（Python 3.11.5 / 依赖齐备 / 代理通 / baostock login+交易日 / 新浪腾讯连通 / 东财不可达符合 A.5.1）</div>
-    </div>
-    <div class="conn"><span class="cap">→</span>→</div>
-    <div class="node ok">
-      <span class="badge">OK</span>
-      <div class="id">T102</div>
-      <div class="nm">东财 push2his 可达性复测</div>
-      <div class="st">与 R3 同项，已关闭</div>
-      <div class="why">P-0.2；✅ 已补勾（实证=R3：efinance 36/37 OK、push2his 直连 200，A.5 探测属代理噪音）</div>
-    </div>
-    <div class="conn"><span class="cap">→</span>→</div>
-    <div class="node ok">
-      <span class="badge">OK</span>
-      <div class="id">T103</div>
-      <div class="nm">四项实测核心结论复现</div>
-      <div class="st">停牌脏行 / 复权一致性 / 公告日 / 增量冒烟（12 号 §9-A）</div>
-      <div class="why">P-0.3；✅ 已补勾（实证=R1 停牌过滤 / R4 复权映射 / 12 号 §9-A）</div>
-    </div>
-    <div class="conn"><span class="cap">→</span>→</div>
-    <div class="node ok">
-      <span class="badge">OK</span>
-      <div class="id">T104</div>
-      <div class="nm">数据字典 v1</div>
-      <div class="st">字段清单 + 复权语义 + 可得日期 + pubDate 对齐规则（FR-DATA-1~5）</div>
-      <div class="why">✅ 2026-08-31 v1.0.0 落盘（research-finai specs/…/data_dictionary_v1.md，快照已同步 FinAI2.0 docs/spec/）；T105 依赖解除</div>
-    </div>
-    <div class="conn"><span class="cap">→ T105 前置</span>→</div>
-    <div class="node ok">
-      <span class="badge">OK</span>
-      <div class="id">T105</div>
-      <div class="nm">日线采集器</div>
-      <div class="st">baostock 主 + 新浪/腾讯校验；限速四件套（FR-DATA-7）</div>
-      <div class="why">✅ 2026-08-31 已入库（commit 8282cd4；data/collector.py：DailyCollector 编排 + RateLimiter/CircuitBreaker/指数退避 + 幂等分区 Parquet 落盘 + 新浪/腾讯校验腿）；tasks.md 已勾</div>
-    </div>
-    <div class="conn"><span class="cap">→</span>→</div>
-    <div class="node ok">
-      <span class="badge">OK</span>
-      <div class="id">T106</div>
-      <div class="nm">停牌/涨跌停/除权清洗</div>
-      <div class="st">复用 R1 过滤 + adjustment_mode（FR-DATA-2）</div>
-      <div class="why">✅ 2026-08-31 已入库（commit 5e08574；data/cleaner.py：enforce_tradestatus 只过滤不填充[R1] + mark_limit_flags 板块档登记表 BOARD_LIMIT_PCT + fetch_exdiv_events 除权薄壳）；离线单测 44 绿；tasks.md 已勾</div>
-    </div>
-    <div class="conn"><span class="cap">→</span>→</div>
-    <div class="node ok">
-      <span class="badge">OK</span>
-      <div class="id">T107</div>
-      <div class="nm">财务 pubDate 对齐管道</div>
-      <div class="st">季频财报 + 公告日对齐（FR-DATA-4）</div>
-      <div class="why">✅ 2026-08-31 已入库（commit 5e08574；data/financial_pit.py：FINANCIAL_TABLES 唯一登记点 + pit_align 按 pubDate 零前视 + collect_financials 保末去重）；离线单测 21 绿；tasks.md 已勾</div>
-    </div>
-    <div class="conn"><span class="cap">→</span>→</div>
-    <div class="node ok">
-      <span class="badge">OK</span>
-      <div class="id">T108</div>
-      <div class="nm">股票池/成分回放</div>
-      <div class="st">FR-DATA-5；依赖 T104 字典</div>
-      <div class="why">✅ 2026-08-31 已入库（commit 8282cd4；data/universe.py：alive_universe 纯函数 ⛔禁 status 列；指数成分回放默认拒绝未验证接口）；tasks.md 已勾</div>
-    </div>
-    <div class="conn"><span class="cap">→</span>→</div>
-    <div class="node ok">
-      <span class="badge">OK</span>
-      <div class="id">T109</div>
-      <div class="nm">增量更新 + 5 日冒烟</div>
-      <div class="st">日期分区幂等（FR-DATA-6）</div>
-      <div class="why">✅ 2026-08-31 已入库（commit c5d75bf；data/incremental.py：IncrementalUpdater 水位续采 + smoke_test_5d fail-closed 三查）；离线单测 10 绿；tasks.md 已勾（TK-7）</div>
-    </div>
-    <div class="conn"><span class="cap">→ 验收</span>→</div>
-    <div class="node ok">
-      <span class="badge">G2</span>
-      <div class="id">T110</div>
-      <div class="nm">数据层验收（门禁 G2）</div>
-      <div class="st">三源抽样比对 + 停牌命中 100% + 幂等哈希一致</div>
-      <div class="why">✅ 2026-08-31 已入库（commit 2ffbf7b；data/acceptance.py：ThreeSourceValidator 三源比对 + 停牌命中 + 幂等哈希）；离线单测 25 绿；tasks.md 已勾</div>
-    </div>
-  </div>
-</section>
-
-<!-- ═══════════ 后续阶段 ═══════════ -->
-<section class="phase">
-  <div class="phase-title"><h2>Ⓓ Phase 2 · 回测引擎（T201–T207）✅ 已清零</h2><span class="tag green">T201–T207 全部入库并勾选 · G3 门禁通过</span><span class="gates">G3 → 已解锁 Phase 3</span></div>
-  <div class="row">
-    <div class="node ok">
-      <span class="badge">OK</span>
-      <div class="id">T201</div>
-      <div class="nm">事件驱动引擎核心</div>
-      <div class="st">时钟/数据源/撮合/订单状态机（SDD-1~3）</div>
-      <div class="why">✅ 2026-09-01 已入库（commit 8fca14f）：契约 backtest/T201_design.md + 九模块（七态状态机 fail-closed / 双账本 tx_hash 幂等 / 撮合 8 规则按序 fail-closed / 先撮合后信号）；离线单测 140 绿；tasks.md 已勾（TK-8）</div>
-    </div>
-    <div class="node ok">
-      <span class="badge">OK</span>
-      <div class="id">T202</div>
-      <div class="nm">5 必挂用例套件</div>
-      <div class="st">涨停买/跌停卖/停牌下单/除权持仓/T+1（FR-BT-1~5）</div>
-      <div class="why">✅ 2026-09-01 全绿（tests/test_t202_must_fail.py 17 例）：涨停买拒 / 跌停卖拒 / 停牌拒+NAV 冻结平直 / 除权股数×2+派现 NAV 无跳变 / T+1 当日卖拒；tasks.md 已勾（TK-8）</div>
-    </div>
-    <div class="node ok">
-      <span class="badge">OK</span>
-      <div class="id">T203</div>
-      <div class="nm">费用模型模块</div>
-      <div class="st">佣金 5 元最低/印花税/过户费/经手费/滑点（07 号核对表）</div>
-      <div class="why">✅ 2026-09-01 已入库（commit edd8d2f）：六科目带生效日分段费率唯一登记点 + 逐项 ROUND_HALF_UP 到分 + make_fee_model 注入撮合（规则 7 万三垫→精确费用；黄金算例 10 万往返 112.82 元）；离线单测 33 绿；tasks.md 已勾（TK-9）</div>
-    </div>
-    <div class="node ok">
-      <span class="badge">OK</span>
-      <div class="id">T204</div>
-      <div class="nm">成交模型默认次一开盘</div>
-      <div class="st">显式声明 + 敏感度对比（FR-BT-6）</div>
-      <div class="why">✅ 2026-09-01 已入库（commit ccd693c）：price_model 注入点（默认 bar.open 向后兼容）+ make_price_model（滑点 + tick 0.01 + 可选涨跌停限幅）+ 九宫格敏感度对比 docs/t204_price_model_sensitivity.md；离线单测 18 绿；tasks.md 已勾（TK-10）</div>
-    </div>
-    <div class="node ok">
-      <span class="badge">OK</span>
-      <div class="id">T205</div>
-      <div class="nm">绩效与风控指标</div>
-      <div class="st">收益/波动/回撤/夏普/换手/胜率/热力图（FR-REP-1）</div>
-      <div class="why">✅ 2026-09-01 已入库（commit 63f5935）：metrics.py 纯函数 compute_metrics → PerformanceReport（CAGR/年化波动/回撤三日期/夏普 R_f 显式声明/单边换手/FIFO 胜率/费用六键汇总/月度矩阵）；离线单测 13 绿；tasks.md 已勾（TK-11）</div>
-    </div>
-    <div class="node ok">
-      <span class="badge">OK</span>
-      <div class="id">T206</div>
-      <div class="nm">实验 registry</div>
-      <div class="st">参数/代码/数据版本/指标/时间戳（FR-REP-2）</div>
-      <div class="why">✅ 2026-09-01 已入库（commit 59a127b）：reporting/registry.py 引擎外层包装；出处三件套注入式 + run_id 幂等拒重 + canonical 同 tx_hash 尺 + 原子写 + index.jsonl；离线单测 10 绿；tasks.md 已勾（TK-12）</div>
-    </div>
-    <div class="node ok">
-      <span class="badge">OK</span>
-      <div class="id">T207</div>
-      <div class="nm">门禁 G3</div>
-      <div class="st">5 必挂全绿 ✅ + 成本逐项核对</div>
-      <div class="why">✅ 2026-09-01 通过（commit 0c52168）：验收报告 docs/t207_g3_gate_acceptance.md——五必挂 17 例逐项 PASS + 成本六科目 vs 07 号逐项一致（黄金算例 112.82 元）+ 红利税评估 ≈0.4%/年 上限可接受</div>
-    </div>
-  </div>
-</section>
-
-<section class="phase" style="border-color:var(--warn);">
-  <div class="phase-title"><h2>Ⓔ Phase 3 · 策略与组合（T301–T305 + 补充任务）✅ 完成</h2><span class="cur-marker">T301–T305 ✅ 已完成 · T306–T308 补充任务 ✅ 完成（2026-09-02）</span><span class="gates">G4（T305 技术评审已交付 → 停手等用户决策）</span></div>
-  <div class="row">
-    <div class="node ok">
-      <span class="badge">OK</span>
-      <div class="id">T301</div>
-      <div class="nm">组合管理器</div>
-      <div class="st">3-8 只/默认 5/硬顶 10/单票 ≥2 万/流动性过滤</div>
-      <div class="why">✅ 2026-09-01 已入库（commit 434fa8b）：strategy/portfolio.py 三段纯函数（select_targets 择时空仓 / plan_positions 等权+过滤+整手 / diff_to_orders 先卖后买）；PortfolioConfig 全字段 fail-closed；离线单测 27 绿；tasks.md 已勾（TK-15）</div>
-    </div>
-    <div class="node ok">
-      <span class="badge">OK</span>
-      <div class="id">T302</div>
-      <div class="nm">候选策略 v1</div>
-      <div class="st">日线中低频（多因子/动量组合）</div>
-      <div class="why">✅ 2026-09-01 已入库（commit 964c383）：strategy/candidates.py MomentumStrategy（动量 lookback=20 + 周线级调仓 + 冷启动 warmup + 时间退出）；端到端回测出真实 PerformanceReport；离线单测 4 绿；tasks.md 已勾（TK-16）</div>
-    </div>
-    <div class="node ok">
-      <span class="badge">OK</span>
-      <div class="id">T303</div>
-      <div class="nm">参数稳健性扫描</div>
-      <div class="st">±20% 邻域（spec §6.1）</div>
-      <div class="why">✅ 2026-09-01 已入库（commit 2711052）：strategy/param_scan.py ParamScan——单参数 ±20% 扰动四类 int + 悬崖三判据（CAGR 翻负/MDD 翻倍/零成交）+ summary_md 挂 T305；离线单测 6 绿；tasks.md 已勾（TK-17）</div>
-    </div>
-    <div class="node ok">
-      <span class="badge">OK</span>
-      <div class="id">T304</div>
-      <div class="nm">跨区间压力</div>
-      <div class="st">2015 股灾+熔断 / 2018 熊市样外如实呈现</div>
-      <div class="why">✅ 2026-09-01 已入库（commit 539f534）：离线合成两区间（市场因子+个股 seed 噪声）+ 同参数如实两跑 → docs/t304_stress_report.md（crash 总收益 −68.33%/MDD 68.38%；bear −10.81%/10.81%；胜率均 0%）；离线单测 3 绿；tasks.md 已勾（TK-18）</div>
-    </div>
-    <div class="node ok">
-      <span class="badge">OK</span>
-      <div class="id">T305</div>
-      <div class="nm">技术评审报告（G4）</div>
-      <div class="st">生成报告交用户知会</div>
-      <div class="why">✅ 2026-09-01 已产出（commit 82882b3）：docs/t305_technical_review.md——Phase 0–3 全链证据索引 + 跨区间如实指标 + 明确结论「当前动量候选策略不满足 Phase 4 最低要求（crash -68%/bear -11%/胜率 0%）→ 须换策略后再评审」；tasks.md 已勾（TK-19）；G4 停手等用户拍板</div>
-    </div>
-  </div>
-  <div class="row" style="margin-top:10px; border-top:2px dashed var(--border);">
-    <div class="node ok">
-      <span class="badge">✓</span>
-      <div class="id">T306</div>
-      <div class="nm">停牌陷阱追踪</div>
-      <div class="st">suspension_trapped_days 字段</div>
-      <div class="why">✅ 2026-09-02 已入库（commit 1937225）：backtest/types.py 新增 bars_by_date + backtest/metrics.py 实现 _suspension_trapped_days() FIFO 配对逻辑（检测停牌期间卖出拒单 + 复牌跌停卖不出天数）+ tests/test_suspension_trap.py 6 场景；离线单测 33 绿（含 6 停牌陷阱用例）</div>
-    </div>
-    <div class="node ok">
-      <span class="badge">✓</span>
-      <div class="id">T307</div>
-      <div class="nm">高价股排除验证</div>
-      <div class="st">max_price 参数（默认 300 元）</div>
-      <div class="why">✅ 2026-09-02 已入库（先前 commit 未推送，本次整合）：strategy/portfolio.py 新增 max_price 参数（默认 300 元，None 禁用）+ docs/high_price_exclusion.md 设计文档（防集中度风险/冲击成本放大/整手约束）+ tests/test_high_price_filter.py 11 场景（5 配置验证 + 5 过滤逻辑 + 1 集成）；离线单测 6 绿</div>
-    </div>
-    <div class="node ok">
-      <span class="badge">✓</span>
-      <div class="id">T308</div>
-      <div class="nm">前视/幸存者偏差审计</div>
-      <div class="st">撤单约束验证</div>
-      <div class="why">✅ 2026-09-02 验证完成：① 前视偏差：引擎只用次日开盘价（price_model 默认 bar.open），信号只用滞后数据；② 幸存者偏差：alive_universe 禁用 status 列（只用 ipoDate/outDate/type），已退市股在其退市前正常参与；③ 撤单约束：搜索 backtest/ 和 strategy/ 全部代码，确认引擎从未调用 .cancel() 方法，满足「交易完成后不许撤单」约束；离线单测 3 绿</div>
-    </div>
-  </div>
-</section>
-
-<section class="phase" style="border-color:var(--block);">
-  <div class="phase-title"><h2>Ⓕ Phase 3.5 · 策略切换补丁（建议阶段，待用户确认）</h2><span class="meta">⛔ 依赖用户拍板后启动</span><span class="gates">G4.5（红利策略验收）→ Phase 4</span></div>
-  <div class="row">
-    <div class="node block">
-      <span class="badge">USER</span>
-      <div class="id">T309</div>
-      <div class="nm">红利税模块</div>
-      <div class="st">持股期 FIFO 配对（<1 月 20% / 1 年内 10% / >1 年 5%）</div>
-      <div class="why">📋 建议项：backtest/dividend_tax.py 新增模块 + compute_dividend_tax() 纯函数 + FeeItem.dividend_tax 新科目 + 15 单测（分档边界/FIFO 配对/edge case）；见 docs/phase35_recommendation.md §三</div>
-    </div>
-    <div class="node block">
-      <span class="badge">USER</span>
-      <div class="id">T310</div>
-      <div class="nm">跳空缺口滑点测试</div>
-      <div class="st">gap_slippage_pct 参数（隔夜跳空 ±3%/±5% 额外滑点）</div>
-      <div class="why">📋 建议项：backtest/fees.py::make_price_model 新增 gap_slippage_pct 参数 + 26 单测（已有设计，补实现）；优先级 P1</div>
-    </div>
-    <div class="node block">
-      <span class="badge">USER</span>
-      <div class="id">T311</div>
-      <div class="nm">红利策略实现</div>
-      <div class="st">股息率排序 + 市值加权 + MA200 择时</div>
-      <div class="why">📋 建议项：strategy/candidates.py::DividendStrategy（min_yield 4% / 行业分散银行≤40% / rebalance=20 月度 / max_hold=400 长期持有）；预期 CAGR 6-8% / MDD <30% / 胜率 >40% / 换手 <200%</div>
-    </div>
-    <div class="node block">
-      <span class="badge">USER</span>
-      <div class="id">T312</div>
-      <div class="nm">红利策略回测</div>
-      <div class="st">2015-2024 真实数据（采集 300 只红利股）</div>
-      <div class="why">📋 建议项：采集中证红利 / 上证红利成分股（非全市场 5000 只），跑出 CAGR/Sharpe/MDD/turnover/win-rate</div>
-    </div>
-    <div class="node block">
-      <span class="badge">USER</span>
-      <div class="id">T313</div>
-      <div class="nm">红利策略压力测试</div>
-      <div class="st">复用 T304 两区间 + 红利税实测</div>
-      <div class="why">📋 建议项：2015 股灾 / 2018 熊市两区间同压，验收判据：胜率 ≥35% / MDD <35% / 换手 <400% / 2015 收益 >−40% / 2018 收益 >−15%；任一触红旗即再换策略</div>
-    </div>
-  </div>
-</section>
-
-<section class="phase">
-  <div class="phase-title"><h2>Ⓕ Phase 4 · 模拟盘 ≥6 个月（T401–T406）</h2><span class="meta">⛔ 依赖 G4 后解锁</span><span class="gates">G5 前半（T406）</span></div>
-  <div class="row">
-    <div class="node queued"><div class="id">T401</div><div class="nm">模拟盘执行器</div><div class="st">信号→模拟成交；复用 SDD-1 PaperBroker</div></div>
-    <div class="node queued"><div class="id">T402</div><div class="nm">回测-模拟偏差容忍带</div><div class="st">量化（P-4.2）</div></div>
-    <div class="node queued"><div class="id">T403</div><div class="nm">日终任务</div><div class="st">对账/净值/报告（FR-ACC-2/3, FR-REP-1）</div></div>
-    <div class="node queued"><div class="id">T404</div><div class="nm">台账保鲜与到期提醒</div><div class="st">纳入调度（FR-REP-3；14 号 SOP）</div></div>
-    <div class="node queued"><div class="id">T405</div><div class="nm">报备材料清单核对</div><div class="st">FR-COMP-1；11 号；模拟盘期间备齐</div></div>
-    <div class="node queued"><div class="id">T406</div><div class="nm">模拟盘运行 ≥6 个月</div><div class="st">偏差在容忍带内（G5 前半）</div></div>
-  </div>
-</section>
-
-<section class="phase">
-  <div class="phase-title"><h2>Ⓖ Phase 5 · 小额实盘（T501–T505）</h2><span class="meta">⛔ 依赖 G5 后半（需用户书面确认）</span><span class="gates">G6；先报告后交易（FR-COMP-1/2）</span></div>
-  <div class="row">
-    <div class="node block">
-      <span class="badge">USER</span>
-      <div class="id">T501</div>
-      <div class="nm">用户书面确认实盘</div>
-      <div class="st">券商 / 金额 / 日期【用户确认】</div>
-    </div>
-    <div class="node queued"><div class="id">T502</div><div class="nm">券商开通 + 报备提交</div><div class="st">先报告后交易</div></div>
-    <div class="node queued"><div class="id">T503</div><div class="nm">实盘桥 + 实盘对账</div><div class="st">复用回测同构抽象（SDD-1）</div></div>
-    <div class="node queued"><div class="id">T504</div><div class="nm">最小资金首周运行</div><div class="st">首日对账零未解释差异（G6）</div></div>
-    <div class="node queued"><div class="id">T505</div><div class="nm">确认后加仓</div><div class="st">每次升级均需用户确认</div></div>
-  </div>
-</section>
-
-<section class="phase">
-  <div class="phase-title"><h2>Ⓗ Phase 6 · 运营迭代（T601–T605）</h2><span class="meta">⛔ 长期例行</span></div>
-  <div class="row">
-    <div class="node queued"><div class="id">T601</div><div class="nm">月度台账复查</div><div class="st">2026-09-28 首轮（14 号 SOP）</div></div>
-    <div class="node queued"><div class="id">T602</div><div class="nm">季度台账复查</div><div class="st">2026-11-28 首轮</div></div>
-    <div class="node queued"><div class="id">T603</div><div class="nm">策略迭代流程文档化</div><div class="st">研究→回测→模拟→实盘小步验证</div></div>
-    <div class="node queued"><div class="id">T604</div><div class="nm">复盘与文档修订纪律</div><div class="st">修订日志登记</div></div>
-    <div class="node queued"><div class="id">T605</div><div class="nm">多市场扩展评估触发</div><div class="st">用户决策时启动（FR-EXT 六留口）</div></div>
-  </div>
-</section>
-
-<!-- ═══════════ 待用户决策 ═══════════ -->
-<section class="phase" style="border-color:var(--block);">
-  <div class="phase-title"><h2>Ⓘ【用户确认】决策点</h2><span class="meta">T001 已拍板（飞书）；未拍板项不启动（tasks.md 执行规则）</span></div>
-  <div class="row">
-    <div class="node ok">
-      <span class="badge">OK</span>
-      <div class="id">T001</div>
-      <div class="nm">告警通道 ✅ 已拍板</div>
-      <div class="st">FR-OPS-3；用户拍板 = <b>飞书</b>（经 hermes_orchestrator MCP）</div>
-      <div class="why">已写 research-finai .specify/memory/alert_channel.md 备查</div>
-    </div>
-    <div class="node block">
-      <span class="badge">USER</span>
-      <div class="id">P-5.0</div>
-      <div class="nm">实盘授权（远期）</div>
-      <div class="st">券商 / 金额 / 日期（≈T501，2027 年段触发）</div>
-    </div>
-  </div>
-</section>
-
-<!-- ═══════════ 复核证据 ═══════════ -->
-<details class="audit">
-  <summary>📋 复核证据（2026-09-01 收口复核：全部为本窗真实命令输出）</summary>
-  <div class="note">2026-09-01 复核窗口实测；另说明：上一窗口（09-01 白天）完成 T201/T202 代码后在「留痕收口」中途被中断，本窗补齐标记、流程图与推送。</div>
-  <pre>
-【本地 Git（2026-09-01 复核）】            ✅ 两仓一致且已推送
-  FinAI2.0      HEAD = 0c52168（docs：T207 门禁 G3 验收报告入库）+ 状态标记提交；已推 origin/master
-  research-finai HEAD = 4adc368（tasks.md：勾 T207 + TK-13 修订行）；已推 origin/master
-  链：… → 63f5935(T205) → 7eed8e3(Calmar) → 59a127b(T206) → 0c52168(T207 门禁 G3 验收)；
-  Phase 2 全清零、G3 通过、Phase 3 解锁
-
-【离线单测】                             ✅ 394 passed（162 原有 + T201×140 + T202×17 + T203×33 + T204×18 + T205×13+Calmar×1 + T206×10；exit 0）
-  py -3.11 -m pytest tests/ -p no:ddtrace -p no:ddtrace.pytest_bdd -p no:ddtrace.pytest_benchmark -q
-
-【计划任务】                             ✅ 10 个 FinAI_* 全部 Disabled（2026-09-01 Get-ScheduledTask 复测）
-
-【红线清单】                             ✅ FINDING- 行匹配数 = 370（2026-09-01 复测，与基线一致）；母库只读区未动
-【旧仓】                                 ✅ D:\Projects\FinAI 不存在（Test-Path = False）
-
-【spec 快照】                             ✅ docs/spec/001-…/tasks.md 与 research-finai SHA-256 逐字节一致（2026-09-01 双端同值）
-
-【Phase 2 进展（相较 2026-08-31 复核的增量）】
-  ✅ T201 事件驱动引擎核心：backtest/ 九模块（constants/types/order_fsm/ledger/feed/matching/broker/settle/engine）
-     + 契约 backtest/T201_design.md（SDD-1~3 回填）；七态状态机 fail-closed；双账本 tx_hash 幂等；
-     撮合 8 规则按序 fail-closed（停牌/涨停/跌停/T+1/整手/零股/资金/默认次一开盘成交 FR-BT-6）；先撮合后信号
-  ✅ T202 五必挂全绿（tests/test_t202_must_fail.py 17 例）：涨停买拒 / 跌停卖拒 / 停牌拒+NAV 冻结平直 /
-     除权股数×2+派现 NAV 无跳变 / T+1 当日卖拒
-  ✅ T203 费用模型（tests/test_t203_fees.py 33 例）：六科目分段费率逐项透视（佣金 ¥5 最低 / 印花税仅卖分段 /
-     过户费双边分段 / 经手费沪深与北交所独立路径 / 证管费 / 滑点 5bps·15bps 压测）+ make_fee_model 注入撮合
-     （规则 7 万三垫→精确费用）；07 号黄金算例核对：10 万往返逐项口径 112.82 元（vs 含规费全佣 102.00）
-  ✅ T204 成交模型（tests/test_t204_price_model.py 18 例）：price_model 注入点（默认 bar.open 兼容）+
-     make_price_model（滑点 + tick 0.01 + 可选涨跌停限幅）；九宫格敏感度对比固化
-     docs/t204_price_model_sensitivity.md（改口径即红）
-  ✅ T205 绩效指标（tests/test_t205_metrics.py 13+1 例）：metrics.py 纯函数 → PerformanceReport；
-     CAGR/波动/回撤三日期/夏普（R_f 显式）/换手/FIFO 胜率/费用六键/月度矩阵 + Calmar 补丁
-  ✅ T206 实验 registry（tests/test_t206_registry.py 10 例）：reporting/registry.py；run_id 幂等拒重 /
-     出处三件套 / canonical 参数尺 / 原子写 / 状态机三态
-  ✅ T207 门禁 G3（docs/t207_g3_gate_acceptance.md）：五必挂 17 例逐项 PASS + 成本逐项核对
-     （六科目 vs 07 号全一致，黄金算例 112.82 元）+ 红利税简化项评估（≈0.4%/年 上限，策略层红旗）
-  ⏭ Phase 3：T301 ✅ 组合管理器 / T302 ✅ 候选策略 / T303 ✅ 参数扫描 / T304 ✅ 压力
-     （crash −68.33% / bear −10.81%）/ **T305 评审报告产出中（→ G4 用户决策）**
-  </pre>
-</details>
-
-<footer>
-  生成：2026-08-31 ｜ 2026-09-01 收口复核更新（T201/T202 入库实证 319 绿、Phase 2 标记收口、两仓推送）｜
-  数据来源：本窗真实命令输出 + research-finai spec 三件套 ｜
-  母库红线（finai/sources、scripts/、artifacts/interface_matrix/*.json）只读区未做任何改动。
-</footer>
-
-</div>
+<script>mermaid.initialize({ startOnLoad: true, theme: "default" });</script>
 </body>
 </html>

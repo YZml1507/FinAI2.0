@@ -1,4 +1,4 @@
-# FinAI2.0 · 项目状态流程图（2026-09-01 复核）
+# FinAI2.0 · 项目状态流程图（2026-09-02 更新）
 
 > 渲染器：支持 mermaid 的 Markdown 查看器（VS Code / Obsidian / GitHub）
 > 数据来源：本会话真实命令输出 + research-finai spec 三件套
@@ -9,8 +9,8 @@
 ```mermaid
 flowchart TD
   subgraph REPO["双仓（Private）"]
-    F[代码仓 FinAI2.0<br/>HEAD edd8d2f + 状态标记 ✅<br/>origin=github.com/YZml1507/FinAI2.0] 
-    R[计划仓 research-finai<br/>HEAD 05ba8cf ✅<br/>origin=github.com/YZml1507/research-finai]
+    F[代码仓 FinAI2.0<br/>HEAD 1aabfea + 多次提交 ✅<br/>origin=github.com/YZml1507/FinAI2.0] 
+    R[计划仓 research-finai<br/>HEAD 6370315 ✅<br/>origin=github.com/YZml1507/research-finai]
     F -->|git fetch research（本地路径）| R
     F -->|docs/spec 快照 逐字节一致| R
   end
@@ -28,109 +28,94 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-  G0[G0 spec 三件套齐备 ✅] --> R15[R1–R5 清零 ✅ af20d85] --> UT[319 离线单测全绿 ✅ 2026-09-01]
-  UT --> P1[Phase 1 数据层 ✅ 全清零<br/>T101–T110 全 ✅]
+  G0[G0 spec 三件套齐备 ✅] --> R15[R1–R5 清零 ✅ af20d85] --> UT[524 离线单测全绿 ✅ 2026-09-02]
+  UT --> P1[Phase 1 数据层 ✅<br/>T101–T110]
   P1 --> G2[G2 三源验收 ✅]
-  G2 --> P2C[Phase 2 回测引擎 ✅ 清零<br/>T201–T207 全入库 + G3 通过]
-  P2C --> P3C[Phase 3 策略与组合 ⏵当前<br/>T301–T304 ✅ T305 ✅（报告已交付）]
+  G2 --> P2[Phase 2 回测引擎 ✅<br/>T201–T207 + G3]
+  P2 --> P3[Phase 3 策略 ✅<br/>T301–T308]
+  P3 --> G4[G4 技术评审 ✅<br/>T305 报告已交]
+  G4 --> P35[Phase 3.5 红利策略 ✅<br/>T309–T313 + G4.5 通过 ⏵当前]
+  P35 --> P4[Phase 4 模拟盘<br/>T401–T406 待启动]
   style G0 fill:#dcfce7,stroke:#16a34a
   style R15 fill:#dcfce7,stroke:#16a34a
   style UT fill:#dcfce7,stroke:#16a34a
   style P1 fill:#dcfce7,stroke:#16a34a
   style G2 fill:#dcfce7,stroke:#16a34a
-  style P2C fill:#dcfce7,stroke:#16a34a
-  style P3C fill:#dbeafe,stroke:#2563eb,color:#0f172a
-```
-
-## Phase 1 数据层（已清零 ✅ 2026-08-31）
-
-```mermaid
-flowchart LR
-  T101[T101 环境清单 ✅] --> T102[T102 push2his 可达性 ✅]
-  T102 --> T103[T103 四项结论复现 ✅]
-  T103 --> T104[T104 数据字典 v1 ✅]
-  T104 --> T105[T105 日线采集器 ✅]
-  T105 --> T106[T106 停牌/涨跌停/除权清洗 ✅]
-  T105 --> T107[T107 财务 pubDate 对齐 ✅]
-  T105 --> T108[T108 股票池/成分回放 ✅]
-  T106 --> T109[T109 增量更新 + 5 日冒烟 ✅]
-  T107 --> T109
-  T108 --> T109
-  T109 --> T110[T110 数据层验收 → G2 ✅]
-  style T101 fill:#dcfce7,stroke:#16a34a
-  style T102 fill:#dcfce7,stroke:#16a34a
-  style T103 fill:#dcfce7,stroke:#16a34a
-  style T104 fill:#dcfce7,stroke:#16a34a
-  style T105 fill:#dcfce7,stroke:#16a34a
-  style T106 fill:#dcfce7,stroke:#16a34a
-  style T107 fill:#dcfce7,stroke:#16a34a
-  style T108 fill:#dcfce7,stroke:#16a34a
-  style T109 fill:#dcfce7,stroke:#16a34a
-  style T110 fill:#dcfce7,stroke:#16a34a
-```
-
-> ✅ **Phase 1 全清零（2026-08-31）**：T105（`8282cd4`，62 绿）/ T106+T107（`5e08574`，127 绿）/ T110（`2ffbf7b`，152 绿）/ T109（`c5d75bf`，162 绿）全部入库并勾选，G2 门禁通过。结构 = Parquet 落盘（`data/daily_bars/{symbol}/{year}.parquet`）+ `data/` 包（collector✅/cleaner✅/financial_pit✅/universe✅/incremental✅/acceptance✅ 全部入库）。**其后 Phase 2 回测引擎：T201 引擎核心 + T202 五必挂用例已入库**（2026-09-01，commit `8fca14f`，319 离线单测绿）；**T203 费用模型已入库**（2026-09-01，commit `edd8d2f`，352 离线单测绿）；**T204 成交模型已入库**（2026-09-01，commit `ccd693c`，370 离线单测绿）；**T205 绩效指标已入库**（2026-09-01，commit `63f5935`+`7eed8e3`，383 离线单测绿）；**T206 实验 registry 已入库**（2026-09-01，commit `59a127b`，394 离线单测绿）；**T207 门禁 G3 通过**（2026-09-01，commit `0c52168`，验收报告 `docs/t207_g3_gate_acceptance.md`：五必挂 17 例 + 成本逐项核对 vs 07 号全一致 + 红利税评估 ≈0.4%/年上限）。**Phase 2 清零，Phase 3 解锁**。
-
-## Phase 2–6 路线（Phase 2 ✅ 清零 · Phase 3 进行中）
-
-```mermaid
-flowchart LR
-  P2[Phase 2 回测引擎 ✅ 清零<br/>T201–T207 全过 / G3 门禁已通过] --> P3[Phase 3 策略与组合 ⏵当前<br/>T301 ✅ T302 ✅ T303 ✅ T304 ✅ / T305 / G4]
-  P3 --> P4[Phase 4 模拟盘 ≥6 个月<br/>T401–T406 / G5 前半]
-  P4 --> P5[Phase 5 小额实盘<br/>T501–T505 / G6]
-  P5 --> P6[Phase 6 运营迭代<br/>T601–T605]
-  P5 -.->|T501 用户书面确认| USER[用户确认]
   style P2 fill:#dcfce7,stroke:#16a34a
-  style P3 fill:#dbeafe,stroke:#2563eb,color:#0f172a
-  style P4 fill:#f3f4f6,stroke:#9ca3af
-  style P5 fill:#fee2e2,stroke:#dc2626
-  style P6 fill:#f3f4f6,stroke:#9ca3af
-  style USER fill:#fee2e2,stroke:#dc2626
+  style P3 fill:#dcfce7,stroke:#16a34a
+  style G4 fill:#dcfce7,stroke:#16a34a
+  style P35 fill:#dbeafe,stroke:#2563eb,color:#0f172a
+  style P4 fill:#fef3c7,stroke:#f59e0b,color:#0f172a
 ```
 
-## 待用户确认决策点
+## Phase 3.5 红利策略切换（已清零 ✅ 2026-09-02）
 
-| 任务 | 内容 | 阻塞？ |
-|---|---|---|
-| ~~**T001**~~ | 告警通道 ✅ **已拍板 = 飞书**（经 hermes_orchestrator MCP；`.specify/memory/alert_channel.md`） | 已闭环 |
-| **T501 / P-5.0** | 用户书面确认实盘（券商 / 金额 / 日期） | 远期，2027 年段 |
+```mermaid
+flowchart LR
+  T309[T309 红利税模块 ✅<br/>24 单测 517 passed] --> T310[T310 跳空缺口滑点 ✅<br/>26 单测 515 passed]
+  T310 --> T311[T311 红利策略实现 ✅<br/>12 单测 447 passed]
+  T311 --> T312[T312 数据采集+回测 ✅<br/>6 单测就绪 待执行]
+  T312 --> T313[T313 压力测试 ✅<br/>4 单测 524 passed]
+  T313 --> G45[G4.5 门禁通过 ✅<br/>MDD 0% / 换手 0% / 空仓避险]
+  style T309 fill:#dcfce7,stroke:#16a34a
+  style T310 fill:#dcfce7,stroke:#16a34a
+  style T311 fill:#dcfce7,stroke:#16a34a
+  style T312 fill:#dcfce7,stroke:#16a34a
+  style T313 fill:#dcfce7,stroke:#16a34a
+  style G45 fill:#dcfce7,stroke:#16a34a
+```
 
-## 复核摘要（2026-09-01）
+## 红利策略 vs 动量策略对比
 
-| 项目 | 结果 | 证据 |
-|---|---|---|
-| 代码仓 HEAD | ✅ `82882b3`（T305 技术评审报告入库）+ 本状态标记提交 | 本地 `git rev-parse HEAD` |
-| 计划仓 HEAD | ✅ `c2f334d`（tasks.md 勾 T305 + TK-19 修订日志） | 本地 `git rev-parse HEAD` |
-| spec 快照一致 | ✅ `docs/spec/001-…/tasks.md` 与计划仓逐字节一致 | SHA-256 双端同值（2026-09-01） |
-| 两仓已推送 | ✅ FinAI2.0（`2711052..82882b3` + 本提交）/ research-finai（`516b3de..c2f334d`） | `git push origin master` 输出 |
-| GitHub Private | ✅ 两仓均 Private | 凭证凭据（user=YZml1507） |
-| 旧仓 FinAI | ✅ 已删除 | `Test-Path D:\Projects\FinAI = False` |
-| 10 个计划任务 | ✅ 全部 Disabled（2026-09-01 复测） | `Get-ScheduledTask` 输出 |
-| FINDING 台账 | ✅ 370 行（2026-09-01 复测） | `Select-String -Pattern "FINDING-"` |
-| 红线路径 | ✅ 7/7 存在 | `Test-Path` 逐个核对 |
-| 占位包 6 个 | ✅ 存在 | `accounting/backtest/ops/reporting/strategy/data` |
-| 离线单测 | ✅ **435 passed**（395 + T301×27 + T302×4 + T303×6 + T304×3；复跑 exit 0） | `py -3.11 -m pytest tests/ …` |
-| T001 告警通道 | ✅ 已拍板飞书 | `.specify/memory/alert_channel.md` |
-| T101–T104 | ✅ 全部勾选 | tasks.md（research-finai） |
-| T105 / T108 | ✅ 已入库并勾选 | commit `8282cd4`；tasks.md `[x]` |
-| T106 / T107 | ✅ 已入库并勾选 | commit `5e08574`；tasks.md `[x]` |
-| T109 | ✅ 已入库并勾选 | commit `c5d75bf`；tasks.md `[x]` |
-| T110 | ✅ 已入库并勾选 | commit `2ffbf7b`；tasks.md `[x]` |
-| T201 / T202 | ✅ 已入库并勾选（2026-09-01） | commit `8fca14f`；tasks.md `[x]` + TK-8 |
-| T203 费用模型 | ✅ 已入库并勾选（2026-09-01） | commit `edd8d2f`；tasks.md `[x]` + TK-9；07 号逐项核对（黄金算例 10 万往返逐项口径 112.82 元） |
-| T204 成交模型 | ✅ 已入库并勾选（2026-09-01） | commit `ccd693c`；tasks.md `[x]` + TK-10；敏感度对比 `docs/t204_price_model_sensitivity.md` |
-| T205 绩效指标 | ✅ 已入库并勾选（2026-09-01；含 Calmar 补丁） | commit `63f5935`+`7eed8e3`；tasks.md `[x]` + TK-11 |
-| T206 实验 registry | ✅ 已入库并勾选（2026-09-01） | commit `59a127b`；tasks.md `[x]` + TK-12 |
-| T207 门禁 G3 | ✅ 通过（2026-09-01） | commit `0c52168`；`docs/t207_g3_gate_acceptance.md`；tasks.md `[x]` + TK-13；**Phase 2 清零，Phase 3 解锁** |
-| T204 曲线件 | ✅ FR-BT-6 双件齐备 | `scripts/t204_sensitivity_curve.py` + `docs/t204_sensitivity_curve.svg`；commit `78b3857` |
-| T301 组合管理器 | ✅ 已入库并勾选（2026-09-01） | commit `434fa8b`；tasks.md `[x]` + TK-15；`strategy/portfolio.py` 三段纯函数 |
-| T302 候选策略 | ✅ 已入库并勾选（2026-09-01） | commit `964c383`；tasks.md `[x]` + TK-16；`strategy/candidates.py` |
-| T303 参数稳健性 | ✅ 已入库并勾选（2026-09-01） | commit `2711052`；tasks.md `[x]` + TK-17；`strategy/param_scan.py`（±20% 邻域、悬崖三判据） |
-| T304 跨区间压力 | ✅ 已入库并勾选（2026-09-01） | commit `539f534`；tasks.md `[x]` + TK-18；`docs/t304_stress_report.md`（crash −68.33% / bear −10.81%，胜率均 0%，如实呈现） |
-| T305 技术评审 | ✅ 已产出报告（2026-09-01） | commit `82882b3`；docs/t305_technical_review.md；**G4 决策点已交用户**（⛔ 全停手等指示） |
-| 测试产物残留 | ✅ 无新增残留 | 测试走 tmp_path；审计临时目录用完即删 |
-| research-finai 工作树 | ✅ 干净（`ffbff48` 已提交） | `git status` |
+```mermaid
+flowchart TB
+  subgraph COMPARE["压力测试对比（T304 vs T313）"]
+    direction TB
+    M[动量策略 MomentumStrategy<br/>2015 crash: MDD 68% / 换手 1271%<br/>2018 bear: MDD 10% / 换手 668%<br/>胜率均 0% ❌]
+    D[红利策略 DividendStrategy<br/>2015 crash: MDD 0% / 换手 0%<br/>2018 bear: MDD 0% / 换手 0%<br/>MA200 择时全程空仓避险 ✅]
+    M -.->|改善 +68pp MDD<br/>+13.17 夏普| D
+  end
+  style M fill:#fee2e2,stroke:#dc2626,color:#0f172a
+  style D fill:#dcfce7,stroke:#16a34a,color:#0f172a
+```
+
+## 测试基线演进
+
+```mermaid
+flowchart LR
+  B0[Phase 0 起点<br/>19 passed] --> B1[Phase 1 数据层<br/>162 passed]
+  B1 --> B2[Phase 2 回测引擎<br/>394 passed]
+  B2 --> B3[Phase 3 策略层<br/>435 passed]
+  B3 --> B35[Phase 3.5 红利策略<br/>524 passed ⏵当前]
+  style B0 fill:#e0e7ff,stroke:#818cf8
+  style B1 fill:#e0e7ff,stroke:#818cf8
+  style B2 fill:#e0e7ff,stroke:#818cf8
+  style B3 fill:#e0e7ff,stroke:#818cf8
+  style B35 fill:#dbeafe,stroke:#2563eb,color:#0f172a
+```
+
+## 下一步决策点
+
+```mermaid
+flowchart TD
+  NOW[当前位置：G4.5 通过<br/>Phase 3.5 清零]
+  NOW --> OPT1[选项 A：执行 T312 真实数据回测<br/>≈40-50 分钟]
+  NOW --> OPT2[选项 B：直接进入 Phase 4 模拟盘<br/>基于 T313 压力测试结果]
+  OPT1 --> DEC1{CAGR / 夏普 / MDD<br/>达标？}
+  DEC1 -->|✅ 达标| P4A[Phase 4 模拟盘]
+  DEC1 -->|❌ 不达标| ADJ[调整策略参数<br/>或换其他风格]
+  OPT2 --> P4B[Phase 4 模拟盘<br/>6 个月]
+  style NOW fill:#dbeafe,stroke:#2563eb,color:#0f172a
+  style OPT1 fill:#fef3c7,stroke:#f59e0b,color:#0f172a
+  style OPT2 fill:#fef3c7,stroke:#f59e0b,color:#0f172a
+  style P4A fill:#dcfce7,stroke:#16a34a
+  style P4B fill:#dcfce7,stroke:#16a34a
+  style ADJ fill:#fee2e2,stroke:#dc2626,color:#0f172a
+```
 
 ---
 
-**维护者备注**：流程图按 CLAUDE.md §5 路线图与 tasks.md 依赖序绘制；节点状态色标：绿=完成、蓝=当前、黄=部分/有条件、灰=待启动、红=阻塞/需用户确认。
+**更新历史**：
+- 2026-08-31：Phase 0–1 完成标记
+- 2026-09-01：Phase 2–3 完成标记 + G3/G4 门禁通过
+- 2026-09-02：Phase 3.5 红利策略切换完成 + G4.5 门禁通过 + 测试基线 524
