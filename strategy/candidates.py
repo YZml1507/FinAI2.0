@@ -69,8 +69,20 @@ class MomentumConfig:
 class MomentumStrategy:
     """日线动量候选策略（鸭子类型，引擎只要 ``on_bar`` + ``watchlist``）。"""
 
-    def __init__(self, config: MomentumConfig | None = None) -> None:
+    def __init__(
+        self,
+        config: MomentumConfig | None = None,
+        universe_provider: Any | None = None,
+    ) -> None:
+        """
+        Args:
+            config: 策略参数包。
+            universe_provider: ``(date) -> Iterable[str]`` 型回调，回测里返回**当日**
+                可交易池（防幸存者偏差）。``None`` = 由调用方手动维护 ``watchlist``
+                （向后兼容，但仍推荐注入——T108 要求历史成分回放）。
+        """
         self.config = config or MomentumConfig()
+        self.universe_provider = universe_provider
         self.watchlist: list[str] = []                     # 引擎在此读范围
         self._bars_seen: dict[str, int] = {}             # symbol → 已见 bar 数（含停牌日缺席）
         self._closes: dict[str, deque[Decimal]] = {}     # symbol → 最近 window 收盘
@@ -85,6 +97,10 @@ class MomentumStrategy:
     def on_bar(self, day: _date, bars: Mapping[str, Bar], book: Any, broker: Any) -> None:
         cfg = self.config
         self._step += 1
+
+        # ⓪ 当日股票池：无 provider 时保持手工 watchlist（向后兼容）
+        if self.universe_provider is not None:
+            self.watchlist = list(self.universe_provider(day))
 
         # ① 消化当日 bar：补收盘价历史
         for symbol in self.watchlist:
