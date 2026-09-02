@@ -182,8 +182,8 @@ class TestSuspensionButResumeNormal:
         engine, broker = _make({"sh.600000": frame}, calendar)
         strategy = ScriptStrategy({
             d1: [(OrderSide.BUY, 100, "BUY-1")],
-            d2: [(OrderSide.SELL, 100, "SELL-1")],  # d3 停牌被拒（停牌期间尝试卖出）
-            d5: [(OrderSide.SELL, 100, "SELL-2")],  # d6 撮合成功（复牌正常非跌停）
+            d2: [(OrderSide.SELL, 100, "SELL-1")],  # d2 下单，d3 停牌被拒
+            d5: [(OrderSide.SELL, 100, "SELL-2")],  # d5 下单，d6 复牌正常成交
         })
         result = engine.run(strategy, d1, d6)
         return result, broker
@@ -232,8 +232,8 @@ class TestSuspensionThenLimitDown:
         engine, broker = _make({"sh.600000": frame}, calendar)
         strategy = ScriptStrategy({
             d1: [(OrderSide.BUY, 100, "BUY-1")],
-            d2: [(OrderSide.SELL, 100, "SELL-1")],  # d3 停牌被拒（停牌期间尝试卖出）
-            d5: [(OrderSide.SELL, 100, "SELL-2")],  # d6 跌停撮合被拒（复牌跌停卖不掉）
+            d2: [(OrderSide.SELL, 100, "SELL-1")],  # d2 下单，d3 停牌被拒
+            d5: [(OrderSide.SELL, 100, "SELL-2")],  # d5 下单，d6 复牌跌停被拒（陷阱成立）
         })
         result = engine.run(strategy, d1, d7)
         return result, broker
@@ -296,12 +296,12 @@ class TestMultipleSymbolsTrapped:
                 (OrderSide.BUY, 100, "BUY-600001"),
             ],
             d2: [
-                (OrderSide.SELL, 100, "SELL-600000-1"),  # d3 停牌被拒
-                (OrderSide.SELL, 100, "SELL-600001-1"),  # d3 停牌被拒
+                (OrderSide.SELL, 100, "SELL-600000-1"),  # d2 下单，d3 停牌被拒
+                (OrderSide.SELL, 100, "SELL-600001-1"),  # d2 下单，d3 停牌被拒
             ],
             d4: [
-                (OrderSide.SELL, 100, "SELL-600000-2"),  # d5 跌停撮合被拒
-                (OrderSide.SELL, 100, "SELL-600001-2"),  # d5 跌停撮合被拒
+                (OrderSide.SELL, 100, "SELL-600000-2"),  # d4 下单，d5 复牌跌停被拒
+                (OrderSide.SELL, 100, "SELL-600001-2"),  # d4 下单，d5 复牌跌停被拒
             ],
         })
         result = engine.run(strategy, d1, d6)
@@ -362,8 +362,8 @@ class TestSameSymbolMultipleTraps:
         engine, broker = _make({"sh.600000": frame}, calendar)
         strategy = ScriptStrategy({
             d1: [(OrderSide.BUY, 100, "BUY-1")],
-            d2: [(OrderSide.SELL, 100, "SELL-1")],  # d3 停牌被拒
-            d5: [(OrderSide.SELL, 100, "SELL-2")],  # d6 停牌被拒，第二次陷阱 d7跌停撮合被拒
+            d2: [(OrderSide.SELL, 100, "SELL-1")],  # d2 下单，d3 停牌被拒，第一次陷阱
+            d5: [(OrderSide.SELL, 100, "SELL-2")],  # d5 下单，d6 停牌被拒，第二次陷阱
         })
         result = engine.run(strategy, d1, d9)
         return result, broker
