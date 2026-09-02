@@ -51,6 +51,7 @@ class PortfolioConfig:
 
     ``target_count`` 合法域 [``min_positions``, ``max_positions``]（默认 3/5/8）；
     ``hard_limit`` 是任何时刻总持仓数硬顶（默认 10），**必须** ≥ ``max_positions``。
+    ``max_price``：高价股过滤（默认 300.0 元，``None`` 禁用），防集中度风险与冲击成本放大。
     """
 
     target_count: int = 5
@@ -61,6 +62,7 @@ class PortfolioConfig:
     lot_size: int = 100                                  # 整手
     min_daily_amount: Decimal = Decimal("50000000")      # 流动性下限（当日成交额 5000 万）
     max_participation_rate: Decimal = Decimal("0.05")    # 单笔买入 ≤ 当日成交额 5%
+    max_price: Decimal | None = Decimal("300.0")         # 高价股上限（元，None=禁用）
 
     def __post_init__(self) -> None:
         ints = ("target_count", "min_positions", "max_positions",
@@ -75,6 +77,12 @@ class PortfolioConfig:
                 raise PortfolioError(f"{name} 须为 Decimal（⛔ 禁 float）: {v!r}")
             if v <= _ZERO:
                 raise PortfolioError(f"{name} 须 > 0: {v}")
+        # max_price 可选（None=禁用），非 None 则须为正 Decimal
+        if self.max_price is not None:
+            if not isinstance(self.max_price, Decimal):
+                raise PortfolioError(f"max_price 须为 Decimal 或 None（⛔ 禁 float）: {self.max_price!r}")
+            if self.max_price <= _ZERO:
+                raise PortfolioError(f"max_price 须 > 0: {self.max_price}")
         if not (self.min_positions <= self.target_count <= self.max_positions):
             raise PortfolioError(
                 f"target_count={self.target_count} 须在 "
@@ -139,6 +147,9 @@ def _plan_one(
     close = getattr(bar, "close", None)
     if not isinstance(amount, Decimal) or not isinstance(close, Decimal):
         raise PortfolioError(f"{symbol} 的 bar 缺 Decimal 字段 amount/close")
+    # 高价股过滤（防集中度风险与冲击成本放大）
+    if cfg.max_price is not None and close > cfg.max_price:
+        return None, "超过价格上限"
     if amount < cfg.min_daily_amount:
         return None, "流动性不足"
     # 参与率封顶（防冲击成本，FR-PM-4）
