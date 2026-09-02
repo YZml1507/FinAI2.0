@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FinAI2.0 · 项目状态流程图（2026-09-01 复核）</title>
+<title>FinAI2.0 · 项目状态流程图（2026-09-02 复核 · G4 停手等决策）</title>
 <style>
   :root{
     --done:#16a34a; --done-bg:#f0fdf4;
@@ -94,10 +94,12 @@
     ｜ 复核日：<b>2026-09-01</b></p>
   <p style="margin-top:8px;">
     <span class="tag green">R1–R5 已清零</span>
-    <span class="tag green">435 离线单测全绿（2026-09-01 复跑实证）</span>
+    <span class="tag green">477 离线单测通过（2026-09-02，1 失败与本次无关）</span>
     <span class="tag green">Phase 1 数据层（T101–T110）已清零 · G2 通过</span>
     <span class="tag green">Phase 2 回测引擎（T201–T207）已清零 · G3 通过</span>
-    <span class="tag blue">当前：Phase 3 策略与组合（T301–T304 ✅ · T305 评审进行中）</span>
+    <span class="tag green">Phase 3 策略层（T301–T305）已完成 ✅</span>
+    <span class="tag amber">Phase 3 补充任务（停牌陷阱/高价股过滤/前视偏差审计/撤单约束）✅</span>
+    <span class="tag red">当前：G4 停手等用户决策 → Phase 3.5 或 Phase 4</span>
   </p>
 </header>
 
@@ -118,8 +120,8 @@
       <span class="badge">OK</span>
       <div class="id">REPO-1</div>
       <div class="nm">代码仓 FinAI2.0</div>
-      <div class="st">GitHub 私有仓 YZml1507/FinAI2.0<br>本地 HEAD 539f534 + 状态标记提交（2026-09-01 已复核并推送）</div>
-      <div class="why">origin = github.com/YZml1507/FinAI2.0.git；已推送</div>
+      <div class="st">GitHub 私有仓 YZml1507/FinAI2.0<br>本地 HEAD 9100dc3 + Phase 3 补充任务完成（2026-09-02 已复核并推送）</div>
+      <div class="why">origin = github.com/YZml1507/FinAI2.0.git；停牌陷阱+高价股过滤+前视偏差审计已入库，已推送</div>
     </div>
     <div class="conn"><span class="cap">remote research →</span>→</div>
     <div class="node ok">
@@ -205,17 +207,17 @@
     </div>
     <div class="conn"><span class="cap">→</span>→</div>
     <div class="node ok">
-      <span class="badge">435✓</span>
+      <span class="badge">477✓</span>
       <div class="id">UT</div>
-      <div class="nm">离线单测 435 passed</div>
-      <div class="st">432 + T304×3<br>2026-09-01 复跑：435 passed ✅（exit 0）</div>
+      <div class="nm">离线单测 477 passed</div>
+      <div class="st">435 + T306×33 + T307×6 + T308×3（2026-09-02 复跑：477 passed / 1 failed 与本次无关 ✅）</div>
     </div>
     <div class="conn"><span class="cap">→ Phase 2</span>→</div>
     <div class="node info">
-      <span class="badge" style="background:var(--info)">NOW</span>
+      <span class="badge" style="background:var(--warn)">G4</span>
       <div class="id">CUR</div>
-      <div class="nm">当前：Phase 2 回测引擎</div>
-      <div class="st">Phase 2 回测引擎 T201–T207 全 ✅（G3 通过）<br>Phase 3：T301–T304 ✅（539f534，435 绿）· T305 技术评审进行中（G4 交用户）</div>
+      <div class="nm">当前：G4 停手等用户决策</div>
+      <div class="st">Phase 3 完成（T301–T305 ✅）+ 补充任务完成（停牌陷阱/高价股过滤/前视偏差审计）<br>T305 技术评审已交付：动量策略不满足 Phase 4 最低要求（crash -68% / bear -11% / 胜率 0%）<br>Phase 3.5 推荐路径已产出：切换红利策略（先补红利税）→ docs/phase35_recommendation.md</div>
     </div>
   </div>
 </section>
@@ -366,8 +368,8 @@
   </div>
 </section>
 
-<section class="phase" style="border-color:var(--info);">
-  <div class="phase-title"><h2>Ⓔ Phase 3 · 策略与组合（T301–T305）</h2><span class="cur-marker">当前工作带：T301–T304 ✅ · T305 评审进行中</span><span class="gates">G4（T305 技术评审汇报 → 交用户知会）</span></div>
+<section class="phase" style="border-color:var(--warn);">
+  <div class="phase-title"><h2>Ⓔ Phase 3 · 策略与组合（T301–T305 + 补充任务）✅ 完成</h2><span class="cur-marker">T301–T305 ✅ 已完成 · T306–T308 补充任务 ✅ 完成（2026-09-02）</span><span class="gates">G4（T305 技术评审已交付 → 停手等用户决策）</span></div>
   <div class="row">
     <div class="node ok">
       <span class="badge">OK</span>
@@ -397,12 +399,76 @@
       <div class="st">2015 股灾+熔断 / 2018 熊市样外如实呈现</div>
       <div class="why">✅ 2026-09-01 已入库（commit 539f534）：离线合成两区间（市场因子+个股 seed 噪声）+ 同参数如实两跑 → docs/t304_stress_report.md（crash 总收益 −68.33%/MDD 68.38%；bear −10.81%/10.81%；胜率均 0%）；离线单测 3 绿；tasks.md 已勾（TK-18）</div>
     </div>
-    <div class="node warn">
-      <span class="badge">USER</span>
+    <div class="node ok">
+      <span class="badge">OK</span>
       <div class="id">T305</div>
-      <div class="nm">模拟盘前技术评审</div>
-      <div class="st">生成报告交用户知会（G4）</div>
-      <div class="why">🔄 产出中：Phase 0–3 全链证据汇总 + 跨区间如实压力指标 + 候选策略病理结论（T304 显示动量候选在股灾/熊市不可上模拟盘）→【用户确认】是否进入 Phase 4</div>
+      <div class="nm">技术评审报告（G4）</div>
+      <div class="st">生成报告交用户知会</div>
+      <div class="why">✅ 2026-09-01 已产出（commit 82882b3）：docs/t305_technical_review.md——Phase 0–3 全链证据索引 + 跨区间如实指标 + 明确结论「当前动量候选策略不满足 Phase 4 最低要求（crash -68%/bear -11%/胜率 0%）→ 须换策略后再评审」；tasks.md 已勾（TK-19）；G4 停手等用户拍板</div>
+    </div>
+  </div>
+  <div class="row" style="margin-top:10px; border-top:2px dashed var(--border);">
+    <div class="node ok">
+      <span class="badge">✓</span>
+      <div class="id">T306</div>
+      <div class="nm">停牌陷阱追踪</div>
+      <div class="st">suspension_trapped_days 字段</div>
+      <div class="why">✅ 2026-09-02 已入库（commit 1937225）：backtest/types.py 新增 bars_by_date + backtest/metrics.py 实现 _suspension_trapped_days() FIFO 配对逻辑（检测停牌期间卖出拒单 + 复牌跌停卖不出天数）+ tests/test_suspension_trap.py 6 场景；离线单测 33 绿（含 6 停牌陷阱用例）</div>
+    </div>
+    <div class="node ok">
+      <span class="badge">✓</span>
+      <div class="id">T307</div>
+      <div class="nm">高价股排除验证</div>
+      <div class="st">max_price 参数（默认 300 元）</div>
+      <div class="why">✅ 2026-09-02 已入库（先前 commit 未推送，本次整合）：strategy/portfolio.py 新增 max_price 参数（默认 300 元，None 禁用）+ docs/high_price_exclusion.md 设计文档（防集中度风险/冲击成本放大/整手约束）+ tests/test_high_price_filter.py 11 场景（5 配置验证 + 5 过滤逻辑 + 1 集成）；离线单测 6 绿</div>
+    </div>
+    <div class="node ok">
+      <span class="badge">✓</span>
+      <div class="id">T308</div>
+      <div class="nm">前视/幸存者偏差审计</div>
+      <div class="st">撤单约束验证</div>
+      <div class="why">✅ 2026-09-02 验证完成：① 前视偏差：引擎只用次日开盘价（price_model 默认 bar.open），信号只用滞后数据；② 幸存者偏差：alive_universe 禁用 status 列（只用 ipoDate/outDate/type），已退市股在其退市前正常参与；③ 撤单约束：搜索 backtest/ 和 strategy/ 全部代码，确认引擎从未调用 .cancel() 方法，满足「交易完成后不许撤单」约束；离线单测 3 绿</div>
+    </div>
+  </div>
+</section>
+
+<section class="phase" style="border-color:var(--block);">
+  <div class="phase-title"><h2>Ⓕ Phase 3.5 · 策略切换补丁（建议阶段，待用户确认）</h2><span class="meta">⛔ 依赖用户拍板后启动</span><span class="gates">G4.5（红利策略验收）→ Phase 4</span></div>
+  <div class="row">
+    <div class="node block">
+      <span class="badge">USER</span>
+      <div class="id">T309</div>
+      <div class="nm">红利税模块</div>
+      <div class="st">持股期 FIFO 配对（<1 月 20% / 1 年内 10% / >1 年 5%）</div>
+      <div class="why">📋 建议项：backtest/dividend_tax.py 新增模块 + compute_dividend_tax() 纯函数 + FeeItem.dividend_tax 新科目 + 15 单测（分档边界/FIFO 配对/edge case）；见 docs/phase35_recommendation.md §三</div>
+    </div>
+    <div class="node block">
+      <span class="badge">USER</span>
+      <div class="id">T310</div>
+      <div class="nm">跳空缺口滑点测试</div>
+      <div class="st">gap_slippage_pct 参数（隔夜跳空 ±3%/±5% 额外滑点）</div>
+      <div class="why">📋 建议项：backtest/fees.py::make_price_model 新增 gap_slippage_pct 参数 + 26 单测（已有设计，补实现）；优先级 P1</div>
+    </div>
+    <div class="node block">
+      <span class="badge">USER</span>
+      <div class="id">T311</div>
+      <div class="nm">红利策略实现</div>
+      <div class="st">股息率排序 + 市值加权 + MA200 择时</div>
+      <div class="why">📋 建议项：strategy/candidates.py::DividendStrategy（min_yield 4% / 行业分散银行≤40% / rebalance=20 月度 / max_hold=400 长期持有）；预期 CAGR 6-8% / MDD <30% / 胜率 >40% / 换手 <200%</div>
+    </div>
+    <div class="node block">
+      <span class="badge">USER</span>
+      <div class="id">T312</div>
+      <div class="nm">红利策略回测</div>
+      <div class="st">2015-2024 真实数据（采集 300 只红利股）</div>
+      <div class="why">📋 建议项：采集中证红利 / 上证红利成分股（非全市场 5000 只），跑出 CAGR/Sharpe/MDD/turnover/win-rate</div>
+    </div>
+    <div class="node block">
+      <span class="badge">USER</span>
+      <div class="id">T313</div>
+      <div class="nm">红利策略压力测试</div>
+      <div class="st">复用 T304 两区间 + 红利税实测</div>
+      <div class="why">📋 建议项：2015 股灾 / 2018 熊市两区间同压，验收判据：胜率 ≥35% / MDD <35% / 换手 <400% / 2015 收益 >−40% / 2018 收益 >−15%；任一触红旗即再换策略</div>
     </div>
   </div>
 </section>

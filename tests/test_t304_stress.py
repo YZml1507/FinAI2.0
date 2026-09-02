@@ -147,8 +147,12 @@ def _run_regime(regime: _Regime, seed_base: int) -> tuple:
     ledger = Ledger(D("500000"), date=regime.start)
     matcher = MatchEngine(fee_model=make_fee_model())
     broker = BacktestBroker(matcher, ledger, feed)
+    # 禁用 max_price 过滤（合成数据起点 500 元，默认 300 元上限会全拦）
+    from strategy.portfolio import PortfolioConfig
+    portfolio_cfg = PortfolioConfig(max_price=None)
     strategy = MomentumStrategy(MomentumConfig(
-        lookback=8, rebalance_days=5, warmup_bars=8, max_holding_days=25))
+        lookback=8, rebalance_days=5, warmup_bars=8, max_holding_days=25,
+        portfolio=portfolio_cfg))
     strategy.universe_provider = lambda day: [code for code, _ in _POOL]
     result = BacktestEngine(broker, feed).run(
         strategy, regime.start, regime.start + timedelta(days=regime.days - 1))
