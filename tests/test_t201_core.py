@@ -155,7 +155,7 @@ def test_enums_are_str_subclasses_with_identity_values():
     assert OrderSide.BUY == "BUY"
     assert len(list(OrderSide)) == 2
     assert len(list(OrderType)) == 2
-    assert len(list(FeeItem)) == 6
+    assert len(list(FeeItem)) == 7  # T309 新增 DIVIDEND_TAX
 
 
 def test_types_defaults_and_frozen_contract():

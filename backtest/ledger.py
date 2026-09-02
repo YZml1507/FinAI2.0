@@ -70,6 +70,7 @@ class JournalType(str, Enum):
     TRADE = "TRADE"                  # 成交（含随成交发生的费用明细）
     FEE = "FEE"                      # 独立费用（管理费等，不随成交）
     DIVIDEND = "DIVIDEND"            # 现金分红入账
+    DIVIDEND_TAX = "DIVIDEND_TAX"    # 红利税（T309：股息红利差别化个人所得税）
     EXDIV_ADJUST = "EXDIV_ADJUST"    # 除权调整（送股 / 转增 / 拆股）
     CASH_IN = "CASH_IN"              # 出入金（含期初本金）
     SETTLE = "SETTLE"                # 日终结算快照

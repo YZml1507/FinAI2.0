@@ -339,6 +339,7 @@ def compute_fees(
         FeeItem.HANDLING_FEE: handling_fee,
         FeeItem.MANAGEMENT_FEE: management_fee,
         FeeItem.SLIPPAGE: slippage,
+        FeeItem.DIVIDEND_TAX: _ZERO,  # T309：红利税在除权日单独计算，交易时不发生
     }
 
 

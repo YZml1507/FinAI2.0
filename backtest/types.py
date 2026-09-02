@@ -64,6 +64,9 @@ class Bar:
     # —— 元数据 ——
     is_st: bool = False
     adjust_mode: str = "hfq"
+    # —— T311 红利策略扩展字段（可选） ——
+    dividend_yield: Decimal | None = None     # 股息率（例如 0.045 = 4.5%）
+    market_cap: Decimal | None = None         # 自由流通市值（元）
 
 
 @dataclass

@@ -60,7 +60,8 @@ class FeeItem(str, Enum):
     """费用科目（A 股交易成本拆项，FR-BT-5）。
 
     ``Trade.fees`` 必须至少包含 ``COMMISSION`` / ``STAMP_TAX`` / ``TRANSFER_FEE``
-    / ``HANDLING_FEE``（T201 §3）；``MANAGEMENT_FEE`` / ``SLIPPAGE`` 为可选拆项。
+    / ``HANDLING_FEE``（T201 §3）；``MANAGEMENT_FEE`` / ``SLIPPAGE`` / ``DIVIDEND_TAX``
+    为可选拆项。
     """
 
     COMMISSION = "COMMISSION"          # 佣金
@@ -69,3 +70,4 @@ class FeeItem(str, Enum):
     HANDLING_FEE = "HANDLING_FEE"      # 经手费（沪深 / 北交所分站费率，fees.py 逐项透视）
     MANAGEMENT_FEE = "MANAGEMENT_FEE"  # 证管费（证监会规费 0.02‰ 双边；名含"管理"实为规费拆项，见 fees.py）
     SLIPPAGE = "SLIPPAGE"              # 滑点（建模为成本项，便于归因）
+    DIVIDEND_TAX = "DIVIDEND_TAX"      # 红利税（T309：股息红利差别化个人所得税，三档税率）

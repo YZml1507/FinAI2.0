@@ -41,7 +41,7 @@ from strategy.portfolio import (
     select_targets,
 )
 
-__all__ = ["MomentumConfig", "MomentumStrategy"]
+__all__ = ["MomentumConfig", "MomentumStrategy", "DividendConfig", "DividendStrategy"]
 
 
 @dataclass(frozen=True)
@@ -179,3 +179,233 @@ class MomentumStrategy:
 
 
 _ZERO_ = Decimal("0")
+
+
+# ==============================================================================
+# T311 红利策略（低 beta 股息率排序 + 市值加权 + MA200 择时保护）
+# ==============================================================================
+
+
+@dataclass(frozen=True)
+class DividendConfig:
+    """红利策略配置（FR-PM-1 红利分支 + 择时退出）。
+
+    v1 口径声明：
+    * 选股：股息率 ≥ ``min_dividend_yield`` → 按股息率降序取前 ``candidate_pool_size`` 只
+    * 加权：自由流通市值加权（市值越大权重越高，归一化后传组合层）
+    * 择时：指数（默认沪深 300）收盘价 < MA200 → 全部空仓退出（FR-PM-2 择时分支）
+    * 调仓：每 ``rebalance_days`` 个交易日（默认 20 = 月度）
+    * 持仓时长：无时间退出（只在调仓日被动调整，对比 MomentumStrategy 的 max_hold）
+    """
+
+    min_dividend_yield: Decimal = Decimal("0.03")       # 股息率下限（3%）
+    candidate_pool_size: int = 50                       # 股息率排序后候选池规模
+    min_positions: int = 5
+    max_positions: int = 8
+    default_positions: int = 5
+    use_ma200_timing: bool = True                       # MA200 择时开关
+    index_symbol: str = "sh.000300"                     # 沪深 300 作为市场基准
+    rebalance_days: int = 20                            # 调仓频率（交易日）
+    warmup_bars: int = 210                              # 冷启动期（≥200 + 缓冲）
+    portfolio: PortfolioConfig = field(default_factory=PortfolioConfig)
+
+    def __post_init__(self) -> None:
+        """参数校验（fail-closed）。"""
+        # min_dividend_yield 须为 Decimal [0, 0.20]
+        if not isinstance(self.min_dividend_yield, Decimal):
+            raise TypeError(f"min_dividend_yield 须为 Decimal（⛔ 禁 float）: "
+                            f"{type(self.min_dividend_yield).__name__}")
+        if self.min_dividend_yield < _ZERO_ or self.min_dividend_yield > Decimal("0.20"):
+            raise ValueError(f"min_dividend_yield 须在 [0, 0.20] 范围内: "
+                             f"{self.min_dividend_yield}")
+
+        # 整数字段校验
+        for name in ("candidate_pool_size", "min_positions", "max_positions",
+                     "default_positions", "rebalance_days", "warmup_bars"):
+            v = getattr(self, name)
+            if not isinstance(v, int) or isinstance(v, bool):
+                raise TypeError(f"{name} 须为 int: {v!r}")
+
+        # 持仓数范围
+        if not (self.min_positions <= self.default_positions <= self.max_positions):
+            raise ValueError(
+                f"default_positions={self.default_positions} 须在 "
+                f"[{self.min_positions}, {self.max_positions}] 内")
+
+        # 候选池须 >= 最大持仓数
+        if self.candidate_pool_size < self.max_positions:
+            raise ValueError(
+                f"candidate_pool_size={self.candidate_pool_size} 须 >= "
+                f"max_positions={self.max_positions}")
+
+        # 调仓频率 / 冷启动期
+        if self.rebalance_days < 1:
+            raise ValueError(f"rebalance_days 须 >= 1: {self.rebalance_days}")
+        if self.warmup_bars < 200:
+            raise ValueError(f"warmup_bars 须 >= 200（MA200 最小需求）: {self.warmup_bars}")
+
+
+@dataclass(frozen=True)
+class Signal:
+    """策略信号（symbol + score + 原因）。"""
+    symbol: str
+    score: Decimal
+    reason: str = ""
+
+
+class DividendStrategy:
+    """红利策略：股息率排序 + 市值加权 + MA200 择时。
+
+    选股逻辑：
+    1. 筛选股息率 >= min_dividend_yield 的股票
+    2. 按股息率降序排序，取前 candidate_pool_size 只
+    3. 按自由流通市值加权分配（市值越大权重越高）
+    4. MA200 择时：指数收盘价 < MA200 → 空仓退出
+
+    调仓频率：月度（rebalance_days=20）
+    持仓时长：无时间退出（只在调仓日被动调整）
+    """
+
+    def __init__(
+        self,
+        config: DividendConfig | None = None,
+        universe_provider: Any | None = None,
+    ) -> None:
+        """
+        Args:
+            config: 红利策略参数包。
+            universe_provider: ``(date) -> Iterable[str]`` 型回调，回测里返回**当日**
+                可交易池（防幸存者偏差）。``None`` = 由调用方手动维护 ``watchlist``。
+        """
+        self.config = config or DividendConfig()
+        self.universe_provider = universe_provider
+        self.watchlist: list[str] = []
+        self._bar_count = 0
+        self._last_rebalance_bar = -1
+        self._ma200_buffer: deque[Decimal] = deque(maxlen=200)
+        self._pending_ids: dict[str, int] = {}           # symbol → 已下单计数（幂等）
+
+    # ------------------------------------------------------------------
+    # 引擎契约
+    # ------------------------------------------------------------------
+
+    def on_bar(self, day: _date, bars: Mapping[str, Bar], book: Any, broker: Any) -> None:
+        """每日回调（引擎契约）。
+
+        Args:
+            day: 当日日期
+            bars: {symbol: Bar}（含 dividend_yield / market_cap 字段）
+            book: 账本视图（读 positions / nav）
+            broker: 下单接口（.submit(Order)）
+        """
+        cfg = self.config
+        self._bar_count += 1
+
+        # ⓪ 当日股票池
+        if self.universe_provider is not None:
+            self.watchlist = list(self.universe_provider(day))
+
+        # ① 冷启动期：只收集 MA200 数据，不交易
+        if self._bar_count < cfg.warmup_bars:
+            # 冷启动期间收集指数数据（如果使用择时）
+            if cfg.use_ma200_timing:
+                index_bar = bars.get(cfg.index_symbol)
+                if index_bar is not None:
+                    self._ma200_buffer.append(index_bar.close)
+            return
+
+        # ② 每日更新 MA200 缓存（交易期必须有指数数据）
+        if cfg.use_ma200_timing:
+            index_bar = bars.get(cfg.index_symbol)
+            if index_bar is None:
+                raise ValueError(f"指数 {cfg.index_symbol} 数据缺失（MA200 择时必需）")
+            self._ma200_buffer.append(index_bar.close)
+
+        # ③ 非调仓日：保持现持仓
+        if self._bar_count - self._last_rebalance_bar < cfg.rebalance_days:
+            return
+
+        # ④ 调仓日标记
+        self._last_rebalance_bar = self._bar_count
+
+        # ⑤ MA200 择时检查
+        signals: list[Signal] = []
+        if cfg.use_ma200_timing:
+            if len(self._ma200_buffer) >= 200:
+                ma200 = sum(self._ma200_buffer) / len(self._ma200_buffer)
+
+                # 指数 < MA200 → 空仓（不产信号 → 组合层全部清仓）
+                if index_bar.close < ma200:
+                    signals = []
+                else:
+                    # 指数 >= MA200 → 正常选股
+                    signals = self._select_stocks(bars, cfg)
+            else:
+                # MA200 未凑够 → 不交易（冷启动延长期）
+                return
+        else:
+            # 不使用择时 → 直接选股
+            signals = self._select_stocks(bars, cfg)
+
+        # ⑥ 组合计划（复用 portfolio.py 三段链）
+        scores = {s.symbol: s.score for s in signals}
+        targets = select_targets(scores, cfg.portfolio)
+        total_nav = book.total_nav if hasattr(book, "total_nav") else getattr(book, "nav", _ZERO_)
+        plan, _plan_dropped = plan_positions(targets, total_nav, bars, cfg.portfolio)
+
+        # ⑦ 出意图
+        held_symbols = list(book.positions.keys()) if hasattr(book, "positions") else []
+        current = {s: int(book.positions[s].volume) for s in held_symbols}
+        report = diff_to_orders(current, plan, bars, cfg.portfolio)
+        self._submit(broker, report.intents, day)
+
+    # ------------------------------------------------------------------
+    # 内部
+    # ------------------------------------------------------------------
+
+    def _select_stocks(self, bars: Mapping[str, Bar], cfg: DividendConfig) -> list[Signal]:
+        """选股：股息率筛选 + 排序 + 市值加权。"""
+        candidates = []
+        for symbol, bar in bars.items():
+            if symbol == cfg.index_symbol:
+                continue  # 跳过指数自身
+
+            # 检查必需字段（fail-closed）
+            if bar.dividend_yield is None or bar.market_cap is None:
+                continue  # 数据不全，跳过
+
+            if bar.dividend_yield >= cfg.min_dividend_yield:
+                candidates.append((symbol, bar.dividend_yield, bar.market_cap))
+
+        # 按股息率降序排序，取前 N 只
+        candidates.sort(key=lambda x: x[1], reverse=True)
+        top_candidates = candidates[:cfg.candidate_pool_size]
+
+        # 市值加权（归一化）
+        total_market_cap = sum(c[2] for c in top_candidates)
+        if total_market_cap == _ZERO_:
+            return []  # 无有效候选，空仓
+
+        signals = []
+        for symbol, div_yield, market_cap in top_candidates[:cfg.default_positions]:
+            weight = market_cap / total_market_cap
+            signals.append(Signal(
+                symbol=symbol,
+                score=weight,  # 市值权重作为 score
+                reason=f"股息率 {div_yield * 100:.2f}% / 市值权重 {weight * 100:.2f}%"
+            ))
+
+        return signals
+
+    def _submit(self, broker: Any, intents: Sequence[OrderIntent], day: _date) -> None:
+        """提交订单意图（复用 MomentumStrategy 的模式）。"""
+        for intent in intents:
+            count = self._pending_ids.get(intent.symbol, 0) + 1
+            self._pending_ids[intent.symbol] = count
+            oid = f"t311-{intent.symbol}-{intent.side.value}-{day.isoformat()}-{count}"
+            from backtest.types import Order, OrderType
+            broker.submit(Order(
+                client_order_id=oid, symbol=intent.symbol, side=intent.side,
+                order_type=OrderType.MARKET, volume=intent.volume, price=None,
+                created_date=day))
+

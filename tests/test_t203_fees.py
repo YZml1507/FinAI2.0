@@ -189,7 +189,7 @@ class TestRateTable:
 
 class TestCompletenessAndRounding:
     def test_all_six_keys_present_both_sides(self) -> None:
-        # Trade.fees 契约：六科目齐备（不适用记 0 不缺键）
+        # Trade.fees 契约：七科目齐备（T309 新增 DIVIDEND_TAX，不适用记 0 不缺键）
         for side in (OrderSide.BUY, OrderSide.SELL):
             assert set(_fees(side).keys()) == set(FeeItem)
 
