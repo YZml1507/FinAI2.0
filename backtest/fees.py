@@ -412,25 +412,40 @@ def make_price_model(
     config: FeeConfig | None = None,
     *,
     limit_pct: Decimal | None = None,
+    gap_slippage_pct: Decimal | None = None,
+    gap_threshold_pct: Decimal = Decimal("0.03"),
 ) -> Callable[[Order, Bar], Decimal]:
-    """T204 成交价模型 = 次一开盘 + 滑点 + tick 取整 + 可选涨跌停限幅（FR-BT-6 / FR-BT-7 / 13 号红线）。
+    """T204 成交价模型 = 次一开盘 + 滑点 + 缺口滑点 + tick 取整 + 可选涨跌停限幅（FR-BT-6 / FR-BT-7 / 13 号红线）。
 
     步骤：``anchor = bar.open``（次一开盘 = 默认口径）→ :func:`apply_slippage`
-    按方向推价（BUY 更贵 / SELL 更贱）→ 按 ``TICK_SIZE``（0.01 元）ROUND_HALF_UP
-    取整（13 号：成交价必须是合法 tick 的倍数）→ ``limit_pct`` 非空时限幅到
+    按方向推价（BUY 更贵 / SELL 更贱）→ **可选缺口滑点**（当 ``|open - preclose| / preclose``
+    超过 ``gap_threshold_pct`` 时，额外叠加 ``gap_slippage_pct``）→ 按 ``TICK_SIZE``（0.01 元）
+    ROUND_HALF_UP 取整（13 号：成交价必须是合法 tick 的倍数）→ ``limit_pct`` 非空时限幅到
     ``[preclose×(1-pct), preclose×(1+pct)]``（同样 tick 取整；13 号：滑点后
     成交价不得越涨跌停价）。
 
     ⛔ 限幅是**价格层面**的最后闸，与撮合规则 2/3 的一字板拒单语义独立：
     规则 2/3 处理「封板不可成交」，本层处理「非封板时滑点不越界」。
 
+    **缺口滑点（Gap Slippage）**：隔夜跳空 ±3% / ±5% 时，真实成交价会因流动性枯竭、
+    挂单稀疏而额外偏离开盘价。``gap_slippage_pct`` 非空时，当检测到缺口超阈值（默认 3%），
+    额外施加该滑点（**叠加**基础滑点 ``config.slippage_rate``）。方向：BUY 时跳空↑加剧不利
+    （更贵）、跳空↓有利但也加滑点保守估计；SELL 反之。
+
     Args:
-        config: 费率配置（滑点率来源）；``None`` ⇒ :func:`default_fee_config`（5bps）。
+        config: 费率配置（基础滑点率来源）；``None`` ⇒ :func:`default_fee_config`（5bps）。
         limit_pct: 可选涨跌停幅度（如 ``Decimal("0.1")``）。``None`` ⇒ 只推价+取整，
             不做限幅（调用方/数据层未提供幅度时的安全默认）。
+        gap_slippage_pct: 可选缺口滑点率（如 ``Decimal("0.0010")`` = 10bps）。``None`` ⇒
+            不启用缺口滑点（默认，向后兼容）。非空时在检测到缺口超阈值时额外叠加。
+        gap_threshold_pct: 缺口检测阈值（默认 3% = ``Decimal("0.03")``）。当
+            ``abs(open - preclose) / preclose >= gap_threshold_pct`` 时触发缺口滑点。
 
     Returns:
         ``(order, bar) -> Decimal`` 纯函数闭包（``matching.PriceModelFn`` 形状）。
+
+    Raises:
+        FeeError: 参数类型非 Decimal / 幅度超界。
     """
     cfg = default_fee_config() if config is None else config
     if limit_pct is not None:
@@ -438,12 +453,31 @@ def make_price_model(
             raise FeeError(f"limit_pct 须为 Decimal（⛔ 禁 float）: {limit_pct!r}")
         if limit_pct <= _ZERO or limit_pct >= _ONE:
             raise FeeError(f"limit_pct 须在 (0, 1) 内: {limit_pct}")
+    if gap_slippage_pct is not None:
+        if not isinstance(gap_slippage_pct, Decimal):
+            raise FeeError(f"gap_slippage_pct 须为 Decimal（⛔ 禁 float）: {gap_slippage_pct!r}")
+        if gap_slippage_pct < _ZERO:
+            raise FeeError(f"gap_slippage_pct 不可为负: {gap_slippage_pct}")
+    if not isinstance(gap_threshold_pct, Decimal):
+        raise FeeError(f"gap_threshold_pct 须为 Decimal（⛔ 禁 float）: {gap_threshold_pct!r}")
+    if gap_threshold_pct <= _ZERO or gap_threshold_pct >= _ONE:
+        raise FeeError(f"gap_threshold_pct 须在 (0, 1) 内: {gap_threshold_pct}")
 
     def _tick_round(p: Decimal) -> Decimal:
         return p.quantize(TICK_SIZE, rounding=ROUND_HALF_UP)
 
     def _price_model(order: Order, bar: Bar) -> Decimal:
+        # 基础滑点（原有逻辑）
         slipped = apply_slippage(bar.open, order.side, cfg)
+
+        # 缺口滑点（新增，可选）
+        if gap_slippage_pct is not None and bar.preclose > _ZERO:
+            gap_pct = abs(bar.open - bar.preclose) / bar.preclose
+            if gap_pct >= gap_threshold_pct:
+                # 检测到超阈值缺口 ⇒ 额外叠加缺口滑点
+                sign = _ONE if order.side is OrderSide.BUY else -_ONE
+                slipped = slipped * (_ONE + sign * gap_slippage_pct)
+
         price = _tick_round(slipped)
         if limit_pct is None:
             return price
