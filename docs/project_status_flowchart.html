@@ -34,8 +34,8 @@ pre {
 > 交互版见：`docs/project_status_flowchart.html`<br/><br/>#<h1>仓库 / 基建总览<br/><br/><div class="mermaid">
 flowchart TD
   subgraph REPO["双仓（Private）"]
-    F[代码仓 FinAI2.0<br/>HEAD 1aabfea + 多次提交 ✅<br/>origin=github.com/YZml1507/FinAI2.0] 
-    R[计划仓 research-finai<br/>HEAD 6370315 ✅<br/>origin=github.com/YZml1507/research-finai]
+    F[代码仓 FinAI2.0<br/>HEAD a3b14f7 ✅<br/>origin=github.com/YZml1507/FinAI2.0] 
+    R[计划仓 research-finai<br/>HEAD 5ada091 ✅<br/>origin=github.com/YZml1507/research-finai]
     F -->|git fetch research（本地路径）| R
     F -->|docs/spec 快照 逐字节一致| R
   end
@@ -49,7 +49,7 @@ flowchart TD
   style TASK fill:#dcfce7,stroke:#16a34a,color:#0f172a
 </div><br/><br/>#<h1>门禁与当前阶段<br/><br/><div class="mermaid">
 flowchart LR
-  G0[G0 spec 三件套齐备 ✅] --> R15[R1–R5 清零 ✅ af20d85] --> UT[524 离线单测全绿 ✅ 2026-09-02]
+  G0[G0 spec 三件套齐备 ✅] --> R15[R1–R5 清零 ✅ af20d85] --> UT[619 离线单测全绿 ✅ 2026-09-02]
   UT --> P1[Phase 1 数据层 ✅<br/>T101–T110]
   P1 --> G2[G2 三源验收 ✅]
   G2 --> P2[Phase 2 回测引擎 ✅<br/>T201–T207 + G3]
@@ -95,12 +95,14 @@ flowchart LR
   B0[Phase 0 起点<br/>19 passed] --> B1[Phase 1 数据层<br/>162 passed]
   B1 --> B2[Phase 2 回测引擎<br/>394 passed]
   B2 --> B3[Phase 3 策略层<br/>435 passed]
-  B3 --> B35[Phase 3.5 红利策略<br/>524 passed ⏵当前]
+  B3 --> B35[Phase 3.5 红利策略<br/>524 passed] --> B402[T402 偏差容忍带<br/>616 passed] --> B4X[T401/T403 修复<br/>619 passed ⏵当前]
   style B0 fill:#e0e7ff,stroke:#818cf8
   style B1 fill:#e0e7ff,stroke:#818cf8
   style B2 fill:#e0e7ff,stroke:#818cf8
   style B3 fill:#e0e7ff,stroke:#818cf8
-  style B35 fill:#dbeafe,stroke:#2563eb,color:#0f172a
+  style B35 fill:#e0e7ff,stroke:#818cf8
+  style B402 fill:#e0e7ff,stroke:#818cf8
+  style B4X fill:#dbeafe,stroke:#2563eb,color:#0f172a
 </div><br/><br/>#<h1>下一步决策点<br/><br/><div class="mermaid">
 flowchart TD
   NOW[当前位置：G4.5 通过<br/>Phase 3.5 清零]
@@ -120,6 +122,7 @@ flowchart TD
 - 2026-08-31：Phase 0–1 完成标记
 - 2026-09-01：Phase 2–3 完成标记 + G3/G4 门禁通过
 - 2026-09-02：Phase 3.5 红利策略切换完成 + G4.5 门禁通过 + 测试基线 524
+- 2026-09-02：T402 偏差容忍带 + T401/T403 模拟盘测试修复完成 + 测试基线 619
 
 <script>mermaid.initialize({ startOnLoad: true, theme: "default" });</script>
 </body>
