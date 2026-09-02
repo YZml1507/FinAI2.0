@@ -1,0 +1,22 @@
+{
+  "report_date": "2026-09-02",
+  "expiry": {
+    "check_date": "2026-09-02",
+    "critical_count": 0,
+    "warning_count": 0,
+    "alerts": []
+  },
+  "review": {
+    "check_date": "2026-09-02",
+    "overdue_count": 0,
+    "due_count": 0,
+    "upcoming_count": 0,
+    "alerts": []
+  },
+  "summary": {
+    "total_critical": 0,
+    "total_warning": 0,
+    "total_due": 0,
+    "total_upcoming": 0
+  }
+}
