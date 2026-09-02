@@ -167,7 +167,7 @@ def test_dividend_strategy_backtest_runs_without_crash():
         portfolio=PortfolioConfig(
             min_positions=2,
             max_positions=5,
-            default_positions=3,
+            target_count=3,  # ⭐ 修正：PortfolioConfig 字段是 target_count（非 default_positions）
         ),
     )
 
@@ -205,7 +205,7 @@ def test_performance_report_fields_complete():
         use_ma200_timing=False,
         rebalance_days=60,
         warmup_bars=50,
-        portfolio=PortfolioConfig(min_positions=2, max_positions=5, default_positions=3),
+        portfolio=PortfolioConfig(min_positions=2, max_positions=5, target_count=3),
     )
 
     strategy = DividendStrategy(config=config, universe_provider=None)

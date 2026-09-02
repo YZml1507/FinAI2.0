@@ -30,7 +30,11 @@ if str(_root) not in sys.path:
 
 from backtest.engine import BacktestEngine
 from backtest.feed import ParquetDailyFeed
+from backtest.fees import make_fee_model, make_price_model
+from backtest.ledger import Ledger
+from backtest.matching import MatchEngine
 from backtest.metrics import compute_metrics
+from backtest.broker import BacktestBroker
 from reporting.registry import ExperimentRegistry
 from strategy.candidates import DividendConfig, DividendStrategy
 from strategy.portfolio import PortfolioConfig
@@ -48,6 +52,7 @@ def run_dividend_backtest_2015_2024(
     data_path: Path,
     initial_capital: Decimal = Decimal("150000"),
     risk_free_annual: Decimal = Decimal("0.025"),
+    index_kline_path: Path | None = None,
 ) -> dict:
     """红利策略 2015-2024 全周期回测。
 
@@ -55,6 +60,9 @@ def run_dividend_backtest_2015_2024(
         data_path: 红利股数据路径（data/dividend_stocks/）
         initial_capital: 初始资金（默认 15 万）
         risk_free_annual: 年化无风险利率（默认 2.5%）
+        index_kline_path: 沪深300 日线 parquet 目录（MA200 择时的指数行情）。
+            回测区间早于 2015-01-05 或目录缺失 ⇒ 关闭择时（fail-safe）。
+            ``None`` ⇒ 依赖 feed 预加载（``run_dividend_backtest_offline`` 注入）。
 
     Returns:
         回测结果字典（含 PerformanceReport + 实验 registry 信息）

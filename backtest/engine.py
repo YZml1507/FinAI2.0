@@ -217,6 +217,21 @@ def _watchlist(strategy: Any) -> set[str]:
         return set()
     if isinstance(raw, str):                # 防御：单个代码写成字符串
         return {raw}
+    # ⭐ 映射（dict 等）：铺开**全部值的字符串化**（symbol→payload 形态）。
+    #   ⛔ 必须放在 Iterable 分支之前 —— dict 也是 Iterable，先命中 Iterable
+    #   会退化成只读 keys（T312 策略把 index_symbol 混进 universe payload 的
+    #   场景：keys 里没有 index_symbol，值里才有）。此分支原应于 T312 冻结会话
+    #   加入，但误置 Iterable 之后成死代码 —— 本次一并修正（死代码=静默吞 bug）。
+    if isinstance(raw, Mapping):
+        out: set[str] = set()
+        for value in raw.values():
+            if isinstance(value, str):
+                out.add(value)
+            elif isinstance(value, (Sequence, set, frozenset)):
+                out |= {str(s) for s in value}
+            elif value is not None:
+                out.add(str(value))
+        return out
     if isinstance(raw, (Sequence, set, frozenset)) or isinstance(raw, Iterable):
         return {str(s) for s in raw}
     raise EngineError(f"strategy.watchlist 无法解析: {raw!r}")

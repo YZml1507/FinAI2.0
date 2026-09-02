@@ -129,6 +129,28 @@ def _to_decimal(value: Any, default: Decimal = Decimal("0")) -> Decimal:
     return Decimal(text)
 
 
+def _opt_decimal(value: Any) -> Decimal | None:
+    """可选数值 → ``Decimal`` 或 ``None``（T312 扩展列 dividend_yield/market_cap）。
+
+    与 ``_to_decimal`` 同纪律（必经 ``str``，⛔ 禁 ``Decimal(float)``），但**缺失 /
+    NaN 返回 ``None`` 而非 0**——``None`` 是"该 symbol 无红利数据"的显式信号，策略层
+    据此 fail-closed 跳过；若回 0 会被误读成"股息率=0"而静默入选失败原因。
+    """
+    if value is None:
+        return None
+    if isinstance(value, Decimal):
+        return value
+    try:
+        if pd.isna(value):
+            return None
+    except (TypeError, ValueError):
+        return None
+    text = str(value).strip()
+    if not text or text.lower() == "nan":
+        return None
+    return Decimal(text)
+
+
 def _is_st_value(value: Any) -> bool:
     """``isST`` 列 → bool。baostock 约定 ``'1'`` = ST（落盘是字符串）。"""
     if value is None:
@@ -411,4 +433,8 @@ class ParquetDailyFeed:
             exdiv=_flag(EXDIV_COL),
             is_st=_is_st_value(row.get("isST")),
             adjust_mode=str(adjust_mode),
+            # ⭐ T312：parquet 原生扩展列直通（红利策略选股域）。缺列 → None
+            # （策略层 fail-closed 跳过该 symbol，见 candidates._select_stocks）。
+            dividend_yield=_opt_decimal(row.get("dividend_yield")),
+            market_cap=_opt_decimal(row.get("market_cap")),
         )

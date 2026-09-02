@@ -305,6 +305,11 @@ class DividendStrategy:
         if self.universe_provider is not None:
             self.watchlist = list(self.universe_provider(day))
 
+        # ⭐ T312：择时开启 ⇒ 指数恒入选股域（否则 feed 不加载指数 bar，MA200
+        #   择时永远拿不到数据）。去重靠引擎 ``_symbols_for`` 的 set 语义。
+        if cfg.use_ma200_timing and cfg.index_symbol not in self.watchlist:
+            self.watchlist.append(cfg.index_symbol)
+
         # ① 冷启动期：只收集 MA200 数据，不交易
         if self._bar_count < cfg.warmup_bars:
             # 冷启动期间收集指数数据（如果使用择时）
