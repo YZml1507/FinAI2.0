@@ -94,10 +94,10 @@
     ｜ 复核日：<b>2026-09-01</b></p>
   <p style="margin-top:8px;">
     <span class="tag green">R1–R5 已清零</span>
-    <span class="tag green">432 离线单测全绿（2026-09-01 复跑实证）</span>
+    <span class="tag green">435 离线单测全绿（2026-09-01 复跑实证）</span>
     <span class="tag green">Phase 1 数据层（T101–T110）已清零 · G2 通过</span>
     <span class="tag green">Phase 2 回测引擎（T201–T207）已清零 · G3 通过</span>
-    <span class="tag blue">当前：Phase 3 策略与组合（T301/T302/T303 ✅ · T304/T305 待启动）</span>
+    <span class="tag blue">当前：Phase 3 策略与组合（T301–T304 ✅ · T305 评审进行中）</span>
   </p>
 </header>
 
@@ -118,7 +118,7 @@
       <span class="badge">OK</span>
       <div class="id">REPO-1</div>
       <div class="nm">代码仓 FinAI2.0</div>
-      <div class="st">GitHub 私有仓 YZml1507/FinAI2.0<br>本地 HEAD 2711052 + 状态标记提交（2026-09-01 已复核并推送）</div>
+      <div class="st">GitHub 私有仓 YZml1507/FinAI2.0<br>本地 HEAD 539f534 + 状态标记提交（2026-09-01 已复核并推送）</div>
       <div class="why">origin = github.com/YZml1507/FinAI2.0.git；已推送</div>
     </div>
     <div class="conn"><span class="cap">remote research →</span>→</div>
@@ -126,8 +126,8 @@
       <span class="badge">OK</span>
       <div class="id">REPO-2</div>
       <div class="nm">计划仓 research-finai</div>
-      <div class="st">GitHub 私有仓 YZml1507/research-finai<br>本地 HEAD 516b3de（2026-09-01 已复核并推送）</div>
-      <div class="why">spec/plan/tasks + 宪法三件套；T101–T110 / T201–T207 / T301–T303 已勾（至 TK-17），已推送</div>
+      <div class="st">GitHub 私有仓 YZml1507/research-finai<br>本地 HEAD ffbff48（2026-09-01 已复核并推送）</div>
+      <div class="why">spec/plan/tasks + 宪法三件套；T101–T110 / T201–T207 / T301–T304 已勾（至 TK-18），已推送</div>
     </div>
     <div class="conn"><span class="cap">旧仓已删 →</span>→</div>
     <div class="node queued deleted">
@@ -205,17 +205,17 @@
     </div>
     <div class="conn"><span class="cap">→</span>→</div>
     <div class="node ok">
-      <span class="badge">432✓</span>
+      <span class="badge">435✓</span>
       <div class="id">UT</div>
-      <div class="nm">离线单测 432 passed</div>
-      <div class="st">426 + T303×6<br>2026-09-01 复跑：432 passed ✅（exit 0）</div>
+      <div class="nm">离线单测 435 passed</div>
+      <div class="st">432 + T304×3<br>2026-09-01 复跑：435 passed ✅（exit 0）</div>
     </div>
     <div class="conn"><span class="cap">→ Phase 2</span>→</div>
     <div class="node info">
       <span class="badge" style="background:var(--info)">NOW</span>
       <div class="id">CUR</div>
       <div class="nm">当前：Phase 2 回测引擎</div>
-      <div class="st">Phase 2 回测引擎 T201–T207 全 ✅（G3 通过）<br>Phase 3：T301/T302/T303 ✅（2711052，432 绿）· T304 跨区间压力待启动</div>
+      <div class="st">Phase 2 回测引擎 T201–T207 全 ✅（G3 通过）<br>Phase 3：T301–T304 ✅（539f534，435 绿）· T305 技术评审进行中（G4 交用户）</div>
     </div>
   </div>
 </section>
@@ -367,7 +367,7 @@
 </section>
 
 <section class="phase" style="border-color:var(--info);">
-  <div class="phase-title"><h2>Ⓔ Phase 3 · 策略与组合（T301–T305）</h2><span class="cur-marker">当前工作带：T301/T302/T303 ✅ · T304 跨区间压力进行中</span><span class="gates">G4（T305 技术评审汇报 → 交用户知会）</span></div>
+  <div class="phase-title"><h2>Ⓔ Phase 3 · 策略与组合（T301–T305）</h2><span class="cur-marker">当前工作带：T301–T304 ✅ · T305 评审进行中</span><span class="gates">G4（T305 技术评审汇报 → 交用户知会）</span></div>
   <div class="row">
     <div class="node ok">
       <span class="badge">OK</span>
@@ -390,14 +390,20 @@
       <div class="st">±20% 邻域（spec §6.1）</div>
       <div class="why">✅ 2026-09-01 已入库（commit 2711052）：strategy/param_scan.py ParamScan——单参数 ±20% 扰动四类 int + 悬崖三判据（CAGR 翻负/MDD 翻倍/零成交）+ summary_md 挂 T305；离线单测 6 绿；tasks.md 已勾（TK-17）</div>
     </div>
-    <div class="node info">
-      <span class="badge" style="background:var(--info)">NOW</span>
+    <div class="node ok">
+      <span class="badge">OK</span>
       <div class="id">T304</div>
       <div class="nm">跨区间压力</div>
       <div class="st">2015 股灾+熔断 / 2018 熊市样外如实呈现</div>
-      <div class="why">🔄 进行中：同一策略同参数在 2015-06~2016-02（股灾+熔断）与 2018 全年两个历史区间的离线回放，如实产出指标表（⛔ 不许修饰）</div>
+      <div class="why">✅ 2026-09-01 已入库（commit 539f534）：离线合成两区间（市场因子+个股 seed 噪声）+ 同参数如实两跑 → docs/t304_stress_report.md（crash 总收益 −68.33%/MDD 68.38%；bear −10.81%/10.81%；胜率均 0%）；离线单测 3 绿；tasks.md 已勾（TK-18）</div>
     </div>
-    <div class="node queued"><div class="id">T305</div><div class="nm">模拟盘前技术评审</div><div class="st">生成报告交用户知会（G4）</div></div>
+    <div class="node warn">
+      <span class="badge">USER</span>
+      <div class="id">T305</div>
+      <div class="nm">模拟盘前技术评审</div>
+      <div class="st">生成报告交用户知会（G4）</div>
+      <div class="why">🔄 产出中：Phase 0–3 全链证据汇总 + 跨区间如实压力指标 + 候选策略病理结论（T304 显示动量候选在股灾/熊市不可上模拟盘）→【用户确认】是否进入 Phase 4</div>
+    </div>
   </div>
 </section>
 
@@ -499,7 +505,8 @@
      出处三件套 / canonical 参数尺 / 原子写 / 状态机三态
   ✅ T207 门禁 G3（docs/t207_g3_gate_acceptance.md）：五必挂 17 例逐项 PASS + 成本逐项核对
      （六科目 vs 07 号全一致，黄金算例 112.82 元）+ 红利税简化项评估（≈0.4%/年 上限，策略层红旗）
-  ⏭ 后续：Phase 3 策略层 T301 组合管理器（3-8 只 / 默认 5 / 硬顶 10 / 单票 ≥2 万 / 流动性过滤）待启动
+  ⏭ Phase 3：T301 ✅ 组合管理器 / T302 ✅ 候选策略 / T303 ✅ 参数扫描 / T304 ✅ 压力
+     （crash −68.33% / bear −10.81%）/ **T305 评审报告产出中（→ G4 用户决策）**
   </pre>
 </details>
 
