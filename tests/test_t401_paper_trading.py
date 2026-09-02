@@ -150,8 +150,7 @@ class TestPaperBroker:
         from backtest.matching import MatchEngine
 
         today = date(2026, 9, 2)
-        book = BookView(cash=Decimal("100000"), date=today)
-        ledger = Ledger(journal=book.positions, book=book)
+        ledger = Ledger(Decimal("100000"), date=today)
         matcher = MatchEngine()
         broker = PaperBroker(matcher, ledger)
         assert isinstance(broker, BacktestBroker)
@@ -162,8 +161,7 @@ class TestPaperBroker:
         from backtest.matching import MatchEngine
 
         today = date(2026, 9, 2)
-        book = BookView(cash=Decimal("100000"), date=today)
-        ledger = Ledger(journal=book.positions, book=book)
+        ledger = Ledger(Decimal("100000"), date=today)
         matcher = MatchEngine()
         broker = PaperBroker(matcher, ledger)
         broker.deposit(Decimal("100000"), date=today, ref_id="INIT")
@@ -186,8 +184,7 @@ class TestBacktestPaperParity:
         from backtest.matching import MatchEngine
 
         today = date(2026, 9, 2)
-        book = BookView(cash=Decimal("100000"), date=today)
-        ledger = Ledger(journal=book.positions, book=book)
+        ledger = Ledger(Decimal("100000"), date=today)
         matcher = MatchEngine()
         broker = PaperBroker(matcher, ledger)
 

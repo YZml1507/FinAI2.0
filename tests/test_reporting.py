@@ -63,12 +63,12 @@ def sample_report():
             FeeItem.COMMISSION: Decimal("100.00"),
             FeeItem.STAMP_TAX: Decimal("50.00"),
             FeeItem.TRANSFER_FEE: Decimal("2.00"),
-            FeeItem.EXCHANGE_FEE: Decimal("3.41"),
-            FeeItem.REGULATION_FEE: Decimal("0.20"),
+            FeeItem.HANDLING_FEE: Decimal("3.41"),
+            FeeItem.MANAGEMENT_FEE: Decimal("0.20"),
             FeeItem.SLIPPAGE: Decimal("20.00"),
         },
         fees_sum=Decimal("175.61"),
-        monthly_returns={(2026, 9): Decimal("0.02")},
+        monthly_returns={"2026-09": Decimal("0.02")},
     )
 
 

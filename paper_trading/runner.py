@@ -257,8 +257,7 @@ class PaperTradingRunner:
         # 冷启动：首次运行
         if not self.config.state_path.exists():
             logger.info("冷启动：创建新账本（初始资金 %s）", self.config.initial_capital)
-            book = BookView(cash=self.config.initial_capital, date=date)
-            self.ledger = Ledger(journal=book.positions, book=book)
+            self.ledger = Ledger(self.config.initial_capital, date=date)
             self.broker = PaperBroker(self.matcher, self.ledger, self.feed)
             self.broker.deposit(
                 self.config.initial_capital,
@@ -270,8 +269,7 @@ class PaperTradingRunner:
         # 热启动：加载已有状态
         logger.info("热启动：加载已有状态")
         state = PaperTradingState.load(self.config.state_path)
-        book = BookView(cash=self.config.initial_capital, date=date)
-        self.ledger = Ledger(journal=book.positions, book=book)
+        self.ledger = Ledger(self.config.initial_capital, date=date)
         self.broker = PaperBroker(self.matcher, self.ledger, self.feed)
 
         # 先入金（初始化账本），再恢复状态（覆盖持仓/现金）

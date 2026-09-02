@@ -32,11 +32,25 @@ __all__ = [
 
 
 def _decimal_to_str(obj: Any) -> Any:
-    """递归转换 Decimal → str（JSON 序列化用）。"""
+    """递归转换 Decimal → str（JSON 序列化用）。
+
+    特殊处理：
+    - Decimal → str
+    - date → isoformat()
+    - dict 的 tuple 键 → "YYYY-MM" 字符串（monthly_returns 的 (year, month) 键）
+    """
     if isinstance(obj, Decimal):
         return str(obj)
     if isinstance(obj, dict):
-        return {k: _decimal_to_str(v) for k, v in obj.items()}
+        result = {}
+        for k, v in obj.items():
+            # tuple 键转为字符串（monthly_returns 的 (year, month)）
+            if isinstance(k, tuple) and len(k) == 2:
+                key_str = f"{k[0]}-{k[1]:02d}"
+            else:
+                key_str = str(k) if not isinstance(k, str) else k
+            result[key_str] = _decimal_to_str(v)
+        return result
     if isinstance(obj, (list, tuple)):
         return [_decimal_to_str(v) for v in obj]
     if isinstance(obj, _date):
