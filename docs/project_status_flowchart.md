@@ -32,7 +32,7 @@ flowchart LR
   UT --> P1[Phase 1 数据层 ✅ 全清零<br/>T101–T110 全 ✅]
   P1 --> G2[G2 三源验收 ✅]
   G2 --> P2C[Phase 2 回测引擎 ✅ 清零<br/>T201–T207 全入库 + G3 通过]
-  P2C --> P3C[Phase 3 策略与组合 ⏵当前<br/>T301–T304 ✅ · T305 评审待启动]
+  P2C --> P3C[Phase 3 策略与组合 ⏵当前<br/>T301–T304 ✅ T305 ✅（报告已交付）]
   style G0 fill:#dcfce7,stroke:#16a34a
   style R15 fill:#dcfce7,stroke:#16a34a
   style UT fill:#dcfce7,stroke:#16a34a
@@ -99,17 +99,17 @@ flowchart LR
 
 | 项目 | 结果 | 证据 |
 |---|---|---|
-| 代码仓 HEAD | ✅ `539f534`（T304 跨区间压力入库）+ 本状态标记提交 | 本地 `git rev-parse HEAD` |
-| 计划仓 HEAD | ✅ `ffbff48`（tasks.md 勾 T304 + TK-18 修订日志） | 本地 `git rev-parse HEAD` |
+| 代码仓 HEAD | ✅ `82882b3`（T305 技术评审报告入库）+ 本状态标记提交 | 本地 `git rev-parse HEAD` |
+| 计划仓 HEAD | ✅ `c2f334d`（tasks.md 勾 T305 + TK-19 修订日志） | 本地 `git rev-parse HEAD` |
 | spec 快照一致 | ✅ `docs/spec/001-…/tasks.md` 与计划仓逐字节一致 | SHA-256 双端同值（2026-09-01） |
-| 两仓已推送 | ✅ FinAI2.0（`2711052..539f534` + 本提交）/ research-finai（`516b3de..ffbff48`） | `git push origin master` 输出 |
+| 两仓已推送 | ✅ FinAI2.0（`2711052..82882b3` + 本提交）/ research-finai（`516b3de..c2f334d`） | `git push origin master` 输出 |
 | GitHub Private | ✅ 两仓均 Private | 凭证凭据（user=YZml1507） |
 | 旧仓 FinAI | ✅ 已删除 | `Test-Path D:\Projects\FinAI = False` |
 | 10 个计划任务 | ✅ 全部 Disabled（2026-09-01 复测） | `Get-ScheduledTask` 输出 |
 | FINDING 台账 | ✅ 370 行（2026-09-01 复测） | `Select-String -Pattern "FINDING-"` |
 | 红线路径 | ✅ 7/7 存在 | `Test-Path` 逐个核对 |
 | 占位包 6 个 | ✅ 存在 | `accounting/backtest/ops/reporting/strategy/data` |
-| 离线单测 | ✅ **435 passed**（395 + T301×27 + T302×4 + T303×6 + T304×3；2026-09-01 复跑 exit 0） | `py -3.11 -m pytest tests/ …` |
+| 离线单测 | ✅ **435 passed**（395 + T301×27 + T302×4 + T303×6 + T304×3；复跑 exit 0） | `py -3.11 -m pytest tests/ …` |
 | T001 告警通道 | ✅ 已拍板飞书 | `.specify/memory/alert_channel.md` |
 | T101–T104 | ✅ 全部勾选 | tasks.md（research-finai） |
 | T105 / T108 | ✅ 已入库并勾选 | commit `8282cd4`；tasks.md `[x]` |
@@ -127,7 +127,7 @@ flowchart LR
 | T302 候选策略 | ✅ 已入库并勾选（2026-09-01） | commit `964c383`；tasks.md `[x]` + TK-16；`strategy/candidates.py` |
 | T303 参数稳健性 | ✅ 已入库并勾选（2026-09-01） | commit `2711052`；tasks.md `[x]` + TK-17；`strategy/param_scan.py`（±20% 邻域、悬崖三判据） |
 | T304 跨区间压力 | ✅ 已入库并勾选（2026-09-01） | commit `539f534`；tasks.md `[x]` + TK-18；`docs/t304_stress_report.md`（crash −68.33% / bear −10.81%，胜率均 0%，如实呈现） |
-| T305 技术评审 | 🔄 收尾中 | 产出报告交用户知会（G4 用户决策点） |
+| T305 技术评审 | ✅ 已产出报告（2026-09-01） | commit `82882b3`；docs/t305_technical_review.md；**G4 决策点已交用户**（⛔ 全停手等指示） |
 | 测试产物残留 | ✅ 无新增残留 | 测试走 tmp_path；审计临时目录用完即删 |
 | research-finai 工作树 | ✅ 干净（`ffbff48` 已提交） | `git status` |
 
