@@ -350,6 +350,7 @@ class BacktestBroker:
                     "market_value": self.book.total_market_value(),
                     "refreshed": sorted(report.refreshed),
                     "frozen": sorted(report.frozen),
+                    "limit_down": sorted(report.limit_down),
                 },
             )
         )

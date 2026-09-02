@@ -14,6 +14,7 @@
 | ``annual_turnover`` | ``(Σ买入额 + Σ卖出额) / 2 ÷ 平均NAV ÷ 年数`` | 单边年化口径（07 号 §F 公式） |
 | 费用汇总 | 逐 ``FeeItem`` 求和（六键齐备，缺记 0） | 与账本 ``sum(fees.values())`` 对账口径一致 |
 | ``win_rate`` | **FIFO round-trip 配对**：同 symbol 按时间序买队列配卖出，盈利对数/总对数；无完整往返 ⇒ None | 显式声明（spec 未钉口径） |
+| ``suspension_trapped_days`` | 停牌陷阱天数：持仓停牌 **且** 复牌当日跌停（无法卖出）的累计天数（跨全部标的） | 风险指标：资金被困流动性陷阱的严重程度 |
 | 月度矩阵 | ``{(year, month): 月收益率}``（月首 NAV→月末 NAV） | v1 产数据矩阵，渲染归 reporting（T403） |
 
 红线：
@@ -68,6 +69,7 @@ class PerformanceReport:
     max_dd_peak: _date | None
     max_dd_trough: _date | None
     max_dd_recovery: _date | None         # trough 后首个 nav≥peak 的日；未恢复 ⇒ None
+    suspension_trapped_days: int          # 停牌陷阱累计天数（持仓停牌且复牌跌停无法卖出的天数）
     # —— 风险调整 ——
     sharpe_ratio: Decimal | None          # std=0 ⇒ None
     calmar_ratio: Decimal | None          # CAGR / MDD（MDD=0 ⇒ None）；03 号建议项
@@ -203,6 +205,103 @@ def _monthly_returns(series: list[tuple[_date, Decimal]]) -> dict[tuple[int, int
     return out
 
 
+def _suspension_trapped_days(result) -> int:
+    """停牌陷阱天数：持仓停牌 **且** 复牌当日跌停（无法卖出）的累计天数。
+
+    算法：扫描 Journal 中的 SETTLE 流水，识别"停牌 → 复牌跌停"模式：
+      1. 当日 SETTLE.meta['frozen'] 非空 = 持仓停牌中
+      2. 次日 SETTLE.meta['refreshed'] 包含该 symbol = 复牌
+      3. 停牌期间有卖出尝试（reject_reason 含"停牌"）且复牌日跌停（bar.limit_down=True）
+         = 陷阱成立
+
+    只要满足"停牌中 + 尝试退出被困"，该 symbol 的停牌期间全部累加（资金被困无法退出）。
+
+    Fail-closed：journal 或 orders 或 bars_by_date 缺失 ⇒ 返回 0（无证据即不计，⛔ 不 raise）。
+    """
+    if not hasattr(result, 'journal_entries') or not hasattr(result, 'orders'):
+        return 0
+    if not hasattr(result, 'bars_by_date'):
+        return 0
+
+    # 按日期分组 SETTLE 流水
+    settle_by_date: dict[_date, dict] = {}
+    for entry in result.journal_entries:
+        if hasattr(entry, 'entry_type') and str(entry.entry_type) == 'JournalType.SETTLE':
+            if hasattr(entry, 'date') and hasattr(entry, 'meta') and entry.meta:
+                settle_by_date[entry.date] = entry.meta
+
+    if not settle_by_date:
+        return 0
+
+    # 按日期分组被拒订单（停牌拒绝）
+    from backtest.constants import OrderStatus
+    reject_by_date: dict[_date, dict[str, set[str]]] = {}  # date → {symbol → {reasons}}
+    for order in result.orders:
+        if (hasattr(order, 'status') and order.status == OrderStatus.REJECTED and
+            hasattr(order, 'reject_reason') and order.reject_reason and
+            hasattr(order, 'created_date') and hasattr(order, 'symbol')):
+            d = order.created_date
+            sym = order.symbol
+            reason = order.reject_reason
+            if d not in reject_by_date:
+                reject_by_date[d] = {}
+            if sym not in reject_by_date[d]:
+                reject_by_date[d][sym] = set()
+            reject_by_date[d][sym].add(reason)
+
+    # 识别停牌陷阱模式：逐 symbol 追踪停牌期
+    dates_sorted = sorted(settle_by_date.keys())
+    suspension_tracker: dict[str, _date] = {}  # symbol → 停牌起始日
+    trapped_days = 0
+
+    for i, d in enumerate(dates_sorted):
+        meta = settle_by_date[d]
+        frozen = set(meta.get('frozen', []))
+        refreshed = set(meta.get('refreshed', []))
+
+        # 新增停牌标的：frozen 中出现 且 不在 tracker 里
+        for symbol in frozen:
+            if symbol not in suspension_tracker:
+                suspension_tracker[symbol] = d
+
+        # 复牌标的：refreshed 中出现 且 在 tracker 里（曾经停牌）
+        for symbol in refreshed:
+            if symbol in suspension_tracker:
+                start = suspension_tracker.pop(symbol)
+                # 判断是否陷阱：在停牌期间有退出尝试 且 复牌日跌停
+
+                # 检查复牌日是否跌停（从 SETTLE meta 的 limit_down 字段读取）
+                is_limit_down_on_resume = False
+                limit_down_symbols = set(meta.get('limit_down', []))
+                if symbol in limit_down_symbols:
+                    is_limit_down_on_resume = True
+
+                # 检查停牌期间是否有卖出尝试（停牌拒单）
+                # 注意：订单在 D-1 提交，D 撮合。所以停牌拒单可能在停牌开始前一日
+                had_sell_attempt_during_suspension = False
+                for check_date in dates_sorted:
+                    if check_date >= d:  # 只看复牌日之前的拒单
+                        break
+                    if symbol in reject_by_date.get(check_date, {}):
+                        reasons = reject_by_date[check_date][symbol]
+                        if any('停牌' in r for r in reasons):
+                            had_sell_attempt_during_suspension = True
+                            break
+
+                # 陷阱成立条件：复牌跌停 且 期间有退出尝试
+                if is_limit_down_on_resume and had_sell_attempt_during_suspension:
+                    # 计算停牌天数（交易日数，不是日历日）
+                    # 统计从 start 到 d（不含 d）之间有多少个交易日
+                    suspension_trading_days = 0
+                    for check_date in dates_sorted:
+                        if start <= check_date < d:
+                            suspension_trading_days += 1
+                    if suspension_trading_days > 0:
+                        trapped_days += suspension_trading_days
+
+    return trapped_days
+
+
 # ----------------------------------------------------------------------
 # 主入口
 # ----------------------------------------------------------------------
@@ -288,6 +387,9 @@ def compute_metrics(
     fees_total = _fees_total(result.trades)
     fees_sum = sum(fees_total.values(), _ZERO)
 
+    # —— 停牌陷阱 ——
+    suspension_trapped_days = _suspension_trapped_days(result)
+
     return PerformanceReport(
         start=start, end=end,
         calendar_days=calendar_days, trading_days=trading_days,
@@ -296,6 +398,7 @@ def compute_metrics(
         annual_volatility=annual_volatility,
         max_drawdown=max_dd, max_dd_peak=dd_peak, max_dd_trough=dd_trough,
         max_dd_recovery=dd_recovery,
+        suspension_trapped_days=suspension_trapped_days,
         sharpe_ratio=sharpe, risk_free_annual=risk_free_annual,
         calmar_ratio=(
             _q6(float(cagr) / float(max_dd)) if max_dd > 0 else None

@@ -78,6 +78,7 @@ class BacktestResult:
     final_nav: Decimal = _ZERO
     final_book: BookView | None = None
     trading_dates: list[_date] = field(default_factory=list)
+    bars_by_date: dict[_date, dict[str, Any]] = field(default_factory=dict)  # date → {symbol → Bar}
 
     @property
     def journal(self) -> list[JournalEntry]:
@@ -142,6 +143,8 @@ class BacktestEngine:
 
         for day in dates:
             bars = self.feed.get_bars(sorted(self._symbols_for(strategy)), day)
+            # Store bars for metrics calculation
+            result.bars_by_date[day] = bars
             # ② 先撮合（⛔ 不可与 ③ 互换：先信号即前视）
             self.broker.on_bars(day, bars)
             # ③ 后信号

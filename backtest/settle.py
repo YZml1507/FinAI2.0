@@ -81,6 +81,7 @@ class SettleReport:
     refreshed: frozenset[str]      # bar 存在，市值已刷新
     frozen: frozenset[str]         # bar 缺失（停牌），市值冻结
     nav: Decimal
+    limit_down: frozenset[str] = frozenset()  # 当日跌停标的（用于停牌陷阱识别）
 
     @property
     def affected(self) -> frozenset[str]:
@@ -155,6 +156,7 @@ def settle_day_detail(
     book.date = date
     refreshed: set[str] = set()
     frozen: set[str] = set()
+    limit_down_symbols: set[str] = set()
     for symbol, pos in book.positions.items():
         bar = bars.get(symbol)
         if bar is None:
@@ -164,6 +166,9 @@ def settle_day_detail(
         pos.last_close = bar.close
         pos.market_value = bar.close * Decimal(pos.volume)
         refreshed.add(symbol)
+        # 记录跌停标的（用于停牌陷阱识别）
+        if hasattr(bar, 'limit_down') and bar.limit_down:
+            limit_down_symbols.add(symbol)
     nav = book.recompute_nav()
     if exdiv_events:
         # 除权标的即使已清仓 / 无持仓，也算"本日被过问"。
@@ -179,4 +184,5 @@ def settle_day_detail(
         refreshed=frozenset(refreshed),
         frozen=frozenset(frozen),
         nav=nav,
+        limit_down=frozenset(limit_down_symbols),
     )
