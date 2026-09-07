@@ -6,41 +6,32 @@
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 <style>
 body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     max-width: 1400px;
     margin: 40px auto;
     padding: 0 20px;
     background: #0f172a;
     color: #f8fafc;
-    line-height: 1.6;
 }
-h1, h2, h3 { color: #38bdf8; }
-blockquote {
-    border-left: 4px solid #38bdf8;
-    margin: 10px 0;
-    padding: 8px 16px;
-    background: #1e293b;
-    border-radius: 0 8px 8px 0;
-    color: #94a3b8;
-}
+h1, h2 { color: #38bdf8; }
 .mermaid {
     background: white;
-    padding: 24px;
-    border-radius: 12px;
-    margin: 24px 0;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+    padding: 20px;
+    border-radius: 8px;
+    margin: 20px 0;
 }
-li { margin: 4px 0; }
-hr { border: 0; border-top: 1px solid #334155; margin: 30px 0; }
+pre {
+    background: #1e293b;
+    padding: 15px;
+    border-radius: 8px;
+    overflow-x: auto;
+}
 </style>
 </head>
 <body>
-<h1>FinAI2.0 · 项目状态流程图（2026-09-07 更新）</h1>
-<blockquote>渲染器：支持 mermaid 的 Markdown 查看器（VS Code / Obsidian / GitHub）</blockquote>
-<blockquote>数据来源：本会话真实命令输出 + research-finai spec 三件套</blockquote>
-<blockquote>交互版见：`docs/project_status_flowchart.html`</blockquote>
-<h2>仓库 / 基建总览</h2>
-<div class="mermaid">
+<h1>FinAI2.0 · 项目状态流程图（2026-09-07 更新）<br/><br/>> 渲染器：支持 mermaid 的 Markdown 查看器（VS Code / Obsidian / GitHub）
+> 数据来源：本会话真实命令输出 + research-finai spec 三件套
+> 交互版见：`docs/project_status_flowchart.html`<br/><br/>#<h1>仓库 / 基建总览<br/><br/><div class="mermaid">
 flowchart TD
   subgraph REPO["双仓（Private）"]
     F["代码仓 FinAI2.0<br/>HEAD 4d93246 ✅<br/>origin=github.com/YZml1507/FinAI2.0"] 
@@ -56,20 +47,19 @@ flowchart TD
   style R fill:#dcfce7,stroke:#16a34a,color:#0f172a
   style DEL fill:#fee2e2,stroke:#dc2626,color:#0f172a
   style TASK fill:#dcfce7,stroke:#16a34a,color:#0f172a
-</div>
-
-<h2>门禁与当前阶段</h2>
-<div class="mermaid">
+</div><br/><br/>#<h1>门禁与当前阶段<br/><br/><div class="mermaid">
 flowchart LR
-  G0["G0 spec 三件套齐备 ✅"] --> R15["R1–R5 清零 ✅ af20d85"] --> UT["681 离线单测全绿 ✅ 2026-09-07"]
+  G0["G0 spec 三件套齐备 ✅"] --> R15["R1–R5 清零 ✅ af20d85"] --> UT["717 离线单测全绿 ✅ 2026-09-07"]
   UT --> P1["Phase 1 数据层 ✅<br/>T101–T110"]
   P1 --> G2["G2 三源验收 ✅"]
   G2 --> P2["Phase 2 回测引擎 ✅<br/>T201–T207 + G3"]
   P2 --> P3["Phase 3 策略 ✅<br/>T301–T308"]
   P3 --> G4["G4 技术评审 ✅<br/>动量淘汰 转向红利"]
   G4 --> P35["Phase 3.5 红利策略实证 ✅<br/>硬伤根治 / 审计全过 / 真实10年回测"]
-  P35 --> G_AUDIT["阶段一：六维门禁工具包 ✅<br/>scripts/gates/ 23道门禁 + 52单测全绿 ⏵当前"]
-  G_AUDIT --> P4["Phase 4 模拟盘<br/>T401–T404 基建全绿 / 待门禁体系三阶段闭环后准入"]
+  P35 --> G_AUDIT1["阶段一：六维门禁工具包 ✅<br/>scripts/gates/ 23道门禁 + 52单测全绿"]
+  G_AUDIT1 --> G_AUDIT2["阶段二：执行流前置/后置闸门植入 ✅<br/>runner.py + 回测主流程阻断 + 18集成单测"]
+  G_AUDIT2 --> G_AUDIT3["阶段三：CI / Git Hooks 防伪硬化 ✅<br/>tamper_guard 验签 + pre-commit/pre-push 硬拦截 + CI 全绿 ⏵当前"]
+  G_AUDIT3 --> P4["Phase 4 模拟盘<br/>T401–T404 基建全绿 / 门禁三阶段全闭环 待准入评审"]
   style G0 fill:#dcfce7,stroke:#16a34a
   style R15 fill:#dcfce7,stroke:#16a34a
   style UT fill:#dcfce7,stroke:#16a34a
@@ -79,12 +69,11 @@ flowchart LR
   style P3 fill:#dcfce7,stroke:#16a34a
   style G4 fill:#dcfce7,stroke:#16a34a
   style P35 fill:#dcfce7,stroke:#16a34a
-  style G_AUDIT fill:#fef3c7,stroke:#f59e0b,color:#0f172a
+  style G_AUDIT1 fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style G_AUDIT2 fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style G_AUDIT3 fill:#fef3c7,stroke:#f59e0b,color:#0f172a
   style P4 fill:#f1f5f9,stroke:#94a3b8,color:#64748b
-</div>
-
-<h2>Phase 3.5 红利策略执行现状（2026-09-07）</h2>
-<div class="mermaid">
+</div><br/><br/>#<h1>Phase 3.5 红利策略执行现状（2026-09-07）<br/><br/><div class="mermaid">
 flowchart LR
   T309["T309 红利税真集成 ✅<br/>FIFO扣税+拆股因子适配+流水入账"] --> T310["T310 跳空缺口滑点 ✅<br/>26 单测全绿"]
   T310 --> T311["T311 红利策略实现 ✅<br/>市值加权生效+MA200择时"]
@@ -99,10 +88,7 @@ flowchart LR
   style T312 fill:#dcfce7,stroke:#16a34a
   style AUDIT fill:#dcfce7,stroke:#16a34a
   style G45 fill:#dbeafe,stroke:#2563eb,color:#0f172a
-</div>
-
-<h2>T312 审计防伪与硬伤修复全景</h2>
-<div class="mermaid">
+</div><br/><br/>#<h1>T312 审计防伪与硬伤修复全景<br/><br/><div class="mermaid">
 flowchart TB
   subgraph FIX_AND_AUDIT["T312 底层硬伤根治与防伪实证 (5/5 PASS)"]
     direction TB
@@ -127,10 +113,7 @@ flowchart TB
   style DATA_FIX fill:#dbeafe,stroke:#2563eb,color:#0f172a
   style ENGINE_FIX fill:#dcfce7,stroke:#16a34a,color:#0f172a
   style AUDIT_GATE fill:#dcfce7,stroke:#16a34a,color:#0f172a
-</div>
-
-<h2>测试基线演进</h2>
-<div class="mermaid">
+</div><br/><br/>#<h1>测试基线演进<br/><br/><div class="mermaid">
 flowchart LR
   B0["Phase 0 起点<br/>19 passed"] --> B1["Phase 1 数据层<br/>162 passed"]
   B1 --> B2["Phase 2 回测引擎<br/>394 passed"]
@@ -140,7 +123,10 @@ flowchart LR
   B402 --> B404["T401/403/404 修复与台账<br/>619 passed"]
   B404 --> B312_OLD["T312 离线测试补充<br/>626 passed"]
   B312_OLD --> B312_NOW["T312 审计与红利税/拆股加权修复<br/>629 passed"]
-  B312_NOW --> GATES["阶段一：六维防御门禁工具包<br/>23 项门禁 + 52 单测<br/>681 passed ⏵当前基线"]
+  B312_NOW --> GATES1["阶段一：六维防御门禁工具包<br/>23 项门禁 + 52 单测<br/>681 passed"]
+  GATES1 --> GATES2["阶段二：执行流前置/后置闸门植入<br/>runner.py + 18 集成单测<br/>699 passed"]
+  GATES2 --> GATES3["阶段三：CI / Git Hooks 硬化与验签<br/>tamper_guard + 24 门禁 + 18 单测<br/>717 passed"]
+  GATES3 --> PHASE4["Phase 4 模拟盘准入与合规报备 (T405)<br/>run_paper_trading_daily + 8 单测<br/>725 passed ⏵当前基线"]
   style B0 fill:#e0e7ff,stroke:#818cf8
   style B1 fill:#e0e7ff,stroke:#818cf8
   style B2 fill:#e0e7ff,stroke:#818cf8
@@ -150,30 +136,32 @@ flowchart LR
   style B404 fill:#e0e7ff,stroke:#818cf8
   style B312_OLD fill:#e0e7ff,stroke:#818cf8
   style B312_NOW fill:#e0e7ff,stroke:#818cf8
-  style GATES fill:#dcfce7,stroke:#16a34a,color:#0f172a
-</div>
-
-<h2>当前位置与等待决策</h2>
-<div class="mermaid">
+  style GATES1 fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style GATES2 fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style GATES3 fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style PHASE4 fill:#dcfce7,stroke:#16a34a,color:#0f172a
+</div><br/><br/>#<h1>当前位置与运行状态<br/><br/><div class="mermaid">
 flowchart TD
-  STAGE1["阶段一：开发独立门禁工具包 (scripts/gates/) ✅ 已完工（Commit 4d93246）<br/>23 项门禁全落地 / tests/test_gates.py 52 单测全绿 / 681 库测全绿<br/>业务核心代码零侵入冻结 / 母库 FINDING- 守卫恒等于 370 行"]
-  STAGE1 --> NEXT["等待用户下一步指令 ⏵当前节点"]
-  NEXT --> STAGE2["阶段二：前置/后置闸门挂接<br/>在 run_dividend_backtest.py 等入口注入门禁校验，违规自动阻断落盘"]
-  NEXT --> STAGE3["阶段三：交付留痕与 Git Hook 硬化<br/>配置 pre-commit 物理钩子与 tasks.md 机器防伪签名绑定"]
-  style STAGE1 fill:#dcfce7,stroke:#16a34a,color:#0f172a
-  style NEXT fill:#fef3c7,stroke:#f59e0b,color:#0f172a
-  style STAGE2 fill:#f1f5f9,stroke:#94a3b8,color:#64748b
-  style STAGE3 fill:#f1f5f9,stroke:#94a3b8,color:#64748b
-</div>
+  GATE_DONE["六维防伪与质量门禁体系 ✅ 三大阶段全量完工闭环（Commit 4878ffe）<br/>24 道机读门禁 / tamper_guard 密码学验签 / 本地与 CI 双硬卡拦截 / 717 passed"]
+  GATE_DONE --> P4_ADMIT["Phase 4 模拟盘准入决议签署 & T405 合规报备核验 ✅ 完工闭环<br/>策略说明书 / 系统架构说明书 / 7 项必须项核验 100% PASS / 725 passed 全绿"]
+  P4_ADMIT --> P4_RUNNING["Phase 4 模拟盘 6 个月运行跟踪进行中 (T406) ⏵当前常态化运行节点<br/>run_paper_trading_daily.py 日终自动执行 / paper_trading_ledger.md 流式记账<br/>跟踪区间：2026-09-07 至 2027-03-08（满 6 个月后触发 G5 门禁终审）"]
+  P4_RUNNING --> PHASE5["Phase 5 实盘小步启动 (待 G5 门禁通过后准入)<br/>向券商提交报备材料 / 开通 QMT/PTrade 交易通道 / 10~15 万实盘"]
+  style GATE_DONE fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style P4_ADMIT fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style P4_RUNNING fill:#fef3c7,stroke:#f59e0b,color:#0f172a
+  style PHASE5 fill:#f1f5f9,stroke:#94a3b8,color:#64748b
+</div><br/><br/>---<br/><br/>**更新历史**：
+- 2026-08-31：Phase 0–1 完成标记
+- 2026-09-01：Phase 2–3 完成标记 + G3/G4 门禁通过
+- 2026-09-02：Phase 3.5 红利策略切换完成 + G4.5 门禁通过 + 测试基线 524
+- 2026-09-02：T402 偏差容忍带 + T401/T403/T404 修复与台账自动化完成 + 测试基线 619
+- 2026-09-07：T312 底层四大硬伤彻底根治 + 回测引擎红利税真集成与送转拆股容错 + 市值加权生效 + 自动化防伪审计 5/5 全 PASS + 真实 10 年全周期回测正式落盘（Run ID 20260907-150402，总收益 -27.72%，CAGR -3.20%，实扣红利税 5,043.75 元，每一分钱有据可查）+ 测试基线提升至 629 passed 全绿。
+- 2026-09-07：第 17 号《中低频量化研发防伪与工程质量门禁体系深度调研报告》定稿（Commit `3119acd`）。确立学术三里程碑、工业平台准入门禁与监管法案；明确 10~15 万纯多头无对冲散户客观物理约束；构建六维防御门禁（D-L-E-A-S-G）体系；代码仓冻结待命。
+- 2026-09-07：六维门禁体系【阶段一：独立门禁工具包开发】完工闭环（Commit `4d93246`）。落盘 scripts/gates/ 工具包（23 项机读门禁 + gate_master_audit.py 调度器）；tests/test_gates.py 52 项单测全绿；测试基线提升至 681 passed 全绿；母库 FINDING- 守卫恒等于 370 行。
+- 2026-09-07：六维门禁体系【阶段二：执行流前置/后置闸门植入】完工闭环。回测主流程 scripts/run_dividend_backtest.py 深度挂接前置与后置闸门；新增 runner.py 与 tests/test_gate_integration.py（18 单测全绿）；全库回归单测提升至 699 passed 全绿；母库 370 行守卫严格保持。
+- 2026-09-07：六维门禁体系【阶段三：CI / Git Hooks 自动化防伪硬化与防篡改签名】完工闭环（Commit `4878ffe`）。落地 tamper_guard.py 验签引擎；扩展至 24 道机读门禁；装配 pre-commit 与 pre-push 本地硬卡；两仓 CI 流水线；单测提升至 717 passed 全绿。
+- 2026-09-07：Phase 4 模拟盘准入启动与合规报备核验（T405）完工闭环。发布准入决议书；完成策略说明书、系统架构说明书与 7 项必须项清单（T405 合规审计报告 100% PASS 签署）；研发落地日终执行器 scripts/run_paper_trading_daily.py 与 6 个月跟踪总账 docs/paper_trading/paper_trading_ledger.md 并完成 Day 1 首日执行；编写 Phase 4 单测 tests/test_t405_compliance_and_paper_e2e.py（8 例全绿）；全库回归单测跃升至 725 passed in 18.02s 全绿！Phase 4 模拟盘 6 个月常态化跟踪（T406）正式进入长跑轨道。
 
-<hr/>
-<p>**更新历史**：</p>
-<li>2026-08-31：Phase 0–1 完成标记</li>
-<li>2026-09-01：Phase 2–3 完成标记 + G3/G4 门禁通过</li>
-<li>2026-09-02：Phase 3.5 红利策略切换完成 + G4.5 门禁通过 + 测试基线 524</li>
-<li>2026-09-02：T402 偏差容忍带 + T401/T403/T404 修复与台账自动化完成 + 测试基线 619</li>
-<li>2026-09-07：T312 底层四大硬伤彻底根治 + 回测引擎红利税真集成与送转拆股容错 + 市值加权生效 + 自动化防伪审计 5/5 全 PASS + 真实 10 年全周期回测正式落盘（Run ID 20260907-150402，总收益 -27.72%，CAGR -3.20%，实扣红利税 5,043.75 元，每一分钱有据可查）+ 测试基线提升至 629 passed 全绿。</li>
-<li>2026-09-07：第 17 号《中低频量化研发防伪与工程质量门禁体系深度调研报告》定稿（Commit `3119acd`）。确立学术三里程碑、工业平台准入门禁与监管法案；系统性论证直接照搬外部标准必死，确立“科学原则全盘继承 + A 股散户小资金物理特化”唯一最优解；明确 10~15 万纯多头无对冲散户客观物理约束；构建六维防御门禁（D-L-E-A-S-G）体系；项目文档全景整理升级；生产代码仓冻结待命，静候用户确认批准开工建立独立门禁包。</li>
 <script>mermaid.initialize({ startOnLoad: true, theme: "default" });</script>
 </body>
 </html>

@@ -1,0 +1,25 @@
+{
+  "run_id": "20260907-200147-paper-dividend-v1",
+  "date": "2026-09-07",
+  "code_version": "4878ffe",
+  "data_version": "partition-daily-v1",
+  "params_hash": "89cdbb377c1360fe",
+  "status": "FINISHED",
+  "timestamp": "2026-09-07T12:01:47.382700+00:00",
+  "metrics": {
+    "nav": "100000",
+    "cash": "100000",
+    "positions_count": 0,
+    "orders_submitted": 0,
+    "orders_filled": 0,
+    "orders_rejected": 0,
+    "reconciliation_ok": true,
+    "success": true
+  },
+  "portfolio": {
+    "positions": {},
+    "warnings": []
+  },
+  "error": "",
+  "anti_tamper_signature": "4467b4f76fad7f9fcd7dd3b9d2fdbba921be1491e34875f4de074012585a5164"
+}

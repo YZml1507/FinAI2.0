@@ -1,7 +1,7 @@
 # FinAI2.0 · 文档全景导航索引（Documentation Index）
 
 > 更新日期：2026-09-07  
-> 对应项目版本：Phase 0~Phase 3.5 完成，门禁体系【阶段一+阶段二+阶段三全面完工闭环】，基线 **717 passed 全绿**  
+> 对应项目版本：Phase 0~Phase 3.5 完成，Phase 4 模拟盘准入启动与常态化跟踪中，基线 **725 passed 全绿**  
 > 外部计划与理论权威：`D:\Projects\research-finai\`（00–17 号报告 + `specs\001-a-stock-longonly-daily-quant\`）
 
 ---
@@ -16,8 +16,8 @@ flowchart TD
   DOCS --> D2["2. 回测引擎与门禁 (Phase 2)<br/>• T204 价格与敏感度<br/>• T207 G3 门禁验收"]
   DOCS --> D3["3. 策略风控与防伪 (Phase 3)<br/>• T304 动量压测<br/>• T305 评审报告<br/>• 前视偏差审计<br/>• 缺口滑点 / 高价股过滤"]
   DOCS --> D4["4. 红利策略实证 (Phase 3.5)<br/>• T309 红利税真集成<br/>• T311 红利策略<br/>• T312 硬伤根治与10年回测<br/>• T313 压力测试全绿"]
-  DOCS --> D5["5. 模拟盘基建 (Phase 4)<br/>• T401 模拟执行器<br/>• T402 偏差容忍带<br/>• T403 日终任务<br/>• T404 台账自动化"]
-  DOCS --> D6["6. 六维质量防伪门禁 (Phase 1~3 全闭环)<br/>• scripts/gates/ 24道门禁+tamper_guard<br/>• .githooks/ & CI 本地云端双拦截<br/>• tests/ 717 passed 100% 全绿<br/>• delivery/ 阶段一~三完工总结"]
+  DOCS --> D5["5. 模拟盘常态化运行 (Phase 4)<br/>• 准入决议书 & T405 合规材料<br/>• run_paper_trading_daily 日终执行器<br/>• paper_trading_ledger 6个月总账<br/>• tests/ 725 passed 100% 全绿"]
+  DOCS --> D6["6. 六维质量防伪门禁 (Phase 1~3 全闭环)<br/>• scripts/gates/ 24道门禁+tamper_guard<br/>• .githooks/ & CI 本地云端双拦截<br/>• delivery/ 阶段一~三完工总结"]
   DOCS --> D7["7. 流程图与交付归档<br/>• project_status_flowchart (md/html)<br/>• docs/delivery/ 归档区"]
 ```
 
@@ -73,14 +73,21 @@ flowchart TD
 
 ---
 
-## 五、 模拟盘基建就绪（Phase 4）
+## 五、 模拟盘常态化运行与合规报备（Phase 4 进行中）
 
-| 文档 | 说明 | 对应阶段 / 编号 |
+| 文档 / 路径 | 说明 | 对应阶段 / 编号 |
 |---|---|---|
+| [`delivery/PHASE4_ADMISSION_RESOLUTION.md`](delivery/PHASE4_ADMISSION_RESOLUTION.md) | **Phase 4 模拟盘正式准入决议书**：五大物理枷锁与 6 个月跟踪纪律确立 | Phase 4 准入 |
+| [`compliance/strategy_description_template.md`](compliance/strategy_description_template.md) | **程序化交易策略说明书**（锁定 commit `4878ffe`、T312 10 年回测与单测基线） | T405 (FR-COMP-1) |
+| [`compliance/system_architecture_template.md`](compliance/system_architecture_template.md) | **程序化交易系统架构说明书**（披露六层物理架构与 24 道六维防伪门禁） | T405 (FR-COMP-1) |
+| [`compliance/filing_checklist.md`](compliance/filing_checklist.md) | **程序化交易报备材料清单**（7 项必须项核验与报备时间表） | T405 (FR-COMP-1) |
+| [`compliance/T405_COMPLIANCE_AUDIT.md`](compliance/T405_COMPLIANCE_AUDIT.md) | **T405 合规审计报告**（穿透核验 100% PASS 终审签署） | T405 (FR-COMP-1) |
+| [`paper_trading/paper_trading_ledger.md`](paper_trading/paper_trading_ledger.md) | **模拟盘 6 个月运行跟踪总账**（T406 每日流水、对账状态与防篡改签名留痕） | T406 (G5 前半) |
+| [`../scripts/run_paper_trading_daily.py`](../scripts/run_paper_trading_daily.py) | **模拟盘日终自动化执行器**（支持状态推进、双账本自对账与防篡改验签） | Phase 4 执行主干 |
+| [`../tests/test_t405_compliance_and_paper_e2e.py`](../tests/test_t405_compliance_and_paper_e2e.py) | **Phase 4 合规材料与端到端自动化测试套件**（8 单测全绿） | T405 / T406 验证 |
 | [`t401_paper_trading_design.md`](t401_paper_trading_design.md) | 模拟盘执行器架构设计（回测与实盘同构桥） | T401 |
 | [`t402_deviation_tolerance.md`](t402_deviation_tolerance.md) | **回测-模拟偏差容忍带量化体系**（NAV/收益/换手/成交价/滑点 5 指标） | T402 |
 | [`t403_daily_tasks.md`](t403_daily_tasks.md) | 模拟盘日终自动化任务（对账、净值核算、报表渲染）设计 | T403 |
-| [`T403_COMPLETION_REPORT.md`](T403_COMPLETION_REPORT.md) | T403 日终任务与报表生成器交付报告 | T403 |
 | [`t404_ledger_automation.md`](t404_ledger_automation.md) | 14 号易变数据台账保鲜与到期提醒自动化调度器设计与验收 | T404 |
 
 ---

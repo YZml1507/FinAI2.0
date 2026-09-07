@@ -72,16 +72,19 @@ class PaperBroker(BacktestBroker):
         matcher: MatchEngine,
         ledger: Ledger,
         feed: DataFeed | None = None,
+        enable_dividend_tax: bool = True,
     ) -> None:
         """
         Args:
             matcher: 撮合引擎（复用 ``backtest.matching.MatchEngine``）。
             ledger: 双账本（复用 ``backtest.ledger.Ledger``）。
             feed: 行情源（v1 用 ``ParquetDailyFeed``；未来可扩展实时源）。
+            enable_dividend_tax: 是否开启红利税（默认 True，模拟盘与真实税务对齐）。
         """
-        super().__init__(matcher, ledger, feed)
+        super().__init__(matcher, ledger, feed, enable_dividend_tax=enable_dividend_tax)
         logger.info(
-            "PaperBroker 初始化完成（复用回测撮合，SDD-1 同构）"
+            "PaperBroker 初始化完成（复用回测撮合，SDD-1 同构，红利税=%s）",
+            enable_dividend_tax,
         )
 
     # ⛔ 不重写任何撮合逻辑 —— 全部继承 BacktestBroker

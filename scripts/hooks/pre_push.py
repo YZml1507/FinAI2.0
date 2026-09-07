@@ -32,7 +32,7 @@ from scripts.gates.base import GateStatus, GateSeverity
 
 
 #: 历史核准的单测最低通过基线（任何时候不得低于此数值）
-MIN_TEST_BASELINE = 717
+MIN_TEST_BASELINE = 725
 
 
 def run_pytest_guard(baseline: int = MIN_TEST_BASELINE) -> tuple[bool, str]:

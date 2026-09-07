@@ -258,11 +258,8 @@ class PaperTradingRunner:
         if not self.config.state_path.exists():
             logger.info("冷启动：创建新账本（初始资金 %s）", self.config.initial_capital)
             self.ledger = Ledger(self.config.initial_capital, date=date)
-            self.broker = PaperBroker(self.matcher, self.ledger, self.feed)
-            self.broker.deposit(
-                self.config.initial_capital,
-                date=date,
-                ref_id="PAPER_INIT",
+            self.broker = PaperBroker(
+                self.matcher, self.ledger, self.feed, enable_dividend_tax=True
             )
             return
 
@@ -270,19 +267,17 @@ class PaperTradingRunner:
         logger.info("热启动：加载已有状态")
         state = PaperTradingState.load(self.config.state_path)
         self.ledger = Ledger(self.config.initial_capital, date=date)
-        self.broker = PaperBroker(self.matcher, self.ledger, self.feed)
-
-        # 先入金（初始化账本），再恢复状态（覆盖持仓/现金）
-        self.broker.deposit(
-            self.config.initial_capital,
-            date=date,
-            ref_id="PAPER_INIT_RESTORE",
+        self.broker = PaperBroker(
+            self.matcher, self.ledger, self.feed, enable_dividend_tax=True
         )
         state.restore_to_broker(self.broker)
         logger.info("状态恢复完成: %s", self.broker.get_summary())
 
     def _update_data(self, date: _date) -> None:
         """增量数据更新（调用 data.incremental）。"""
+        if getattr(self.config, "offline", False):
+            logger.info("离线模式：跳过增量数据网络采集: %s", date)
+            return
         logger.info("增量数据更新: %s", date)
         # v1 简化：只更新 watchlist 标的（全市场更新太慢）
         symbols = _watchlist(self.strategy)

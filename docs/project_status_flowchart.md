@@ -115,7 +115,9 @@ flowchart LR
   B404 --> B312_OLD["T312 离线测试补充<br/>626 passed"]
   B312_OLD --> B312_NOW["T312 审计与红利税/拆股加权修复<br/>629 passed"]
   B312_NOW --> GATES1["阶段一：六维防御门禁工具包<br/>23 项门禁 + 52 单测<br/>681 passed"]
-  GATES1 --> GATES2["阶段二：执行流前置/后置闸门植入<br/>runner.py + 18 集成单测<br/>699 passed ⏵当前基线"]
+  GATES1 --> GATES2["阶段二：执行流前置/后置闸门植入<br/>runner.py + 18 集成单测<br/>699 passed"]
+  GATES2 --> GATES3["阶段三：CI / Git Hooks 硬化与验签<br/>tamper_guard + 24 门禁 + 18 单测<br/>717 passed"]
+  GATES3 --> PHASE4["Phase 4 模拟盘准入与合规报备 (T405)<br/>run_paper_trading_daily + 8 单测<br/>725 passed ⏵当前基线"]
   style B0 fill:#e0e7ff,stroke:#818cf8
   style B1 fill:#e0e7ff,stroke:#818cf8
   style B2 fill:#e0e7ff,stroke:#818cf8
@@ -127,20 +129,22 @@ flowchart LR
   style B312_NOW fill:#e0e7ff,stroke:#818cf8
   style GATES1 fill:#dcfce7,stroke:#16a34a,color:#0f172a
   style GATES2 fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style GATES3 fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style PHASE4 fill:#dcfce7,stroke:#16a34a,color:#0f172a
 ```
 
-## 当前位置与等待决策
+## 当前位置与运行状态
 
 ```mermaid
 flowchart TD
-  STAGE1["阶段一：开发独立门禁工具包 (scripts/gates/) ✅ 已完工（Commit 4d93246）<br/>23 项门禁全落地 / tests/test_gates.py 52 单测全绿 / 681 库测全绿"]
-  STAGE1 --> STAGE2["阶段二：执行流前置/后置闸门植入 ✅ 已完工<br/>run_dividend_backtest.py 挂接 / tests/test_gate_integration.py 18 单测全绿 / 699 passed<br/>Fail-Closed 严格拒绝落盘 / 母库 FINDING- 守卫恒等于 370 行"]
-  STAGE2 --> NEXT["等待用户下一步指令 ⏵当前节点"]
-  NEXT --> STAGE3["阶段三：交付留痕与 Git Hook 硬化<br/>配置 pre-commit 物理钩子与 tasks.md 机器防伪签名绑定"]
-  style STAGE1 fill:#dcfce7,stroke:#16a34a,color:#0f172a
-  style STAGE2 fill:#dcfce7,stroke:#16a34a,color:#0f172a
-  style NEXT fill:#fef3c7,stroke:#f59e0b,color:#0f172a
-  style STAGE3 fill:#f1f5f9,stroke:#94a3b8,color:#64748b
+  GATE_DONE["六维防伪与质量门禁体系 ✅ 三大阶段全量完工闭环（Commit 4878ffe）<br/>24 道机读门禁 / tamper_guard 密码学验签 / 本地与 CI 双硬卡拦截 / 717 passed"]
+  GATE_DONE --> P4_ADMIT["Phase 4 模拟盘准入决议签署 & T405 合规报备核验 ✅ 完工闭环<br/>策略说明书 / 系统架构说明书 / 7 项必须项核验 100% PASS / 725 passed 全绿"]
+  P4_ADMIT --> P4_RUNNING["Phase 4 模拟盘 6 个月运行跟踪进行中 (T406) ⏵当前常态化运行节点<br/>run_paper_trading_daily.py 日终自动执行 / paper_trading_ledger.md 流式记账<br/>跟踪区间：2026-09-07 至 2027-03-08（满 6 个月后触发 G5 门禁终审）"]
+  P4_RUNNING --> PHASE5["Phase 5 实盘小步启动 (待 G5 门禁通过后准入)<br/>向券商提交报备材料 / 开通 QMT/PTrade 交易通道 / 10~15 万实盘"]
+  style GATE_DONE fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style P4_ADMIT fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style P4_RUNNING fill:#fef3c7,stroke:#f59e0b,color:#0f172a
+  style PHASE5 fill:#f1f5f9,stroke:#94a3b8,color:#64748b
 ```
 
 ---
@@ -151,6 +155,8 @@ flowchart TD
 - 2026-09-02：Phase 3.5 红利策略切换完成 + G4.5 门禁通过 + 测试基线 524
 - 2026-09-02：T402 偏差容忍带 + T401/T403/T404 修复与台账自动化完成 + 测试基线 619
 - 2026-09-07：T312 底层四大硬伤彻底根治 + 回测引擎红利税真集成与送转拆股容错 + 市值加权生效 + 自动化防伪审计 5/5 全 PASS + 真实 10 年全周期回测正式落盘（Run ID 20260907-150402，总收益 -27.72%，CAGR -3.20%，实扣红利税 5,043.75 元，每一分钱有据可查）+ 测试基线提升至 629 passed 全绿。
-- 2026-09-07：第 17 号《中低频量化研发防伪与工程质量门禁体系深度调研报告》定稿（Commit `3119acd`）。确立学术三里程碑、工业平台准入门禁与监管法案；系统性论证直接照搬外部标准必死，确立“科学原则全盘继承 + A 股散户小资金物理特化”唯一最优解；明确 10~15 万纯多头无对冲散户客观物理约束；构建六维防御门禁（D-L-E-A-S-G）体系；项目文档全景整理升级；生产代码仓冻结待命，静候用户确认批准开工建立独立门禁包。
+- 2026-09-07：第 17 号《中低频量化研发防伪与工程质量门禁体系深度调研报告》定稿（Commit `3119acd`）。确立学术三里程碑、工业平台准入门禁与监管法案；明确 10~15 万纯多头无对冲散户客观物理约束；构建六维防御门禁（D-L-E-A-S-G）体系；代码仓冻结待命。
 - 2026-09-07：六维门禁体系【阶段一：独立门禁工具包开发】完工闭环（Commit `4d93246`）。落盘 scripts/gates/ 工具包（23 项机读门禁 + gate_master_audit.py 调度器）；tests/test_gates.py 52 项单测全绿；测试基线提升至 681 passed 全绿；母库 FINDING- 守卫恒等于 370 行。
-- 2026-09-07：六维门禁体系【阶段二：执行流前置/后置闸门植入】完工闭环。回测主流程 scripts/run_dividend_backtest.py 深度挂接前置（D-1~D-5, L-1, L-3）与后置（E-1~E-3, A-1~A-4, S-1~S-5, G-1~G-3）闸门；新增 scripts/gates/runner.py 与 tests/test_gate_integration.py（18 项集成单测全绿）；全库回归单测提升至 699 passed 全绿；Fail-Closed 机制精准拦截脏数据并坚决拒绝落盘；母库只读区 FINDING- 守卫行数严格恒等于 370 行。
+- 2026-09-07：六维门禁体系【阶段二：执行流前置/后置闸门植入】完工闭环。回测主流程 scripts/run_dividend_backtest.py 深度挂接前置与后置闸门；新增 runner.py 与 tests/test_gate_integration.py（18 单测全绿）；全库回归单测提升至 699 passed 全绿；母库 370 行守卫严格保持。
+- 2026-09-07：六维门禁体系【阶段三：CI / Git Hooks 自动化防伪硬化与防篡改签名】完工闭环（Commit `4878ffe`）。落地 tamper_guard.py 验签引擎；扩展至 24 道机读门禁；装配 pre-commit 与 pre-push 本地硬卡；两仓 CI 流水线；单测提升至 717 passed 全绿。
+- 2026-09-07：Phase 4 模拟盘准入启动与合规报备核验（T405）完工闭环。发布准入决议书；完成策略说明书、系统架构说明书与 7 项必须项清单（T405 合规审计报告 100% PASS 签署）；研发落地日终执行器 scripts/run_paper_trading_daily.py 与 6 个月跟踪总账 docs/paper_trading/paper_trading_ledger.md 并完成 Day 1 首日执行；编写 Phase 4 单测 tests/test_t405_compliance_and_paper_e2e.py（8 例全绿）；全库回归单测跃升至 725 passed in 18.02s 全绿！Phase 4 模拟盘 6 个月常态化跟踪（T406）正式进入长跑轨道。

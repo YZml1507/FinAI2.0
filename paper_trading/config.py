@@ -48,6 +48,9 @@ class PaperTradingConfig:
     #: 干跑模式（True=不真实下单，仅记录信号；v1 模拟盘全程 dry_run）
     dry_run: bool = True
 
+    #: 离线模式（True=跳过外部网络增量采集，仅使用本地历史数据）
+    offline: bool = False
+
     #: 风控参数：单日最大下单次数（防御失控策略，默认 100）
     max_orders_per_day: int = 100
 
@@ -106,4 +109,6 @@ class PaperTradingConfig:
             kwargs["data_root"] = Path(kwargs["data_root"])
         if "state_path" in kwargs:
             kwargs["state_path"] = Path(kwargs["state_path"])
+        if "offline" in kwargs:
+            kwargs["offline"] = bool(kwargs["offline"])
         return cls(**kwargs)
