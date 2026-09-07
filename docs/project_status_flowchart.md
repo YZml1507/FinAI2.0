@@ -28,15 +28,16 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-  G0["G0 spec 三件套齐备 ✅"] --> R15["R1–R5 清零 ✅ af20d85"] --> UT["681 离线单测全绿 ✅ 2026-09-07"]
+  G0["G0 spec 三件套齐备 ✅"] --> R15["R1–R5 清零 ✅ af20d85"] --> UT["699 离线单测全绿 ✅ 2026-09-07"]
   UT --> P1["Phase 1 数据层 ✅<br/>T101–T110"]
   P1 --> G2["G2 三源验收 ✅"]
   G2 --> P2["Phase 2 回测引擎 ✅<br/>T201–T207 + G3"]
   P2 --> P3["Phase 3 策略 ✅<br/>T301–T308"]
   P3 --> G4["G4 技术评审 ✅<br/>动量淘汰 转向红利"]
   G4 --> P35["Phase 3.5 红利策略实证 ✅<br/>硬伤根治 / 审计全过 / 真实10年回测"]
-  P35 --> G_AUDIT["阶段一：六维门禁工具包 ✅<br/>scripts/gates/ 23道门禁 + 52单测全绿 ⏵当前"]
-  G_AUDIT --> P4["Phase 4 模拟盘<br/>T401–T404 基建全绿 / 待门禁体系三阶段闭环后准入"]
+  P35 --> G_AUDIT1["阶段一：六维门禁工具包 ✅<br/>scripts/gates/ 23道门禁 + 52单测全绿"]
+  G_AUDIT1 --> G_AUDIT2["阶段二：执行流前置/后置闸门植入 ✅<br/>runner.py + 回测主流程阻断 + 18集成单测 ⏵当前"]
+  G_AUDIT2 --> P4["Phase 4 模拟盘<br/>T401–T404 基建全绿 / 待门禁体系三阶段闭环后准入"]
   style G0 fill:#dcfce7,stroke:#16a34a
   style R15 fill:#dcfce7,stroke:#16a34a
   style UT fill:#dcfce7,stroke:#16a34a
@@ -46,7 +47,8 @@ flowchart LR
   style P3 fill:#dcfce7,stroke:#16a34a
   style G4 fill:#dcfce7,stroke:#16a34a
   style P35 fill:#dcfce7,stroke:#16a34a
-  style G_AUDIT fill:#fef3c7,stroke:#f59e0b,color:#0f172a
+  style G_AUDIT1 fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style G_AUDIT2 fill:#fef3c7,stroke:#f59e0b,color:#0f172a
   style P4 fill:#f1f5f9,stroke:#94a3b8,color:#64748b
 ```
 
@@ -110,7 +112,8 @@ flowchart LR
   B402 --> B404["T401/403/404 修复与台账<br/>619 passed"]
   B404 --> B312_OLD["T312 离线测试补充<br/>626 passed"]
   B312_OLD --> B312_NOW["T312 审计与红利税/拆股加权修复<br/>629 passed"]
-  B312_NOW --> GATES["阶段一：六维防御门禁工具包<br/>23 项门禁 + 52 单测<br/>681 passed ⏵当前基线"]
+  B312_NOW --> GATES1["阶段一：六维防御门禁工具包<br/>23 项门禁 + 52 单测<br/>681 passed"]
+  GATES1 --> GATES2["阶段二：执行流前置/后置闸门植入<br/>runner.py + 18 集成单测<br/>699 passed ⏵当前基线"]
   style B0 fill:#e0e7ff,stroke:#818cf8
   style B1 fill:#e0e7ff,stroke:#818cf8
   style B2 fill:#e0e7ff,stroke:#818cf8
@@ -120,20 +123,21 @@ flowchart LR
   style B404 fill:#e0e7ff,stroke:#818cf8
   style B312_OLD fill:#e0e7ff,stroke:#818cf8
   style B312_NOW fill:#e0e7ff,stroke:#818cf8
-  style GATES fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style GATES1 fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style GATES2 fill:#dcfce7,stroke:#16a34a,color:#0f172a
 ```
 
 ## 当前位置与等待决策
 
 ```mermaid
 flowchart TD
-  STAGE1["阶段一：开发独立门禁工具包 (scripts/gates/) ✅ 已完工（Commit 4d93246）<br/>23 项门禁全落地 / tests/test_gates.py 52 单测全绿 / 681 库测全绿<br/>业务核心代码零侵入冻结 / 母库 FINDING- 守卫恒等于 370 行"]
-  STAGE1 --> NEXT["等待用户下一步指令 ⏵当前节点"]
-  NEXT --> STAGE2["阶段二：前置/后置闸门挂接<br/>在 run_dividend_backtest.py 等入口注入门禁校验，违规自动阻断落盘"]
+  STAGE1["阶段一：开发独立门禁工具包 (scripts/gates/) ✅ 已完工（Commit 4d93246）<br/>23 项门禁全落地 / tests/test_gates.py 52 单测全绿 / 681 库测全绿"]
+  STAGE1 --> STAGE2["阶段二：执行流前置/后置闸门植入 ✅ 已完工<br/>run_dividend_backtest.py 挂接 / tests/test_gate_integration.py 18 单测全绿 / 699 passed<br/>Fail-Closed 严格拒绝落盘 / 母库 FINDING- 守卫恒等于 370 行"]
+  STAGE2 --> NEXT["等待用户下一步指令 ⏵当前节点"]
   NEXT --> STAGE3["阶段三：交付留痕与 Git Hook 硬化<br/>配置 pre-commit 物理钩子与 tasks.md 机器防伪签名绑定"]
   style STAGE1 fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style STAGE2 fill:#dcfce7,stroke:#16a34a,color:#0f172a
   style NEXT fill:#fef3c7,stroke:#f59e0b,color:#0f172a
-  style STAGE2 fill:#f1f5f9,stroke:#94a3b8,color:#64748b
   style STAGE3 fill:#f1f5f9,stroke:#94a3b8,color:#64748b
 ```
 
@@ -146,3 +150,5 @@ flowchart TD
 - 2026-09-02：T402 偏差容忍带 + T401/T403/T404 修复与台账自动化完成 + 测试基线 619
 - 2026-09-07：T312 底层四大硬伤彻底根治 + 回测引擎红利税真集成与送转拆股容错 + 市值加权生效 + 自动化防伪审计 5/5 全 PASS + 真实 10 年全周期回测正式落盘（Run ID 20260907-150402，总收益 -27.72%，CAGR -3.20%，实扣红利税 5,043.75 元，每一分钱有据可查）+ 测试基线提升至 629 passed 全绿。
 - 2026-09-07：第 17 号《中低频量化研发防伪与工程质量门禁体系深度调研报告》定稿（Commit `3119acd`）。确立学术三里程碑、工业平台准入门禁与监管法案；系统性论证直接照搬外部标准必死，确立“科学原则全盘继承 + A 股散户小资金物理特化”唯一最优解；明确 10~15 万纯多头无对冲散户客观物理约束；构建六维防御门禁（D-L-E-A-S-G）体系；项目文档全景整理升级；生产代码仓冻结待命，静候用户确认批准开工建立独立门禁包。
+- 2026-09-07：六维门禁体系【阶段一：独立门禁工具包开发】完工闭环（Commit `4d93246`）。落盘 scripts/gates/ 工具包（23 项机读门禁 + gate_master_audit.py 调度器）；tests/test_gates.py 52 项单测全绿；测试基线提升至 681 passed 全绿；母库 FINDING- 守卫恒等于 370 行。
+- 2026-09-07：六维门禁体系【阶段二：执行流前置/后置闸门植入】完工闭环。回测主流程 scripts/run_dividend_backtest.py 深度挂接前置（D-1~D-5, L-1, L-3）与后置（E-1~E-3, A-1~A-4, S-1~S-5, G-1~G-3）闸门；新增 scripts/gates/runner.py 与 tests/test_gate_integration.py（18 项集成单测全绿）；全库回归单测提升至 699 passed 全绿；Fail-Closed 机制精准拦截脏数据并坚决拒绝落盘；母库只读区 FINDING- 守卫行数严格恒等于 370 行。

@@ -38,6 +38,7 @@ from reporting.registry import ExperimentRegistry
 from strategy.candidates import DividendConfig, DividendStrategy
 from strategy.portfolio import PortfolioConfig
 from data.universe import load_stock_basic, alive_universe
+from scripts.gates import GateBlockerError, run_post_run_gates, run_pre_run_gates
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -75,6 +76,8 @@ def _load_universe_tables(data_path: Path) -> dict[str, pd.DataFrame]:
     tables: dict[str, pd.DataFrame] = {}
     for sym_dir in sorted(data_path.iterdir()):
         if not sym_dir.is_dir():
+            continue
+        if sym_dir.name == INDEX_SYMBOL:
             continue
         if not (sym_dir.name.startswith("sh.") or sym_dir.name.startswith("sz.")):
             continue
@@ -162,10 +165,18 @@ def run_dividend_backtest_2015_2024(
     data_path: Path,
     initial_capital: Decimal = Decimal("150000"),
     risk_free_annual: Decimal = Decimal("0.025"),
+    enable_gates: bool = True,
+    start_date: _date | None = None,
+    end_date: _date | None = None,
+    registry_root: Path | None = None,
+    universe_provider: Any = None,
 ) -> dict:
     """红利策略 2015-2024 全周期回测（离线：数据全预载，不打网）。"""
+    start = start_date or START
+    end = end_date or END
+
     logger.info("=" * 60)
-    logger.info("T312 红利策略 2015-2024 全周期回测")
+    logger.info(f"T312 红利策略回测 ({start} ~ {end})")
     logger.info("=" * 60)
 
     # ① 配置
@@ -194,7 +205,8 @@ def run_dividend_backtest_2015_2024(
     if index_frame is None:
         logger.warning(f"指数 {INDEX_SYMBOL} 分区缺失 ⇒ MA200 择时 fail-safe 关闭")
         strategy_config = replace(strategy_config, use_ma200_timing=False)
-    universe_provider = _make_universe_provider(logger, data_path)
+    if universe_provider is None:
+        universe_provider = _make_universe_provider(logger, data_path)
 
     # ③ 数据装载（preloaded 全预载，回测全程不打网）
     logger.info(f"加载红利股数据: {data_path}")
@@ -209,7 +221,7 @@ def run_dividend_backtest_2015_2024(
             "无指数分区 ⇒ 无交易日历（不打网取日历，T201 §6）—— "
             "请先跑采集器（指数是采集器内置步骤）")
     cal_days = [_parse_iso(d) for d in index_frame["date"]]
-    cal_days = [d for d in cal_days if d and START <= d <= END]
+    cal_days = [d for d in cal_days if d and start <= d <= end]
 
     exdiv_events = _load_exdiv_events(data_path)
     exdiv_by_date = _group_exdiv_by_date(exdiv_events)
@@ -236,7 +248,7 @@ def run_dividend_backtest_2015_2024(
 
     # ⑤ 引擎组装（T201 契约：资金进 Ledger，Engine 只收 broker+feed；
     #    策略经 run(strategy, start, end) 传入）
-    ledger = Ledger(initial_cash=initial_capital, date=START)
+    ledger = Ledger(initial_cash=initial_capital, date=start)
     matcher = MatchEngine(fee_model=make_fee_model(), price_model=make_price_model())
     broker = BacktestBroker(
         matcher=matcher, ledger=ledger, feed=feed, enable_dividend_tax=True
@@ -246,18 +258,42 @@ def run_dividend_backtest_2015_2024(
     # ⑥ 除权事件提供者（FR-BT-4：结算消费；除权日 events 的 date 已居前排除）
     engine.exdiv_provider = lambda day: exdiv_by_date.get(day)
 
+    # ⑥.1 前置门禁 (Pre-run Gates: D-1~D-5, L-1, L-3)
+    if enable_gates:
+        logger.info("执行回测前置门禁审计 (Pre-run Gates: D-1~D-5, L-1, L-3)...")
+        run_pre_run_gates(
+            tables=tables,
+            exdiv_events=exdiv_events,
+            strategy_config=strategy_config,
+            strict=True,
+        )
+    else:
+        logger.warning("--no-gates 生效：跳过前置门禁审计")
+
     # ⑦ 运行回测
-    logger.info(f"开始回测 {START} ~ {END}")
-    result = engine.run(strategy, START, END)
+    logger.info(f"开始回测 {start} ~ {end}")
+    result = engine.run(strategy, start, end)
 
     # ⑧ 指标
     logger.info("计算绩效指标...")
     report = compute_metrics(result, risk_free_annual=risk_free_annual)
 
-    # ⑨ registry
+    # ⑧.1 后置门禁 (Post-run Gates: E-1~E-3, A-1~A-4, S-1~S-5, G-1~G-3)
+    if enable_gates:
+        logger.info("执行回测后置门禁审计 (Post-run Gates: E-1~E-3, A-1~A-4, S-1~S-5, G-1~G-3)...")
+        run_post_run_gates(
+            result=result,
+            report=report,
+            strategy_config=strategy_config,
+            strict=True,
+        )
+    else:
+        logger.warning("--no-gates 生效：跳过后置门禁审计")
+
+    # ⑨ registry (Fail-Closed: 仅在所有门禁通过后登记落盘)
     logger.info("注册实验记录...")
     registry = ExperimentRegistry(
-        root=_root / "experiments",
+        root=registry_root or (_root / "experiments"),
         code_version="t312-dividend-v1",
         data_version="dividend-stocks-2015-2024",
     )
@@ -307,7 +343,10 @@ def main() -> int:
         help="初始资金（元，默认 15 万）")
     parser.add_argument(
         "--risk-free", type=float, default=0.025,
-        help="年化无风险利率（默认 2.5%）")
+        help="年化无风险利率（默认 2.5%%）")
+    parser.add_argument(
+        "--no-gates", action="store_true", default=False,
+        help="跳过六维门禁审计（不推荐，默认严格开启 fail-closed 门禁）")
     args = parser.parse_args()
 
     if not args.data_path.exists():
@@ -320,6 +359,7 @@ def main() -> int:
             data_path=args.data_path,
             initial_capital=Decimal(str(args.initial_capital)),
             risk_free_annual=Decimal(str(args.risk_free)),
+            enable_gates=not args.no_gates,
         )
         logger.info(f"回测完成: {result['run_id']}")
         return 0

@@ -49,8 +49,11 @@ from .gate_s_scientific import (
     TimingExitSurvivalGate,
     TurnoverCeilingGate,
 )
+from .runner import run_post_run_gates, run_pre_run_gates
 
 __all__ = [
+    "run_pre_run_gates",
+    "run_post_run_gates",
     # Base
     "GateStatus",
     "GateSeverity",

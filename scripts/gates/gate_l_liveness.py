@@ -44,6 +44,32 @@ class FeatureLivenessGate(BaseGate):
         active = context.get("active_features", []) if isinstance(context, dict) else getattr(context, "active_features", [])
         fee_summary = context.get("fee_summary", {}) if isinstance(context, dict) else getattr(context, "fee_summary", {})
         ledger_entries = context.get("ledger_entries", []) if isinstance(context, dict) else getattr(context, "ledger_entries", [])
+        is_pre_run = bool(context.get("is_pre_run", False) if isinstance(context, dict) else getattr(context, "is_pre_run", False))
+
+        if is_pre_run:
+            missing_req = [f for f in self.required_features if f not in active]
+            if missing_req:
+                return GateResult(
+                    gate_id=self.gate_id,
+                    name=self.name,
+                    category=self.category,
+                    status=GateStatus.FAIL,
+                    severity=self.severity,
+                    message=f"前置特性配置缺失: {missing_req}，未启用必需特性",
+                    threshold=self.threshold_desc,
+                    evidence=self.evidence,
+                )
+            return GateResult(
+                gate_id=self.gate_id,
+                name=self.name,
+                category=self.category,
+                status=GateStatus.PASS,
+                severity=self.severity,
+                message=f"前置特性配置存活检验通过 (已启用: {list(active)})",
+                metrics={"active_features": list(active)},
+                threshold=self.threshold_desc,
+                evidence=self.evidence,
+            )
 
         item_counts: dict[str, int] = {}
         item_amounts: dict[str, Decimal] = {}
