@@ -1,7 +1,7 @@
 # FinAI2.0 · 文档全景导航索引（Documentation Index）
 
 > 更新日期：2026-09-07  
-> 对应项目版本：Phase 0~Phase 3.5 完成，基线 629 passed 全绿  
+> 对应项目版本：Phase 0~Phase 3.5 完成，门禁体系【阶段一：独立门禁工具包】完工，基线 **681 passed 全绿**  
 > 外部计划与理论权威：`D:\Projects\research-finai\`（00–17 号报告 + `specs\001-a-stock-longonly-daily-quant\`）
 
 ---
@@ -17,7 +17,8 @@ flowchart TD
   DOCS --> D3["3. 策略风控与防伪 (Phase 3)<br/>• T304 动量压测<br/>• T305 评审报告<br/>• 前视偏差审计<br/>• 缺口滑点 / 高价股过滤"]
   DOCS --> D4["4. 红利策略实证 (Phase 3.5)<br/>• T309 红利税真集成<br/>• T311 红利策略<br/>• T312 硬伤根治与10年回测<br/>• T313 压力测试全绿"]
   DOCS --> D5["5. 模拟盘基建 (Phase 4)<br/>• T401 模拟执行器<br/>• T402 偏差容忍带<br/>• T403 日终任务<br/>• T404 台账自动化"]
-  DOCS --> D6["6. 流程图与交付归档<br/>• project_status_flowchart (md/html)<br/>• docs/delivery/ 归档区"]
+  DOCS --> D6["6. 六维质量防伪门禁 (Phase 1)<br/>• scripts/gates/ 23道门禁<br/>• tests/test_gates.py 52单测<br/>• delivery/ 阶段一完工总结"]
+  DOCS --> D7["7. 流程图与交付归档<br/>• project_status_flowchart (md/html)<br/>• docs/delivery/ 归档区"]
 ```
 
 ---
@@ -84,10 +85,22 @@ flowchart TD
 
 ---
 
-## 六、 状态流程图与交付归档
+## 六、 六维质量防伪门禁工具包（Phase 1 阶段一交付件）
+
+| 路径 / 文档 | 说明 | 对应阶段 / 类别 |
+|---|---|---|
+| [`../scripts/gates/`](../scripts/gates/) | **六维质量防伪独立门禁包**：D-L-E-A-S-G 全六维 23 项机读门禁与调度器 `gate_master_audit.py` | Phase 1 (T-GATE-P1) |
+| [`../tests/test_gates.py`](../tests/test_gates.py) | **门禁自动化单测套件**（52 个单测 100% 全绿覆盖 PASS/FAIL 阻断/边界） | 测试闭环 |
+| [`delivery/GATE_PHASE1_COMPLETION_SUMMARY.md`](delivery/GATE_PHASE1_COMPLETION_SUMMARY.md) | **阶段一完工交付验收总结**：23 项门禁实现全景、散户约束映射与 681 passed 基线证明 | 阶段交付归档 |
+| [`delivery/gate_phase1_test_output.txt`](delivery/gate_phase1_test_output.txt) | 全库 681 passed in 21.01s 完整控制台单测执行日志真实物理落盘 | 真实物理留痕 |
+| [`delivery/gate_audit_report.json`](delivery/gate_audit_report.json) | 调度器 `gate_master_audit.py` 导出的机读 JSON 审计报告 | 机器签名留痕 |
+
+---
+
+## 七、 状态流程图与交付归档
 
 | 文档 / 路径 | 说明 |
 |---|---|
-| [`project_status_flowchart.md`](project_status_flowchart.md) | **系统全生命周期 Markdown 状态流程图**（Mermaid 渲染） |
+| [`project_status_flowchart.md`](project_status_flowchart.md) | **系统全生命周期 Markdown 状态流程图**（Mermaid 渲染，含阶段一完工与 681 passed 节点） |
 | [`project_status_flowchart.html`](project_status_flowchart.html) | **系统交互式状态流程图**（纯前端原生，浏览器可直接打开查看） |
 | [`delivery/`](delivery/) | 阶段完工总结文本、就绪执行清单与单测输出文本归档区 |

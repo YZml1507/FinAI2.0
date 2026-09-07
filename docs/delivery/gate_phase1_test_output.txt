@@ -1,0 +1,49 @@
+============================= test session starts =============================
+platform win32 -- Python 3.11.13, pytest-8.4.1, pluggy-1.5.0
+rootdir: D:\Projects\FinAI2.0
+plugins: anyio-4.13.0, ddtrace-4.10.3, Faker-40.21.0, asyncio-1.4.0, timeout-2.4.0, typeguard-4.4.3
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 681 items
+
+tests\test_adjustment_mode.py ......                                     [  0%]
+tests\test_baostock_suspension.py .....                                  [  1%]
+tests\test_daily_tasks.py .........                                      [  2%]
+tests\test_dividend_strategy.py ............                             [  4%]
+tests\test_dividend_tax.py ..........................                    [  8%]
+tests\test_gap_slippage.py ..........................                    [ 12%]
+tests\test_gates.py .................................................... [ 19%]
+                                                                         [ 19%]
+tests\test_high_price_filter.py ...........                              [ 21%]
+tests\test_nav.py ...........                                            [ 23%]
+tests\test_r2_truncation.py ....                                         [ 23%]
+tests\test_r5_tdx_disabled.py ....                                       [ 24%]
+tests\test_reconciliation.py .............                               [ 26%]
+tests\test_reporting.py ..........                                       [ 27%]
+tests\test_suspension_trap.py ......                                     [ 28%]
+tests\test_t105_collector.py ............................                [ 32%]
+tests\test_t106_cleaner.py ............................................  [ 39%]
+tests\test_t107_financial_pit.py .....................                   [ 42%]
+tests\test_t108_universe.py ...............                              [ 44%]
+tests\test_t109_incremental.py ..........                                [ 45%]
+tests\test_t110_acceptance.py .........................                  [ 49%]
+tests\test_t201_core.py ................................................ [ 56%]
+................................                                         [ 61%]
+tests\test_t201_engine.py ...................................            [ 66%]
+tests\test_t201_feed.py .........................                        [ 70%]
+tests\test_t202_must_fail.py .................                           [ 72%]
+tests\test_t203_fees.py .................................                [ 77%]
+tests\test_t204_price_model.py ..................                        [ 80%]
+tests\test_t205_metrics.py ..............                                [ 82%]
+tests\test_t206_registry.py ...........                                  [ 83%]
+tests\test_t301_portfolio.py ............................                [ 87%]
+tests\test_t302_candidates.py ....                                       [ 88%]
+tests\test_t303_param_scan.py ......                                     [ 89%]
+tests\test_t304_stress.py ...                                            [ 89%]
+tests\test_t312_dividend_backtest.py .......                             [ 90%]
+tests\test_t313_stress.py ....                                           [ 91%]
+tests\test_t401_paper_trading.py ...............                         [ 93%]
+tests\test_t402_deviation.py ...................                         [ 96%]
+tests\test_t404_ledger_automation.py ........................            [100%]
+
+============================ 681 passed in 21.01s =============================
+
