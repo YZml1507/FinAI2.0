@@ -110,6 +110,38 @@ class TasksSignGate(BaseGate):
                 evidence=self.evidence,
             )
 
+        # 模式 A: 如果提供了 tasks_path 或 tasks_content，进行全文档级防伪验签
+        tasks_file = context.get("tasks_path") if isinstance(context, dict) else getattr(context, "tasks_path", None)
+        tasks_text = context.get("tasks_content") if isinstance(context, dict) else getattr(context, "tasks_content", None)
+        if tasks_file or tasks_text:
+            from .tamper_guard import verify_tasks_markdown
+            target = tasks_file if tasks_file else tasks_text
+            ok, viols, stats = verify_tasks_markdown(target)
+            if not ok:
+                return GateResult(
+                    gate_id=self.gate_id,
+                    name=self.name,
+                    category=self.category,
+                    status=GateStatus.FAIL,
+                    severity=self.severity,
+                    message=f"tasks.md 检出 {len(viols)} 项未签名或格式违规勾选: {viols[:2]}",
+                    metrics={"violations": viols, "stats": stats},
+                    threshold=self.threshold_desc,
+                    evidence=self.evidence,
+                )
+            return GateResult(
+                gate_id=self.gate_id,
+                name=self.name,
+                category=self.category,
+                status=GateStatus.PASS,
+                severity=self.severity,
+                message=f"tasks.md 全量 {stats['checked_tasks']} 项已勾选任务防伪交付证据全量合规",
+                metrics=stats,
+                threshold=self.threshold_desc,
+                evidence=self.evidence,
+            )
+
+        # 模式 B: 单任务参数签名核验
         task_id = str(context.get("task_id", "") if isinstance(context, dict) else getattr(context, "task_id", ""))
         is_checked = bool(context.get("is_checked", False) if isinstance(context, dict) else getattr(context, "is_checked", False))
         sig = context.get("gate_signature") if isinstance(context, dict) else getattr(context, "gate_signature", None)
@@ -133,6 +165,59 @@ class TasksSignGate(BaseGate):
             status=GateStatus.PASS,
             severity=self.severity,
             message=f"任务 [{task_id}] 勾选签名验证通过",
+            threshold=self.threshold_desc,
+            evidence=self.evidence,
+        )
+
+
+class AntiTamperSignatureGate(BaseGate):
+    """G-4: 产物防篡改签名与密码学保真门禁"""
+    gate_id = "G-4"
+    name = "产物防篡改签名与密码学保真门禁"
+    category = GateCategory.G_GATE
+    severity = GateSeverity.BLOCKER
+    evidence = "17 号报告 §4.6 / 阶段三防伪硬化: 产物必须具备抗篡改密码学签名，严禁事后修改任何收益率或出处字段"
+    threshold_desc = "anti_tamper_signature 存在且 SHA-256 验签有效"
+
+    def evaluate(self, context: Any = None) -> GateResult:
+        if not context:
+            return GateResult(
+                gate_id=self.gate_id,
+                name=self.name,
+                category=self.category,
+                status=GateStatus.SKIP,
+                severity=self.severity,
+                message="无产物上下文，跳过检验",
+                threshold=self.threshold_desc,
+                evidence=self.evidence,
+            )
+
+        from .tamper_guard import verify_run_signature
+
+        record = context if isinstance(context, dict) else getattr(context, "__dict__", {})
+        if "run_record" in record:
+            record = record["run_record"]
+
+        ok, msg = verify_run_signature(record)
+        if not ok:
+            return GateResult(
+                gate_id=self.gate_id,
+                name=self.name,
+                category=self.category,
+                status=GateStatus.FAIL,
+                severity=self.severity,
+                message=msg,
+                threshold=self.threshold_desc,
+                evidence=self.evidence,
+            )
+
+        return GateResult(
+            gate_id=self.gate_id,
+            name=self.name,
+            category=self.category,
+            status=GateStatus.PASS,
+            severity=self.severity,
+            message=msg,
             threshold=self.threshold_desc,
             evidence=self.evidence,
         )

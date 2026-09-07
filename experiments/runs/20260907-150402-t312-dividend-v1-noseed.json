@@ -58,5 +58,6 @@
   "run_id": "20260907-150402-t312-dividend-v1-noseed",
   "seed": null,
   "status": "FINISHED",
-  "timestamp": "2026-09-07T15:04:02+08:00"
+  "timestamp": "2026-09-07T15:04:02+08:00",
+  "anti_tamper_signature": "055cb1d6b2bedbb88aa73d107396982b49f829a6d57236d4d16b921f4c2982d5"
 }

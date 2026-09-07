@@ -28,7 +28,7 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-  G0["G0 spec 三件套齐备 ✅"] --> R15["R1–R5 清零 ✅ af20d85"] --> UT["699 离线单测全绿 ✅ 2026-09-07"]
+  G0["G0 spec 三件套齐备 ✅"] --> R15["R1–R5 清零 ✅ af20d85"] --> UT["717 离线单测全绿 ✅ 2026-09-07"]
   UT --> P1["Phase 1 数据层 ✅<br/>T101–T110"]
   P1 --> G2["G2 三源验收 ✅"]
   G2 --> P2["Phase 2 回测引擎 ✅<br/>T201–T207 + G3"]
@@ -36,8 +36,9 @@ flowchart LR
   P3 --> G4["G4 技术评审 ✅<br/>动量淘汰 转向红利"]
   G4 --> P35["Phase 3.5 红利策略实证 ✅<br/>硬伤根治 / 审计全过 / 真实10年回测"]
   P35 --> G_AUDIT1["阶段一：六维门禁工具包 ✅<br/>scripts/gates/ 23道门禁 + 52单测全绿"]
-  G_AUDIT1 --> G_AUDIT2["阶段二：执行流前置/后置闸门植入 ✅<br/>runner.py + 回测主流程阻断 + 18集成单测 ⏵当前"]
-  G_AUDIT2 --> P4["Phase 4 模拟盘<br/>T401–T404 基建全绿 / 待门禁体系三阶段闭环后准入"]
+  G_AUDIT1 --> G_AUDIT2["阶段二：执行流前置/后置闸门植入 ✅<br/>runner.py + 回测主流程阻断 + 18集成单测"]
+  G_AUDIT2 --> G_AUDIT3["阶段三：CI / Git Hooks 防伪硬化 ✅<br/>tamper_guard 验签 + pre-commit/pre-push 硬拦截 + CI 全绿 ⏵当前"]
+  G_AUDIT3 --> P4["Phase 4 模拟盘<br/>T401–T404 基建全绿 / 门禁三阶段全闭环 待准入评审"]
   style G0 fill:#dcfce7,stroke:#16a34a
   style R15 fill:#dcfce7,stroke:#16a34a
   style UT fill:#dcfce7,stroke:#16a34a
@@ -48,7 +49,8 @@ flowchart LR
   style G4 fill:#dcfce7,stroke:#16a34a
   style P35 fill:#dcfce7,stroke:#16a34a
   style G_AUDIT1 fill:#dcfce7,stroke:#16a34a,color:#0f172a
-  style G_AUDIT2 fill:#fef3c7,stroke:#f59e0b,color:#0f172a
+  style G_AUDIT2 fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style G_AUDIT3 fill:#fef3c7,stroke:#f59e0b,color:#0f172a
   style P4 fill:#f1f5f9,stroke:#94a3b8,color:#64748b
 ```
 

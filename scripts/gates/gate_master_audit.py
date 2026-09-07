@@ -41,6 +41,7 @@ from .gate_e_engine import (
     SlippagePriceCapGate,
 )
 from .gate_g_governance import (
+    AntiTamperSignatureGate,
     MasterFindingGate,
     ProvenanceTriadGate,
     TasksSignGate,
@@ -101,6 +102,7 @@ class GateMasterAudit:
             ProvenanceTriadGate(),
             TasksSignGate(),
             MasterFindingGate(),
+            AntiTamperSignatureGate(),
         ]
 
     def audit(self, context: Any = None, strict: bool = False) -> list[GateResult]:

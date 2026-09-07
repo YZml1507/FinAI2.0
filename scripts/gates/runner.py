@@ -516,4 +516,10 @@ def run_post_run_gates(
     g3_gate = MasterFindingGate(sources_dir=ctx.get("sources_dir"))
     _check_result(g3_gate.evaluate(ctx))
 
+    # 16. G-4: AntiTamperSignatureGate
+    if "run_record" in ctx or "anti_tamper_signature" in ctx:
+        from .gate_g_governance import AntiTamperSignatureGate
+        g4_gate = AntiTamperSignatureGate()
+        _check_result(g4_gate.evaluate(ctx))
+
     return results

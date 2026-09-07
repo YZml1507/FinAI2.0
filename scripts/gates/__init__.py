@@ -33,6 +33,7 @@ from .gate_e_engine import (
     SlippagePriceCapGate,
 )
 from .gate_g_governance import (
+    AntiTamperSignatureGate,
     MasterFindingGate,
     ProvenanceTriadGate,
     TasksSignGate,
@@ -49,9 +50,19 @@ from .gate_s_scientific import (
     TimingExitSurvivalGate,
     TurnoverCeilingGate,
 )
+from .gate_master_audit import GateMasterAudit
 from .runner import run_post_run_gates, run_pre_run_gates
+from .tamper_guard import (
+    check_mother_library_guard,
+    compute_run_signature,
+    sign_run_record,
+    verify_run_signature,
+    verify_tasks_markdown,
+    verify_tasks_mirror,
+)
 
 __all__ = [
+    "GateMasterAudit",
     "run_pre_run_gates",
     "run_post_run_gates",
     # Base
@@ -91,4 +102,12 @@ __all__ = [
     "ProvenanceTriadGate",
     "TasksSignGate",
     "MasterFindingGate",
+    "AntiTamperSignatureGate",
+    # Tamper Guard utils
+    "compute_run_signature",
+    "sign_run_record",
+    "verify_run_signature",
+    "verify_tasks_markdown",
+    "verify_tasks_mirror",
+    "check_mother_library_guard",
 ]
