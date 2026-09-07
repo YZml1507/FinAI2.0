@@ -43,8 +43,8 @@ hr { border: 0; border-top: 1px solid #334155; margin: 30px 0; }
 <div class="mermaid">
 flowchart TD
   subgraph REPO["双仓（Private）"]
-    F["代码仓 FinAI2.0<br/>HEAD e64b0a9 + 工作区待提交 ✅<br/>origin=github.com/YZml1507/FinAI2.0"] 
-    R["计划仓 research-finai<br/>HEAD 3119acd ✅<br/>origin=github.com/YZml1507/research-finai"]
+    F["代码仓 FinAI2.0<br/>HEAD 4d93246 ✅<br/>origin=github.com/YZml1507/FinAI2.0"] 
+    R["计划仓 research-finai<br/>HEAD 71e69a1 ✅<br/>origin=github.com/YZml1507/research-finai"]
     F -->|git fetch research 本地路径| R
     F -->|docs/spec 快照 逐字节一致| R
   end
@@ -61,15 +61,15 @@ flowchart TD
 <h2>门禁与当前阶段</h2>
 <div class="mermaid">
 flowchart LR
-  G0["G0 spec 三件套齐备 ✅"] --> R15["R1–R5 清零 ✅ af20d85"] --> UT["629 离线单测全绿 ✅ 2026-09-07"]
+  G0["G0 spec 三件套齐备 ✅"] --> R15["R1–R5 清零 ✅ af20d85"] --> UT["681 离线单测全绿 ✅ 2026-09-07"]
   UT --> P1["Phase 1 数据层 ✅<br/>T101–T110"]
   P1 --> G2["G2 三源验收 ✅"]
   G2 --> P2["Phase 2 回测引擎 ✅<br/>T201–T207 + G3"]
   P2 --> P3["Phase 3 策略 ✅<br/>T301–T308"]
   P3 --> G4["G4 技术评审 ✅<br/>动量淘汰 转向红利"]
   G4 --> P35["Phase 3.5 红利策略实证 ✅<br/>硬伤根治 / 审计全过 / 真实10年回测"]
-  P35 --> G_AUDIT["17 号六维门禁体系定稿 📋<br/>D-L-E-A-S-G 架构 / 散户小资金物理约束 ⏵当前"]
-  G_AUDIT --> P4["Phase 4 模拟盘<br/>T401–T404 基建全绿 / 待门禁通过后准入"]
+  P35 --> G_AUDIT["阶段一：六维门禁工具包 ✅<br/>scripts/gates/ 23道门禁 + 52单测全绿 ⏵当前"]
+  G_AUDIT --> P4["Phase 4 模拟盘<br/>T401–T404 基建全绿 / 待门禁体系三阶段闭环后准入"]
   style G0 fill:#dcfce7,stroke:#16a34a
   style R15 fill:#dcfce7,stroke:#16a34a
   style UT fill:#dcfce7,stroke:#16a34a
@@ -139,7 +139,8 @@ flowchart LR
   B35 --> B402["T402 偏差容忍带<br/>616 passed"]
   B402 --> B404["T401/403/404 修复与台账<br/>619 passed"]
   B404 --> B312_OLD["T312 离线测试补充<br/>626 passed"]
-  B312_OLD --> B312_NOW["T312 审计与红利税/拆股加权修复<br/>629 passed ⏵当前基线"]
+  B312_OLD --> B312_NOW["T312 审计与红利税/拆股加权修复<br/>629 passed"]
+  B312_NOW --> GATES["阶段一：六维防御门禁工具包<br/>23 项门禁 + 52 单测<br/>681 passed ⏵当前基线"]
   style B0 fill:#e0e7ff,stroke:#818cf8
   style B1 fill:#e0e7ff,stroke:#818cf8
   style B2 fill:#e0e7ff,stroke:#818cf8
@@ -148,22 +149,21 @@ flowchart LR
   style B402 fill:#e0e7ff,stroke:#818cf8
   style B404 fill:#e0e7ff,stroke:#818cf8
   style B312_OLD fill:#e0e7ff,stroke:#818cf8
-  style B312_NOW fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style B312_NOW fill:#e0e7ff,stroke:#818cf8
+  style GATES fill:#dcfce7,stroke:#16a34a,color:#0f172a
 </div>
 
 <h2>当前位置与等待决策</h2>
 <div class="mermaid">
 flowchart TD
-  NOW["当前状态：17 号研发防伪与工程质量门禁体系深度调研定稿（Commit 3119acd）<br/>六维防御门禁（D-L-E-A-S-G）断言体系 + 散户 10~15 万纯多头无对冲客观约束<br/>生产代码仓保持冻结待命，等待用户确认批准开工建立门禁包"]
-  NOW --> APP["用户确认批准 → 开启三阶段门禁工程实施"]
-  APP --> STAGE1["阶段一：开发独立门禁工具包 (scripts/gates/)<br/>模块化 D/L/E/A/S/G 检查器，不污染业务代码，一键独立跑测"]
-  APP --> STAGE2["阶段二：前置/后置闸门植入<br/>在 run_dividend_backtest.py 注入前置与后置门禁，违规自动阻断落盘"]
-  APP --> STAGE3["阶段三：交付留痕与 Git Hook 绑定<br/>配置 pre-commit 钩子与 tasks.md 机器校验绑定"]
-  style NOW fill:#fef3c7,stroke:#f59e0b,color:#0f172a
-  style APP fill:#dbeafe,stroke:#2563eb,color:#0f172a
+  STAGE1["阶段一：开发独立门禁工具包 (scripts/gates/) ✅ 已完工（Commit 4d93246）<br/>23 项门禁全落地 / tests/test_gates.py 52 单测全绿 / 681 库测全绿<br/>业务核心代码零侵入冻结 / 母库 FINDING- 守卫恒等于 370 行"]
+  STAGE1 --> NEXT["等待用户下一步指令 ⏵当前节点"]
+  NEXT --> STAGE2["阶段二：前置/后置闸门挂接<br/>在 run_dividend_backtest.py 等入口注入门禁校验，违规自动阻断落盘"]
+  NEXT --> STAGE3["阶段三：交付留痕与 Git Hook 硬化<br/>配置 pre-commit 物理钩子与 tasks.md 机器防伪签名绑定"]
   style STAGE1 fill:#dcfce7,stroke:#16a34a,color:#0f172a
-  style STAGE2 fill:#dcfce7,stroke:#16a34a,color:#0f172a
-  style STAGE3 fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style NEXT fill:#fef3c7,stroke:#f59e0b,color:#0f172a
+  style STAGE2 fill:#f1f5f9,stroke:#94a3b8,color:#64748b
+  style STAGE3 fill:#f1f5f9,stroke:#94a3b8,color:#64748b
 </div>
 
 <hr/>
