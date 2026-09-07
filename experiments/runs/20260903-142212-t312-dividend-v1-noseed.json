@@ -1,0 +1,53 @@
+{
+  "code_version": "t312-dividend-v1",
+  "data_version": "dividend-stocks-2015-2024",
+  "error": null,
+  "metrics": {
+    "annual_turnover": "1.37558",
+    "annual_volatility": "0.119302",
+    "cagr": "-0.015258",
+    "calendar_days": 3648,
+    "end": "2024-12-31",
+    "fees_sum": "3445.1",
+    "final_nav": "128647.1",
+    "initial_nav": "150000",
+    "max_dd_peak": "2019-04-08",
+    "max_dd_recovery": null,
+    "max_dd_trough": "2024-11-01",
+    "max_drawdown": "0.2537047826713866598397438727",
+    "risk_free_annual": "0.025",
+    "round_trips": 131,
+    "sharpe_ratio": "-0.283241",
+    "start": "2015-01-05",
+    "total_return": "-0.1423526666666666666666666667",
+    "trading_days": 2431,
+    "win_rate": "0.450382"
+  },
+  "params": {
+    "candidate_pool_size": 50,
+    "default_positions": 5,
+    "index_symbol": "sh.000300",
+    "max_positions": 8,
+    "min_dividend_yield": "0.03",
+    "min_positions": 5,
+    "portfolio": {
+      "hard_limit": 10,
+      "lot_size": 100,
+      "max_participation_rate": "0.05",
+      "max_positions": 8,
+      "max_price": "300",
+      "min_daily_amount": "50000000",
+      "min_position_value": "20000",
+      "min_positions": 3,
+      "target_count": 5
+    },
+    "rebalance_days": 20,
+    "use_ma200_timing": true,
+    "warmup_bars": 210
+  },
+  "params_hash": "f54c298d5168eac5",
+  "run_id": "20260903-142212-t312-dividend-v1-noseed",
+  "seed": null,
+  "status": "FINISHED",
+  "timestamp": "2026-09-03T14:22:12+08:00"
+}

@@ -167,8 +167,12 @@ def plan_positions(
     total_nav: Decimal,
     bars: Mapping[str, Any],
     config: PortfolioConfig | None = None,
+    weights: Mapping[str, Decimal] | None = None,
 ) -> tuple[dict[str, Decimal], tuple[tuple[str, str], ...]]:
-    """目标标的 → 目标市值（等权 + 过滤），返回 ``(计划, dropped)``。
+    """目标标的 → 目标市值（等权/加权 + 过滤），返回 ``(计划, dropped)``。
+
+    如果提供 ``weights``，在 targets 内部归一化按权重分配目标资金；
+    如果未提供，则等权分配（``total_nav / len(targets)``）。
 
     ⛔ ``len(targets) > config.hard_limit`` ⇒ raise ``PortfolioError``（越硬顶）。
     """
@@ -183,10 +187,20 @@ def plan_positions(
     if not targets:
         return {}, ()
 
-    base = total_nav / Decimal(len(targets))
+    # 权重计算：若传入有效 weights 则按比例分配，否则等权
+    target_weights: dict[str, Decimal] = {}
+    sum_w = _ZERO
+    if weights is not None:
+        target_weights = {s: Decimal(str(weights.get(s, _ZERO))) for s in targets}
+        sum_w = sum(target_weights.values(), _ZERO)
+
     plan: dict[str, Decimal] = {}
     dropped: list[tuple[str, str]] = []
     for symbol in targets:
+        if sum_w > _ZERO:
+            base = (total_nav * target_weights[symbol]) / sum_w
+        else:
+            base = total_nav / Decimal(len(targets))
         value, reason = _plan_one(symbol, base, bars.get(symbol), cfg)
         if value is None:
             dropped.append((symbol, reason or ""))

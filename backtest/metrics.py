@@ -142,12 +142,24 @@ def _max_drawdown(series: list[tuple[_date, Decimal]]):
     return max_dd, dd_peak, dd_trough, recovery
 
 
-def _fees_total(trades: Sequence[Trade]) -> dict[FeeItem, Decimal]:
-    """逐科目汇总（六键齐备，⛔ 与账本对账口径一致：各项已按分取整，直接求和）。"""
+def _fees_total(
+    trades: Sequence[Trade],
+    journal_entries: Sequence[Any] | None = None,
+) -> dict[FeeItem, Decimal]:
+    """逐科目汇总（七科目齐备，含交易费用与除权日红利税）。"""
     total = {item: _ZERO for item in FeeItem}
     for trade in trades:
         for item, amount in trade.fees.items():
             total[item] = total.get(item, _ZERO) + amount
+    if journal_entries:
+        for entry in journal_entries:
+            entry_type = getattr(entry, "entry_type", None)
+            if entry_type is not None and "DIVIDEND_TAX" in str(entry_type):
+                fees_dict = getattr(entry, "fees", {})
+                tax = fees_dict.get(FeeItem.DIVIDEND_TAX, None) if isinstance(fees_dict, Mapping) else None
+                if tax is None:
+                    tax = abs(getattr(entry, "amount", _ZERO))
+                total[FeeItem.DIVIDEND_TAX] = total.get(FeeItem.DIVIDEND_TAX, _ZERO) + Decimal(str(tax))
     return total
 
 
@@ -384,7 +396,7 @@ def compute_metrics(
 
     # —— 胜率 & 费用 ——
     win_rate, round_trips = _win_rate_fifo(result.trades)
-    fees_total = _fees_total(result.trades)
+    fees_total = _fees_total(result.trades, getattr(result, "journal_entries", None))
     fees_sum = sum(fees_total.values(), _ZERO)
 
     # —— 停牌陷阱 ——

@@ -38,7 +38,7 @@ from datetime import timedelta
 from decimal import Decimal
 from typing import Any, Iterable, Mapping, Protocol, runtime_checkable
 
-from backtest.constants import OrderStatus
+from backtest.constants import FeeItem, OrderSide, OrderStatus
 from backtest.feed import DataFeed
 from backtest.ledger import JournalEntry, JournalType, Ledger
 from backtest.matching import MatchContext, MatchEngine, MatchResult
@@ -56,6 +56,7 @@ __all__ = [
 ]
 
 _ZERO = Decimal("0")
+_ONE = Decimal("1")
 
 #: 日终过期的说明（写入 ``order.reject_reason``？⛔ 不写 —— EXPIRED 不是 REJECTED，
 #: 只记 log / meta，避免下游把过期当拒绝统计）。
@@ -102,6 +103,7 @@ class BacktestBroker:
         feed: DataFeed | None = None,
         *,
         fsm: OrderStateMachine | None = None,
+        enable_dividend_tax: bool = False,
     ) -> None:
         """
         Args:
@@ -110,17 +112,22 @@ class BacktestBroker:
             feed: 行情源。回测撮合只吃 ``on_bars`` 传进来的 bars，本参数仅用于
                 日终补取停牌判定所需的行情（可为 ``None``）。
             fsm: 状态机（默认新建；无状态，可共享单例）。
+            enable_dividend_tax: 是否开启 T309 红利税（默认 False 保证向后兼容，
+                红利策略回测开启）。
         """
         self.matcher = matcher
         self.ledger = ledger
         self.feed = feed
         self.fsm = fsm or OrderStateMachine()
+        self.enable_dividend_tax = bool(enable_dividend_tax)
         #: client_order_id → Order（只放**未终态**的活动委托）
         self._pending: dict[str, Order] = {}
         #: 全生命周期订单登记（终态也留着，供 BacktestResult 汇总）
         self._all_orders: dict[str, Order] = {}
         #: 全部成交（按发生顺序）
         self._trades: list[Trade] = []
+        #: 历史送转股事件 [(date, symbol, factor)]
+        self._split_events: list[tuple[_date, str, Decimal]] = []
         #: 最近一次 on_bars 的日期与行情（settle 复用，避免重复取数）
         self._last_bars_date: _date | None = None
         self._last_bars: dict[str, Bar] = {}
@@ -326,6 +333,10 @@ class BacktestBroker:
         # ② 除权除息（⛔ 必须先于 settle_day 刷市值）。
         events = self._normalize_events(exdiv_events)
         for symbol, event in events.items():
+            pos = self.book.positions.get(symbol)
+            old_vol = pos.volume if pos else 0
+            if event.factor != _ONE and event.factor > _ZERO:
+                self._split_events.append((date, symbol, event.factor))
             self.ledger.process_exdiv(
                 symbol,
                 event.factor,
@@ -333,6 +344,8 @@ class BacktestBroker:
                 date=date,
                 ref_id=f"EXDIV:{symbol}:{date.isoformat()}",
             )
+            if self.enable_dividend_tax and old_vol > 0 and event.cash_dividend > _ZERO:
+                self._apply_dividend_tax(symbol, event, old_vol, date)
 
         # ③ 刷市值 + NAV（settle.py：停牌市值冻结）。
         report = settle_day_detail(self.book, date, day_bars, events or None)
@@ -412,6 +425,51 @@ class BacktestBroker:
                 continue
             out[symbol] = normalize_exdiv_event(symbol, raw)
         return out
+
+    def _apply_dividend_tax(
+        self, symbol: str, event: ExdivEvent, old_volume: int, date: _date
+    ) -> None:
+        """T309 红利税：FIFO 配对追溯持股期并扣税。"""
+        from backtest.dividend_tax import DividendEvent as DivTaxEvent, compute_dividend_tax
+
+        div_ev = DivTaxEvent(
+            ex_date=date,
+            symbol=symbol,
+            dividend_per_share=event.cash_dividend,
+            shares_held=old_volume,
+        )
+        buys = [
+            (t.date, t.symbol, int(t.volume))
+            for t in self._trades
+            if t.symbol == symbol and t.side is OrderSide.BUY
+        ]
+        sells = [
+            (t.date, t.symbol, int(t.volume))
+            for t in self._trades
+            if t.symbol == symbol and t.side is OrderSide.SELL
+        ]
+        splits = [
+            (d, s, f) for d, s, f in self._split_events if s == symbol
+        ]
+        tax = compute_dividend_tax([div_ev], buys, sells, split_events=splits)
+        if tax > _ZERO:
+            self.book.cash -= tax
+            self.book.recompute_nav()
+            self.ledger.journal.append(
+                JournalEntry.create(
+                    date=date,
+                    entry_type=JournalType.DIVIDEND_TAX,
+                    symbol=symbol,
+                    amount=-tax,
+                    fees={FeeItem.DIVIDEND_TAX: tax},
+                    ref_id=f"DIVTAX:{symbol}:{date.isoformat()}",
+                    meta={
+                        "shares_held": old_volume,
+                        "cash_dividend": str(event.cash_dividend),
+                        "tax": str(tax),
+                    },
+                )
+            )
 
     # ------------------------------------------------------------------ 辅助
 

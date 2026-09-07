@@ -1,0 +1,62 @@
+{
+  "code_version": "t312-dividend-v1",
+  "data_version": "dividend-stocks-2015-2024",
+  "error": null,
+  "metrics": {
+    "annual_turnover": "2.011435",
+    "annual_volatility": "0.131806",
+    "cagr": "-0.031979",
+    "calendar_days": 3648,
+    "end": "2024-12-31",
+    "fees_sum": "9738.26",
+    "fees_total": {
+      "COMMISSION": "1556.18",
+      "DIVIDEND_TAX": "5043.75",
+      "HANDLING_FEE": "270.97",
+      "MANAGEMENT_FEE": "114.56",
+      "SLIPPAGE": "0",
+      "STAMP_TAX": "2651.94",
+      "TRANSFER_FEE": "100.86"
+    },
+    "final_nav": "108421.14",
+    "initial_nav": "150000",
+    "max_dd_peak": "2018-01-29",
+    "max_dd_recovery": null,
+    "max_dd_trough": "2024-10-11",
+    "max_drawdown": "0.4307653722557783501291325324",
+    "risk_free_annual": "0.025",
+    "round_trips": 78,
+    "sharpe_ratio": "-0.379071",
+    "start": "2015-01-05",
+    "total_return": "-0.2771924",
+    "trading_days": 2431,
+    "win_rate": "0.282051"
+  },
+  "params": {
+    "candidate_pool_size": 50,
+    "default_positions": 5,
+    "index_symbol": "sh.000300",
+    "max_positions": 8,
+    "min_dividend_yield": "0.03",
+    "min_positions": 5,
+    "portfolio": {
+      "hard_limit": 10,
+      "lot_size": 100,
+      "max_participation_rate": "0.05",
+      "max_positions": 8,
+      "max_price": "300",
+      "min_daily_amount": "50000000",
+      "min_position_value": "20000",
+      "min_positions": 3,
+      "target_count": 5
+    },
+    "rebalance_days": 20,
+    "use_ma200_timing": true,
+    "warmup_bars": 210
+  },
+  "params_hash": "f54c298d5168eac5",
+  "run_id": "20260907-150402-t312-dividend-v1-noseed",
+  "seed": null,
+  "status": "FINISHED",
+  "timestamp": "2026-09-07T15:04:02+08:00"
+}

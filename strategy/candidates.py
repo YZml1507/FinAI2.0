@@ -352,11 +352,12 @@ class DividendStrategy:
             # 不使用择时 → 直接选股
             signals = self._select_stocks(bars, cfg)
 
-        # ⑥ 组合计划（复用 portfolio.py 三段链）
+        # ⑥ 组合计划（复用 portfolio.py 三段链，传入市值权重）
         scores = {s.symbol: s.score for s in signals}
         targets = select_targets(scores, cfg.portfolio)
         total_nav = book.total_nav if hasattr(book, "total_nav") else getattr(book, "nav", _ZERO_)
-        plan, _plan_dropped = plan_positions(targets, total_nav, bars, cfg.portfolio)
+        plan, _plan_dropped = plan_positions(
+            targets, total_nav, bars, cfg.portfolio, weights=scores)
 
         # ⑦ 出意图
         held_symbols = list(book.positions.keys()) if hasattr(book, "positions") else []

@@ -402,3 +402,113 @@ class TestRoundingPrecision:
         # 每批：100 × 0.777 × 10% = 7.77，ROUND_HALF_UP → 7.77
         # 总计：7.77 × 3 = 23.31
         assert tax == Decimal("23.31")
+
+
+class TestDividendTaxIntegration:
+    """T309 红利税端到端集成测试：接入 BacktestBroker 并由 compute_metrics 汇总。"""
+
+    def test_dividend_tax_deducted_and_reported(self):
+        from backtest.broker import BacktestBroker
+        from backtest.engine import BacktestEngine
+        from backtest.feed import ParquetDailyFeed
+        from backtest.ledger import Ledger, JournalType
+        from backtest.matching import MatchEngine
+        from backtest.metrics import compute_metrics
+        from backtest.settle import ExdivEvent
+        from backtest.constants import FeeItem, OrderSide
+        import pandas as pd
+
+        d1 = date(2023, 6, 1)
+        d2 = date(2023, 6, 2)
+        d3 = date(2023, 6, 5)
+        dates = [d1, d2, d3]
+
+        df = pd.DataFrame({
+            "date": [d.isoformat() for d in dates],
+            "open": [10.0, 10.0, 9.0],
+            "high": [10.0, 10.0, 9.0],
+            "low": [10.0, 10.0, 9.0],
+            "close": [10.0, 10.0, 9.0],
+            "preclose": [10.0, 10.0, 10.0],
+            "volume": [10000.0, 10000.0, 10000.0],
+            "amount": [100000.0, 100000.0, 90000.0],
+            "turn": [1.0, 1.0, 1.0],
+            "pctChg": [0.0, 0.0, -10.0],
+            "tradestatus": ["1", "1", "1"],
+            "isST": ["0", "0", "0"],
+            "code": ["sh.600000"] * 3,
+            "source": ["test"] * 3,
+            "adjust_mode": ["RAW"] * 3,
+        })
+
+        feed = ParquetDailyFeed(
+            preloaded={"sh.600000": df},
+            trade_calendar=lambda s, e: [d for d in dates if s <= d <= e],
+        )
+        ledger = Ledger(Decimal("100000"), date=d1)
+        # 启用红利税
+        broker = BacktestBroker(MatchEngine(), ledger, feed, enable_dividend_tax=True)
+        engine = BacktestEngine(broker, feed)
+
+        # 策略：D1 下单买 100 股，D2 成交；D3 除权派现 1.0 元
+        class DummyStrategy:
+            def on_bar(self, day, bars, book, b):
+                if day == d1:
+                    from backtest.types import Order, OrderType
+                    b.submit(Order(
+                        client_order_id="BUY1", symbol="sh.600000",
+                        side=OrderSide.BUY, order_type=OrderType.MARKET,
+                        volume=100, price=None, created_date=d1,
+                    ))
+
+        strategy = DummyStrategy()
+        engine.exdiv_provider = lambda day: (
+            {"sh.600000": ExdivEvent("sh.600000", factor=Decimal("1"),
+                                     cash_dividend=Decimal("1.0"), date=d3)}
+            if day == d3 else None
+        )
+
+        result = engine.run(strategy, d1, d3)
+
+        # 检查除权分红后现金与红利税
+        # 买入 100 股 @ 10.00 = 1000 元（无额外手续费模型时）
+        # D3 分红 100 股 × 1.0 = +100 元
+        # 持股期 3 天（< 30 天）→ 20% 税率，红利税 = 20.00 元
+        # 净分红 = 100 - 20 = 80 元
+        # 最终现金 = 100000 - 1000 + 80 = 99080 元
+        assert broker.book.cash == Decimal("99080.00")
+
+        # 检查 Journal 中包含 DIVIDEND_TAX
+        tax_entries = [
+            e for e in ledger.journal.entries
+            if e.entry_type == JournalType.DIVIDEND_TAX
+        ]
+        assert len(tax_entries) == 1
+        assert tax_entries[0].amount == Decimal("-20.00")
+        assert tax_entries[0].fees[FeeItem.DIVIDEND_TAX] == Decimal("20.00")
+
+        # 检查 compute_metrics 汇总
+        report = compute_metrics(result, risk_free_annual=Decimal("0.02"))
+        assert report.fees_total[FeeItem.DIVIDEND_TAX] == Decimal("20.00")
+        assert report.fees_sum == Decimal("20.00")
+
+    def test_split_adjusts_fifo_shares_and_prevents_sell_shortage(self):
+        """测试送转股拆股（factor > 1）同步扩充 FIFO 队列批次股数，后续卖出不发生缺股。"""
+        # 买入 1000 股，发生 1.5 拆股（10送5），持有变为 1500 股，随后分红 1 元/股并全部卖出 1500 股
+        divs = [
+            DividendEvent(
+                ex_date=date(2023, 6, 15),
+                symbol="sz.002110",
+                dividend_per_share=Decimal("1.0"),
+                shares_held=1500,
+            )
+        ]
+        buys = [(date(2023, 1, 1), "sz.002110", 1000)]
+        sells = [(date(2023, 6, 20), "sz.002110", 1500)]
+        splits = [(date(2023, 5, 20), "sz.002110", Decimal("1.5"))]
+
+        tax = compute_dividend_tax(divs, buys, sells, split_events=splits)
+        # 持股约 165 天（1月-1年 → 10% 税率）
+        # 1500 × 1.0 × 10% = 150.00 元
+        assert tax == Decimal("150.00")
+

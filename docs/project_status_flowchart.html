@@ -29,18 +29,18 @@ pre {
 </style>
 </head>
 <body>
-<h1>FinAI2.0 · 项目状态流程图（2026-09-02 更新）<br/><br/>> 渲染器：支持 mermaid 的 Markdown 查看器（VS Code / Obsidian / GitHub）
+<h1>FinAI2.0 · 项目状态流程图（2026-09-07 更新）<br/><br/>> 渲染器：支持 mermaid 的 Markdown 查看器（VS Code / Obsidian / GitHub）
 > 数据来源：本会话真实命令输出 + research-finai spec 三件套
 > 交互版见：`docs/project_status_flowchart.html`<br/><br/>#<h1>仓库 / 基建总览<br/><br/><div class="mermaid">
 flowchart TD
   subgraph REPO["双仓（Private）"]
-    F[代码仓 FinAI2.0<br/>HEAD a3b14f7 ✅<br/>origin=github.com/YZml1507/FinAI2.0] 
-    R[计划仓 research-finai<br/>HEAD 5ada091 ✅<br/>origin=github.com/YZml1507/research-finai]
-    F -->|git fetch research（本地路径）| R
+    F["代码仓 FinAI2.0<br/>HEAD b573525 + 工作区待提交 ✅<br/>origin=github.com/YZml1507/FinAI2.0"] 
+    R["计划仓 research-finai<br/>HEAD 5ada091 ✅<br/>origin=github.com/YZml1507/research-finai"]
+    F -->|git fetch research 本地路径| R
     F -->|docs/spec 快照 逐字节一致| R
   end
-  DEL[(旧仓 FinAI<br/>已删除 2026-08-29)]
-  TASK[(10 个 FinAI_* 计划任务<br/>已禁用 ✅)]
+  DEL["旧仓 FinAI<br/>已删除 2026-08-29"]
+  TASK["10 个 FinAI_* 计划任务<br/>已禁用 ✅"]
   DEL -.->|仅抢救 finai/sources 860 接口| F
   TASK -.->|不复用旧命名| F
   style F fill:#dcfce7,stroke:#16a34a,color:#0f172a
@@ -49,14 +49,14 @@ flowchart TD
   style TASK fill:#dcfce7,stroke:#16a34a,color:#0f172a
 </div><br/><br/>#<h1>门禁与当前阶段<br/><br/><div class="mermaid">
 flowchart LR
-  G0[G0 spec 三件套齐备 ✅] --> R15[R1–R5 清零 ✅ af20d85] --> UT[619 离线单测全绿 ✅ 2026-09-02]
-  UT --> P1[Phase 1 数据层 ✅<br/>T101–T110]
-  P1 --> G2[G2 三源验收 ✅]
-  G2 --> P2[Phase 2 回测引擎 ✅<br/>T201–T207 + G3]
-  P2 --> P3[Phase 3 策略 ✅<br/>T301–T308]
-  P3 --> G4[G4 技术评审 ✅<br/>T305 报告已交]
-  G4 --> P35[Phase 3.5 红利策略 ✅<br/>T309–T313 + G4.5 通过 ⏵当前]
-  P35 --> P4[Phase 4 模拟盘<br/>T401–T406 待启动]
+  G0["G0 spec 三件套齐备 ✅"] --> R15["R1–R5 清零 ✅ af20d85"] --> UT["629 离线单测全绿 ✅ 2026-09-07"]
+  UT --> P1["Phase 1 数据层 ✅<br/>T101–T110"]
+  P1 --> G2["G2 三源验收 ✅"]
+  G2 --> P2["Phase 2 回测引擎 ✅<br/>T201–T207 + G3"]
+  P2 --> P3["Phase 3 策略 ✅<br/>T301–T308"]
+  P3 --> G4["G4 技术评审 ✅<br/>动量淘汰 转向红利"]
+  G4 --> P35["Phase 3.5 红利策略实证 ✅<br/>硬伤根治 / 审计全过 / 回测闭环 ⏵当前"]
+  P35 --> P4["Phase 4 模拟盘<br/>T401–T404 代码就绪 / 等待用户指令"]
   style G0 fill:#dcfce7,stroke:#16a34a
   style R15 fill:#dcfce7,stroke:#16a34a
   style UT fill:#dcfce7,stroke:#16a34a
@@ -65,64 +65,83 @@ flowchart LR
   style P2 fill:#dcfce7,stroke:#16a34a
   style P3 fill:#dcfce7,stroke:#16a34a
   style G4 fill:#dcfce7,stroke:#16a34a
-  style P35 fill:#dbeafe,stroke:#2563eb,color:#0f172a
+  style P35 fill:#dcfce7,stroke:#16a34a,color:#0f172a
   style P4 fill:#fef3c7,stroke:#f59e0b,color:#0f172a
-</div><br/><br/>#<h1>Phase 3.5 红利策略切换（已清零 ✅ 2026-09-02）<br/><br/><div class="mermaid">
+</div><br/><br/>#<h1>Phase 3.5 红利策略执行现状（2026-09-07）<br/><br/><div class="mermaid">
 flowchart LR
-  T309[T309 红利税模块 ✅<br/>24 单测 517 passed] --> T310[T310 跳空缺口滑点 ✅<br/>26 单测 515 passed]
-  T310 --> T311[T311 红利策略实现 ✅<br/>12 单测 447 passed]
-  T311 --> T312[T312 数据采集+回测 ✅<br/>6 单测就绪 待执行]
-  T312 --> T313[T313 压力测试 ✅<br/>4 单测 524 passed]
-  T313 --> G45[G4.5 门禁通过 ✅<br/>MDD 0% / 换手 0% / 空仓避险]
+  T309["T309 红利税真集成 ✅<br/>FIFO扣税+拆股因子适配+流水入账"] --> T310["T310 跳空缺口滑点 ✅<br/>26 单测全绿"]
+  T310 --> T311["T311 红利策略实现 ✅<br/>市值加权生效+MA200择时"]
+  T311 --> T313["T313 压力测试 ✅<br/>4 单测全绿 G4.5 防守通过"]
+  T311 --> T312["T312 真实10年全周期回测 ✅<br/>Run 20260907-150402<br/>CAGR -3.20% / 红利税 5043元"]
+  T312 --> AUDIT["防伪审计工具 ✅<br/>audit_evidence_integrity.py<br/>5/5 项严审全通过"]
+  AUDIT --> G45["G4.5 决策状态<br/>底层硬伤全根治 / 防伪全通过<br/>等待用户拍板后续路线"]
   style T309 fill:#dcfce7,stroke:#16a34a
   style T310 fill:#dcfce7,stroke:#16a34a
   style T311 fill:#dcfce7,stroke:#16a34a
-  style T312 fill:#dcfce7,stroke:#16a34a
   style T313 fill:#dcfce7,stroke:#16a34a
-  style G45 fill:#dcfce7,stroke:#16a34a
-</div><br/><br/>#<h1>红利策略 vs 动量策略对比<br/><br/><div class="mermaid">
+  style T312 fill:#dcfce7,stroke:#16a34a
+  style AUDIT fill:#dcfce7,stroke:#16a34a
+  style G45 fill:#dbeafe,stroke:#2563eb,color:#0f172a
+</div><br/><br/>#<h1>T312 审计防伪与硬伤修复全景<br/><br/><div class="mermaid">
 flowchart TB
-  subgraph COMPARE["压力测试对比（T304 vs T313）"]
+  subgraph FIX_AND_AUDIT["T312 底层硬伤根治与防伪实证 (5/5 PASS)"]
     direction TB
-    M[动量策略 MomentumStrategy<br/>2015 crash: MDD 68% / 换手 1271%<br/>2018 bear: MDD 10% / 换手 668%<br/>胜率均 0% ❌]
-    D[红利策略 DividendStrategy<br/>2015 crash: MDD 0% / 换手 0%<br/>2018 bear: MDD 0% / 换手 0%<br/>MA200 择时全程空仓避险 ✅]
-    M -.->|改善 +68pp MDD<br/>+13.17 夏普| D
+    subgraph DATA_FIX["数据层四大硬伤根治（全量 488 标的）"]
+      D1["① 剔除 18 只 Baostock 历史后复权脏数据<br/>全部重拉腾讯 RAW 真实未复权日线"]
+      D2["② 真实流通股本与市值还原<br/>采集 487 只股票真实 float_shares，彻底根治 2 亿成交额冒充市值"]
+      D3["③ Point-in-Time 滚动 395 天除权股息率<br/>随当日收盘价逐日动态计算，彻底根除全年单一均值未来函数泄露"]
+      D4["④ 巨潮无分红异常防御<br/>修复次新股/零分红 Key 异常，补齐 488 只标的除权 sidecar"]
+    end
+    subgraph ENGINE_FIX["回测引擎与策略层修复"]
+      E1["⑤ 组合层市值加权真正生效<br/>portfolio.py 接入 weights 分配资金，消除被 total_nav/N 强制等权"]
+      E2["⑥ 红利税真集成与送转拆股容错<br/>开启 enable_dividend_tax，解决 10送5 后 FIFO 队列缺股崩盘，扣税全额进账"]
+    end
+    subgraph AUDIT_GATE["防伪审计工具硬约束 (scripts/audit_evidence_integrity.py)"]
+      A1["1. 红利税生产调用链验证: PASS"]
+      A2["2. 市值加权代码落地验证: PASS"]
+      A3["3. 落盘 JSON 费用明细对账: PASS (逐笔吻合)"]
+      A4["4. 成交额充当市值检验: PASS (标准差 732 亿)"]
+      A5["5. 未来函数与前视偏差检验: PASS (严格 PIT)"]
+    end
   end
-  style M fill:#fee2e2,stroke:#dc2626,color:#0f172a
-  style D fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style DATA_FIX fill:#dbeafe,stroke:#2563eb,color:#0f172a
+  style ENGINE_FIX fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style AUDIT_GATE fill:#dcfce7,stroke:#16a34a,color:#0f172a
 </div><br/><br/>#<h1>测试基线演进<br/><br/><div class="mermaid">
 flowchart LR
-  B0[Phase 0 起点<br/>19 passed] --> B1[Phase 1 数据层<br/>162 passed]
-  B1 --> B2[Phase 2 回测引擎<br/>394 passed]
-  B2 --> B3[Phase 3 策略层<br/>435 passed]
-  B3 --> B35[Phase 3.5 红利策略<br/>524 passed] --> B402[T402 偏差容忍带<br/>616 passed] --> B4X[T401/T403 修复<br/>619 passed ⏵当前]
+  B0["Phase 0 起点<br/>19 passed"] --> B1["Phase 1 数据层<br/>162 passed"]
+  B1 --> B2["Phase 2 回测引擎<br/>394 passed"]
+  B2 --> B3["Phase 3 策略层<br/>435 passed"]
+  B3 --> B35["Phase 3.5 红利切换<br/>524 passed"]
+  B35 --> B402["T402 偏差容忍带<br/>616 passed"]
+  B402 --> B404["T401/403/404 修复与台账<br/>619 passed"]
+  B404 --> B312_OLD["T312 离线测试补充<br/>626 passed"]
+  B312_OLD --> B312_NOW["T312 审计与红利税/拆股加权修复<br/>629 passed ⏵当前基线"]
   style B0 fill:#e0e7ff,stroke:#818cf8
   style B1 fill:#e0e7ff,stroke:#818cf8
   style B2 fill:#e0e7ff,stroke:#818cf8
   style B3 fill:#e0e7ff,stroke:#818cf8
   style B35 fill:#e0e7ff,stroke:#818cf8
   style B402 fill:#e0e7ff,stroke:#818cf8
-  style B4X fill:#dbeafe,stroke:#2563eb,color:#0f172a
-</div><br/><br/>#<h1>下一步决策点<br/><br/><div class="mermaid">
+  style B404 fill:#e0e7ff,stroke:#818cf8
+  style B312_OLD fill:#e0e7ff,stroke:#818cf8
+  style B312_NOW fill:#dcfce7,stroke:#16a34a,color:#0f172a
+</div><br/><br/>#<h1>当前位置与等待决策<br/><br/><div class="mermaid">
 flowchart TD
-  NOW[当前位置：G4.5 通过<br/>Phase 3.5 清零]
-  NOW --> OPT1[选项 A：执行 T312 真实数据回测<br/>≈40-50 分钟]
-  NOW --> OPT2[选项 B：直接进入 Phase 4 模拟盘<br/>基于 T313 压力测试结果]
-  OPT1 --> DEC1{CAGR / 夏普 / MDD<br/>达标？}
-  DEC1 -->|✅ 达标| P4A[Phase 4 模拟盘]
-  DEC1 -->|❌ 不达标| ADJ[调整策略参数<br/>或换其他风格]
-  OPT2 --> P4B[Phase 4 模拟盘<br/>6 个月]
-  style NOW fill:#dbeafe,stroke:#2563eb,color:#0f172a
-  style OPT1 fill:#fef3c7,stroke:#f59e0b,color:#0f172a
-  style OPT2 fill:#fef3c7,stroke:#f59e0b,color:#0f172a
-  style P4A fill:#dcfce7,stroke:#16a34a
-  style P4B fill:#dcfce7,stroke:#16a34a
-  style ADJ fill:#fee2e2,stroke:#dc2626,color:#0f172a
+  NOW["当前状态：T312 底层数据与回测引擎全链真实验证闭环<br/>防伪审计全 PASS / 629 单测全绿 / 真实 10 年回测已落盘<br/>⏵ 更新完毕，等待用户命令"]
+  NOW --> OPT1["路线 1：策略层选股优化<br/>将绝对 3% 阈值改为行业相对分位数（如 Top 10%），避免牛市轻仓踏空"]
+  NOW --> OPT2["路线 2：择时信号平滑优化<br/>优化 MA200 在宽幅震荡期的频繁假突破调仓磨损，减少摩擦成本"]
+  NOW --> OPT3["路线 3：直接准入 Phase 4 模拟盘<br/>按真实回测基线进入 6 个月模拟盘观察实盘表现（T401-T404 均已就绪）"]
+  style NOW fill:#fef3c7,stroke:#f59e0b,color:#0f172a
+  style OPT1 fill:#dbeafe,stroke:#2563eb,color:#0f172a
+  style OPT2 fill:#dbeafe,stroke:#2563eb,color:#0f172a
+  style OPT3 fill:#dcfce7,stroke:#16a34a,color:#0f172a
 </div><br/><br/>---<br/><br/>**更新历史**：
 - 2026-08-31：Phase 0–1 完成标记
 - 2026-09-01：Phase 2–3 完成标记 + G3/G4 门禁通过
 - 2026-09-02：Phase 3.5 红利策略切换完成 + G4.5 门禁通过 + 测试基线 524
-- 2026-09-02：T402 偏差容忍带 + T401/T403 模拟盘测试修复完成 + 测试基线 619
+- 2026-09-02：T402 偏差容忍带 + T401/T403/T404 修复与台账自动化完成 + 测试基线 619
+- 2026-09-07：T312 底层四大硬伤彻底根治 + 回测引擎红利税真集成与送转拆股容错 + 市值加权生效 + 自动化防伪审计 5/5 全 PASS + 真实 10 年全周期回测正式落盘（Run ID 20260907-150402，总收益 -27.72%，CAGR -3.20%，实扣红利税 5,043.75 元，每一分钱有据可查）+ 测试基线提升至 629 passed 全绿。
 
 <script>mermaid.initialize({ startOnLoad: true, theme: "default" });</script>
 </body>

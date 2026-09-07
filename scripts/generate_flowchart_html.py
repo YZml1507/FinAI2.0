@@ -52,7 +52,7 @@ pre {{
     with open("docs/project_status_flowchart.html", "w", encoding="utf-8") as f:
         f.write(html)
 
-    print("✅ HTML flowchart generated: docs/project_status_flowchart.html")
+    print("[OK] HTML flowchart generated: docs/project_status_flowchart.html")
 
 if __name__ == "__main__":
     generate_flowchart_html()

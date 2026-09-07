@@ -134,6 +134,17 @@ class TestPlanPositions:
         with pytest.raises(PortfolioError):
             plan_positions(["a"], 100000, {"a": _bar()}, PortfolioConfig())
 
+    def test_custom_weights_allocation(self) -> None:
+        """测试自定义权重（如市值加权）：2:1 权重分配资金。"""
+        bars = {"a": _bar(), "b": _bar()}
+        weights = {"a": D("0.8"), "b": D("0.4")}  # 归一化后 a=2/3, b=1/3
+        plan, dropped = plan_positions(
+            ["a", "b"], D("300000"), bars, PortfolioConfig(), weights=weights
+        )
+        assert not dropped
+        assert plan["a"] == D("200000")  # 30 万 × (0.8/1.2) = 20 万
+        assert plan["b"] == D("100000")  # 30 万 × (0.4/1.2) = 10 万
+
 
 class TestDiffToOrders:
     def test_new_buy_lot_rounded(self) -> None:

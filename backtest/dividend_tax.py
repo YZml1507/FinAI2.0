@@ -123,6 +123,7 @@ def compute_dividend_tax(
     dividends: list[DividendEvent],
     buy_trades: list[tuple[_date, str, int]],  # (trade_date, symbol, shares)
     sell_trades: list[tuple[_date, str, int]],  # (trade_date, symbol, shares)
+    split_events: list[tuple[_date, str, Decimal]] | None = None,  # (date, symbol, factor)
 ) -> Decimal:
     """FIFO 配对计算红利税总额。
 
@@ -130,29 +131,10 @@ def compute_dividend_tax(
         dividends: 分红事件列表（必须按 ex_date 升序排列）
         buy_trades: 买入交易列表（必须按 date 升序排列）
         sell_trades: 卖出交易列表（必须按 date 升序排列）
+        split_events: 送转股拆股事件列表 [(date, symbol, factor)]（可选）
 
     Returns:
         红利税总额（Decimal，精确到分）
-
-    Raises:
-        ValueError: dividends / trades 乱序，或除权日持股数为负
-        TypeError: 税率为 float
-
-    Examples:
-        >>> # 持股 20 天分红 1 元/股 1000 股 → 20% 税率
-        >>> divs = [DividendEvent(date(2023,6,15), "sh.600000", Decimal("1"), 1000)]
-        >>> buys = [(date(2023,5,26), "sh.600000", 1000)]
-        >>> compute_dividend_tax(divs, buys, [])
-        Decimal('200.00')  # 1000 × 1 × 20% = 200
-
-        >>> # 混合税率：500 股持 20 天 + 500 股持 400 天，分红 1 元/股
-        >>> divs = [DividendEvent(date(2023,6,15), "sh.600000", Decimal("1"), 1000)]
-        >>> buys = [
-        ...     (date(2023,5,26), "sh.600000", 500),  # 持 20 天 → 20%
-        ...     (date(2022,5,11), "sh.600000", 500),  # 持 400 天 → 10%
-        ... ]
-        >>> compute_dividend_tax(divs, buys, [])
-        Decimal('125.00')  # 500×1×20% + 500×1×10% = 125
     """
     # ① 边界校验：dividends 升序
     if dividends:
@@ -181,7 +163,7 @@ def compute_dividend_tax(
     # ④ 建立 FIFO 队列（按 symbol 分组）
     holdings: dict[str, deque[_Lot]] = {}  # symbol → FIFO 批次队列
 
-    # ⑤ 合并 buy/sell/dividend 事件流，按日期升序处理
+    # ⑤ 合并 buy/sell/dividend/split 事件流，按日期升序处理
     events: list[tuple[_date, str, str, tuple]] = []  # (date, event_type, symbol, payload)
 
     for date, symbol, shares in buy_trades:
@@ -193,7 +175,13 @@ def compute_dividend_tax(
     for div in dividends:
         events.append((div.ex_date, "DIV", div.symbol, (div.dividend_per_share, div.shares_held)))
 
-    events.sort(key=lambda x: (x[0], x[1]))  # 按日期升序，同日期内 BUY < DIV < SELL（字典序）
+    for date, symbol, factor in (split_events or []):
+        events.append((date, "SPLIT", symbol, (factor,)))
+
+    # 同日期执行序：BUY < DIV < SPLIT < SELL
+    # 保证 DIV 按除权当日开盘持仓（pre-split）计税，随后 SPLIT 扩充批次股数供日后 SELL 抵扣
+    order_priority = {"BUY": 0, "DIV": 1, "SPLIT": 2, "SELL": 3}
+    events.sort(key=lambda x: (x[0], order_priority.get(x[1], 99)))
 
     total_tax = _ZERO
 
@@ -207,6 +195,12 @@ def compute_dividend_tax(
         if event_type == "BUY":
             shares = payload[0]
             fifo_queue.append(_Lot(buy_date=event_date, shares=shares))
+
+        elif event_type == "SPLIT":
+            factor = payload[0]
+            if factor > _ZERO and factor != _ONE:
+                for lot in fifo_queue:
+                    lot.shares = int(Decimal(str(lot.shares)) * factor)
 
         elif event_type == "SELL":
             shares_to_sell = payload[0]
@@ -249,7 +243,6 @@ def compute_dividend_tax(
                         tax_rate = bracket.tax_rate
                         break
 
-                # 逐项计税并取整到分
                 lot_tax_raw = lot.shares * dividend_per_share * tax_rate
                 lot_tax = lot_tax_raw.quantize(MONEY_QUANT, rounding=ROUND_HALF_UP)
                 total_tax += lot_tax

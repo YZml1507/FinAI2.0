@@ -82,8 +82,9 @@ def _metrics_summary(report: Any) -> dict[str, Any]:
         "annual_volatility", "max_drawdown", "max_dd_peak", "max_dd_trough",
         "max_dd_recovery", "sharpe_ratio", "risk_free_annual",
         "annual_turnover", "win_rate", "round_trips", "fees_sum",
+        "fees_total",
     )
-    return {k: _canonicalize(getattr(report, k)) for k in keys}
+    return {k: _canonicalize(getattr(report, k)) for k in keys if hasattr(report, k)}
 
 
 class ExperimentRegistry:
