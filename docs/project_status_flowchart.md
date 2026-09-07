@@ -9,8 +9,8 @@
 ```mermaid
 flowchart TD
   subgraph REPO["双仓（Private）"]
-    F["代码仓 FinAI2.0<br/>HEAD b573525 + 工作区待提交 ✅<br/>origin=github.com/YZml1507/FinAI2.0"] 
-    R["计划仓 research-finai<br/>HEAD 5ada091 ✅<br/>origin=github.com/YZml1507/research-finai"]
+    F["代码仓 FinAI2.0<br/>HEAD e64b0a9 + 工作区待提交 ✅<br/>origin=github.com/YZml1507/FinAI2.0"] 
+    R["计划仓 research-finai<br/>HEAD 3119acd ✅<br/>origin=github.com/YZml1507/research-finai"]
     F -->|git fetch research 本地路径| R
     F -->|docs/spec 快照 逐字节一致| R
   end
@@ -34,8 +34,9 @@ flowchart LR
   G2 --> P2["Phase 2 回测引擎 ✅<br/>T201–T207 + G3"]
   P2 --> P3["Phase 3 策略 ✅<br/>T301–T308"]
   P3 --> G4["G4 技术评审 ✅<br/>动量淘汰 转向红利"]
-  G4 --> P35["Phase 3.5 红利策略实证 ✅<br/>硬伤根治 / 审计全过 / 回测闭环 ⏵当前"]
-  P35 --> P4["Phase 4 模拟盘<br/>T401–T404 代码就绪 / 等待用户指令"]
+  G4 --> P35["Phase 3.5 红利策略实证 ✅<br/>硬伤根治 / 审计全过 / 真实10年回测"]
+  P35 --> G_AUDIT["17 号六维门禁体系定稿 📋<br/>D-L-E-A-S-G 架构 / 散户小资金物理约束 ⏵当前"]
+  G_AUDIT --> P4["Phase 4 模拟盘<br/>T401–T404 基建全绿 / 待门禁通过后准入"]
   style G0 fill:#dcfce7,stroke:#16a34a
   style R15 fill:#dcfce7,stroke:#16a34a
   style UT fill:#dcfce7,stroke:#16a34a
@@ -44,8 +45,9 @@ flowchart LR
   style P2 fill:#dcfce7,stroke:#16a34a
   style P3 fill:#dcfce7,stroke:#16a34a
   style G4 fill:#dcfce7,stroke:#16a34a
-  style P35 fill:#dcfce7,stroke:#16a34a,color:#0f172a
-  style P4 fill:#fef3c7,stroke:#f59e0b,color:#0f172a
+  style P35 fill:#dcfce7,stroke:#16a34a
+  style G_AUDIT fill:#fef3c7,stroke:#f59e0b,color:#0f172a
+  style P4 fill:#f1f5f9,stroke:#94a3b8,color:#64748b
 ```
 
 ## Phase 3.5 红利策略执行现状（2026-09-07）
@@ -123,14 +125,16 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-  NOW["当前状态：T312 底层数据与回测引擎全链真实验证闭环<br/>防伪审计全 PASS / 629 单测全绿 / 真实 10 年回测已落盘<br/>⏵ 更新完毕，等待用户命令"]
-  NOW --> OPT1["路线 1：策略层选股优化<br/>将绝对 3% 阈值改为行业相对分位数（如 Top 10%），避免牛市轻仓踏空"]
-  NOW --> OPT2["路线 2：择时信号平滑优化<br/>优化 MA200 在宽幅震荡期的频繁假突破调仓磨损，减少摩擦成本"]
-  NOW --> OPT3["路线 3：直接准入 Phase 4 模拟盘<br/>按真实回测基线进入 6 个月模拟盘观察实盘表现（T401-T404 均已就绪）"]
+  NOW["当前状态：17 号研发防伪与工程质量门禁体系深度调研定稿（Commit 3119acd）<br/>六维防御门禁（D-L-E-A-S-G）断言体系 + 散户 10~15 万纯多头无对冲客观约束<br/>生产代码仓保持冻结待命，等待用户确认批准开工建立门禁包"]
+  NOW --> APP["用户确认批准 → 开启三阶段门禁工程实施"]
+  APP --> STAGE1["阶段一：开发独立门禁工具包 (scripts/gates/)<br/>模块化 D/L/E/A/S/G 检查器，不污染业务代码，一键独立跑测"]
+  APP --> STAGE2["阶段二：前置/后置闸门植入<br/>在 run_dividend_backtest.py 注入前置与后置门禁，违规自动阻断落盘"]
+  APP --> STAGE3["阶段三：交付留痕与 Git Hook 绑定<br/>配置 pre-commit 钩子与 tasks.md 机器校验绑定"]
   style NOW fill:#fef3c7,stroke:#f59e0b,color:#0f172a
-  style OPT1 fill:#dbeafe,stroke:#2563eb,color:#0f172a
-  style OPT2 fill:#dbeafe,stroke:#2563eb,color:#0f172a
-  style OPT3 fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style APP fill:#dbeafe,stroke:#2563eb,color:#0f172a
+  style STAGE1 fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style STAGE2 fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style STAGE3 fill:#dcfce7,stroke:#16a34a,color:#0f172a
 ```
 
 ---
@@ -141,3 +145,4 @@ flowchart TD
 - 2026-09-02：Phase 3.5 红利策略切换完成 + G4.5 门禁通过 + 测试基线 524
 - 2026-09-02：T402 偏差容忍带 + T401/T403/T404 修复与台账自动化完成 + 测试基线 619
 - 2026-09-07：T312 底层四大硬伤彻底根治 + 回测引擎红利税真集成与送转拆股容错 + 市值加权生效 + 自动化防伪审计 5/5 全 PASS + 真实 10 年全周期回测正式落盘（Run ID 20260907-150402，总收益 -27.72%，CAGR -3.20%，实扣红利税 5,043.75 元，每一分钱有据可查）+ 测试基线提升至 629 passed 全绿。
+- 2026-09-07：第 17 号《中低频量化研发防伪与工程质量门禁体系深度调研报告》定稿（Commit `3119acd`）。确立学术三里程碑、工业平台准入门禁与监管法案；系统性论证直接照搬外部标准必死，确立“科学原则全盘继承 + A 股散户小资金物理特化”唯一最优解；明确 10~15 万纯多头无对冲散户客观物理约束；构建六维防御门禁（D-L-E-A-S-G）体系；项目文档全景整理升级；生产代码仓冻结待命，静候用户确认批准开工建立独立门禁包。
