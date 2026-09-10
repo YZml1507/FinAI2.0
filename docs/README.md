@@ -1,10 +1,12 @@
 # FinAI2.0 · 文档全景导航索引（Documentation Index）
 
 > 更新日期：2026-09-10  
-> 对应项目版本：Phase 0~3.5 与门禁体系完成；Colab 云端链路验收；T312 全周期诊断完成（P0=仓位不足）；Phase 4 暂停待策略 v2 用户拍板；基线 **725 passed**
+> 对应项目版本：Phase 0~3.5 与门禁体系完成；Colab 云端链路验收；T312 全周期诊断完成（P0=仓位不足）；**Phase 4 ⏸ 暂停，待策略 v2 落地后重审**；基线 **725 passed**
 > 外部计划与理论权威：`D:\Projects\research-finai\`（00–17 号报告 + `specs\001-a-stock-longonly-daily-quant\`）
 
 ---
+
+> **⛔ 2026-09-10 批注**：经 2026-09-10 诊断确认，`docs/compliance/` 全套报备材料与 `docs/T312_FINAL_SUMMARY.md`、`docs/t313_dividend_stress_report.md`、`docs/delivery/PHASE4_ADMISSION_RESOLUTION.md` 中的结论性数字**依据失效、已标注“作废 / 待重写”**（详见 [`audit/roadmap_decision.md`](audit/roadmap_decision.md) §5）。**Phase 4 状态统一为「⏸ 暂停，待策略 v2 落地后重审」**；上述文件在重写完成前不得对外提交、不得作为任何准入依据。
 
 ## 快速导航分类
 
@@ -16,7 +18,7 @@ flowchart TD
   DOCS --> D2["2. 回测引擎与门禁 (Phase 2)<br/>• T204 价格与敏感度<br/>• T207 G3 门禁验收"]
   DOCS --> D3["3. 策略风控与防伪 (Phase 3)<br/>• T304 动量压测<br/>• T305 评审报告<br/>• 前视偏差审计<br/>• 缺口滑点 / 高价股过滤"]
   DOCS --> D4["4. 红利策略实证 (Phase 3.5)<br/>• T309 红利税真集成<br/>• T311 红利策略<br/>• T312 硬伤根治与10年回测<br/>• T313 压力测试全绿"]
-  DOCS --> D5["5. 模拟盘常态化运行 (Phase 4)<br/>• 准入决议书 & T405 合规材料<br/>• run_paper_trading_daily 日终执行器<br/>• paper_trading_ledger 6个月总账<br/>• tests/ 725 passed 100% 全绿"]
+  DOCS --> D5["5. Phase 4 ⏸ 暂停（待策略 v2 落地后重审）<br/>• 准入决议书 & T405 合规材料（⛔ 已标注作废/待重写）<br/>• run_paper_trading_daily 日终执行器<br/>• paper_trading_ledger 总账已停计时<br/>• tests/ 725 passed 100% 全绿"]
   DOCS --> D6["6. 六维质量防伪门禁 (Phase 1~3 全闭环)<br/>• scripts/gates/ 24道门禁+tamper_guard<br/>• .githooks/ & CI 本地云端双拦截<br/>• delivery/ 阶段一~三完工总结"]
   DOCS --> D7["7. 流程图与交付归档<br/>• project_status_flowchart (md/html)<br/>• docs/delivery/ 归档区"]
 ```
@@ -74,7 +76,7 @@ flowchart TD
 
 ---
 
-## 五、 模拟盘常态化运行与合规报备（Phase 4 进行中）
+## 五、 模拟盘运行与合规报备（Phase 4 ⏸ 暂停，待策略 v2 落地后重审）
 
 | 文档 / 路径 | 说明 | 对应阶段 / 编号 |
 |---|---|---|
@@ -99,7 +101,7 @@ flowchart TD
 |---|---|---|
 | [`../scripts/gates/`](../scripts/gates/) | **六维质量防伪门禁包**：D-L-E-A-S-G 全六维 24 项机读门禁与调度器 `gate_master_audit.py` | Phase 1~3 |
 | [`../scripts/gates/tamper_guard.py`](../scripts/gates/tamper_guard.py) | **防伪硬化与防篡改签名引擎**：SHA-256 结构化验签、tasks 证据验签与镜像比对 | Phase 3 (T-GATE-P3) |
-| [`../scripts/hooks/`](../scripts/hooks/) & [`.githooks/`](../.githooks/) | **本地 Git Hooks 拦截体系**：pre-commit（370行+tasks+产物验签）与 pre-push（717 单测基线硬拦截） | Phase 3 (T-GATE-P3) |
+| [`../scripts/hooks/`](../scripts/hooks/) & [`.githooks/`](../.githooks/) | **本地 Git Hooks 拦截体系**：pre-commit（370行+tasks+产物验签）与 pre-push（725 单测基线硬拦截） | Phase 3 (T-GATE-P3) |
 | [`../scripts/install_hooks.py`](../scripts/install_hooks.py) | **Git 门禁钩子一键装配工具**：支持 `--verify` 自动化核验与状态自愈 | Phase 3 (T-GATE-P3) |
 | [`../.github/workflows/ci.yml`](../.github/workflows/ci.yml) | **云端 GitHub Actions CI 防伪流水线**：370 行守卫+5/5 防伪审计+门禁总检+单测全绿 | Phase 3 (T-GATE-P3) |
 | [`../scripts/gates/runner.py`](../scripts/gates/runner.py) | **执行流前置/后置闸门运行器**：`run_pre_run_gates` 与 `run_post_run_gates` | Phase 2 (T-GATE-P2) |
