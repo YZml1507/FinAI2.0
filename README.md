@@ -4,7 +4,7 @@
 > 数据取数母库：`finai/sources/`（860 接口探测目录，守护红线 `FINDING-` 恒为 370 行）  
 > 权威工程指令：`docs\engineering\DATA_LAYER_WORK_ORDER.md`  
 > 文档全景导航：[`docs/README.md`](docs/README.md)  
-> 当前测试基线：**760 passed（2026-09-10 实测，0 failed, 0 errors, 100% PASS）**；历史阶段快照 629 / 681 / 699 / 717 / 725 见 `docs/delivery/` 归档  
+> 当前测试基线：**以单一事实源 `scripts/gates/constants.py::TEST_BASELINE_PASSED` 为准（⛔ 不硬编码具体数值）**；历史阶段快照 629 / 681 / 699 / 717 / 725 见 `docs/delivery/` 归档  
 > 核心物理约束：**实际资金 10~15 万元、纯多头（Long-Only）、无两融对冲手段、持仓 3~8 只、5 元佣金地板**
 
 ## 系统工程结构

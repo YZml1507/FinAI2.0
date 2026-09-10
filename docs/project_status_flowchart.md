@@ -114,7 +114,7 @@ flowchart LR
   B402 --> B404["T401/403/404 修复与台账<br/>619 passed"]
   B404 --> B312_OLD["T312 离线测试补充<br/>626 passed"]
   B312_OLD --> B312_NOW["T312 审计与红利税/拆股加权修复<br/>629 passed"]
-  B312_NOW --> GATES1["阶段一：六维防御门禁工具包<br/>23 项门禁 + 52 单测<br/>681 passed"]
+  B312_NOW --> GATES1["阶段一：六维防御门禁工具包<br/>23 项门禁 + 52 单测<br/>681 passed<!-- gate-doc-ignore: 阶段一历史快照（23 项门禁 / 681 passed 为当时值），⛔ 不改史 -->"]
   GATES1 --> GATES2["阶段二：执行流前置/后置闸门植入<br/>runner.py + 18 集成单测<br/>699 passed"]
   GATES2 --> GATES3["阶段三：CI / Git Hooks 硬化与验签<br/>tamper_guard + 24 门禁 + 18 单测<br/>717 passed"]
   GATES3 --> PHASE4["Phase 4 模拟盘准入与合规报备 (T405)<br/>run_paper_trading_daily + 8 单测<br/>单测基线真值以单一事实源为准（⛔ 不硬编码）"]

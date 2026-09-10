@@ -886,6 +886,85 @@ class TestGateCountBaselineConsistency:
 
 
 # =====================================================================
+# 9c. ㉘ 收紧后的结构化门禁数模式：正例必命中、反例必不命中（双向）
+# =====================================================================
+
+class TestGateCountStructuredPatterns:
+    """把门禁数判定从"同行含关键词即命中"收紧为**结构化匹配**后，正/反例双向锁定。
+
+    正例（应违规）：数字**直接修饰**门禁/闸门（模式 A）或门禁在前、数量在后（模式 B）；
+    反例（不得违规）：量词修饰的是**指标/单测/月数**等非门禁之物，或"引用单一事实源"。
+    """
+
+    @staticmethod
+    def _doc(tmp_path: Path, name: str, line: str) -> Path:
+        truth = json.loads(_AUTHORITATIVE_RUN.read_text(encoding="utf-8"))["metrics"]
+        md = tmp_path / name
+        md.write_text(
+            f"# t\n\n最大回撤 {float(truth['max_drawdown']) * 100:.2f}%\n{line}\n",
+            encoding="utf-8",
+        )
+        return md
+
+    @staticmethod
+    def _decls(md: Path) -> list[dict]:
+        res = DocMetricConsistencyGate().evaluate(
+            {"doc_paths": [str(md)], "truth_run_path": str(_AUTHORITATIVE_RUN)}
+        )
+        return [d for d in res.metrics.get("declaration_violations", []) if d["metric"] == "门禁数量"]
+
+    @pytest.mark.parametrize("phrase", [
+        "共 24 道门禁。",
+        "共 28 道门禁。",
+        "**28** 道门禁。",
+        "28 项机读门禁。",
+        "门禁包已重做为 28 道（`scripts/gates/`）。",
+        "总计 28 道机读门禁。",
+        "共 129 道门禁（子串不得放过）。",
+    ])
+    def test_positive_phrases_are_flagged(self, tmp_path: Path, phrase: str):
+        """正例：数字直接修饰门禁/闸门（模式 A）或门禁在前、数量在后（模式 B）⇒ 必命中。"""
+        n = len(GateMasterAudit.get_standard_gates())
+        # 前提：这些字面量须 ≠ 当前门禁数，否则"命中"无意义（自校验，防未来漂移失真）。
+        assert n not in (24, 28, 129), "测试前提失效：门禁数恰为 24/28/129，正例字面量失真"
+        decls = self._decls(self._doc(tmp_path, "pos.md", phrase))
+        assert decls, f"正例未被命中（漏判）：{phrase!r}"
+
+    @pytest.mark.parametrize("phrase", [
+        "G4.5 门禁 3 条必达指标全部满足。",
+        "（52 个单测 100% 全绿覆盖）",
+        "模拟盘 ≥6 个月 + 用户书面确认后才可小额实盘。",
+        "门禁数量以 scripts/gates/gate_master_audit.py 的注册表为单一事实源（⛔ 不硬编码）。",
+    ])
+    def test_negative_phrases_are_not_flagged(self, tmp_path: Path, phrase: str):
+        """反例：量词修饰的是指标/单测/月数等非门禁之物 ⇒ 必不命中（不得误报）。"""
+        decls = self._decls(self._doc(tmp_path, "neg.md", phrase))
+        assert not decls, f"反例被误报：{phrase!r} -> {decls}"
+
+    def test_no_cross_line_false_positive(self, tmp_path: Path):
+        """旧实现 ``\\s*`` 吞换行 ⇒「…门禁\\n3 项…」被误连成 ``门禁\\n3``；收紧后不得跨行。
+
+        真实误报实例：`docs/t313_dividend_stress_report.md:290`（行尾"…门禁" + 下行"3 项…"）。
+        """
+        truth = json.loads(_AUTHORITATIVE_RUN.read_text(encoding="utf-8"))["metrics"]
+        md = tmp_path / "cross.md"
+        md.write_text(
+            f"# t\n\n最大回撤 {float(truth['max_drawdown']) * 100:.2f}%\n"
+            "该产物未通过回撤上限门禁\n3 项必达指标中 1 项未满足\n",
+            encoding="utf-8",
+        )
+        assert not self._decls(md), "跨行（门禁\\n3）误报未被消除"
+
+    def test_real_repo_docs_have_no_declaration_drift(self):
+        """真实仓库现状：收紧模式后，G-DOC-1 的门禁数/基线声明漂移应为 0（收口目标）。"""
+        res = DocMetricConsistencyGate().evaluate({})
+        assert res.status == GateStatus.PASS, res.message
+        assert res.metrics.get("declaration_violations_total", 0) == 0, (
+            f"仍有声明漂移：{res.metrics.get('declaration_violations')}"
+        )
+
+
+# =====================================================================
 # 10. 任务 1：晋升/准入层（G-MDD-1 的 BLOCKER 归属地）
 # =====================================================================
 
@@ -902,16 +981,25 @@ class TestAcceptanceGate:
         assert acc_main(["--artifact", str(_AUTHORITATIVE_RUN)]) == 1    # exit≠0
 
     def test_acceptance_passes_on_healthy_artifact(self, tmp_path: Path):
+        """完整健康产物（签署 + 现行 schema + 出处三件套）⇒ 放行。
+
+        ⛔ 不得为了通过而放松准入门禁：本用例构造的是**真正完整**的产物，
+        未签名/legacy 的产物必须被挡住（见 TestAcceptanceFailClosed）。
+        """
         from scripts.gates.acceptance import evaluate_acceptance, main as acc_main
+        from scripts.gates.tamper_guard import sign_run_record
 
         art = tmp_path / "healthy.json"
-        art.write_text(json.dumps({
-            "run_id": "healthy", "status": "FINISHED",
+        art.write_text(json.dumps(sign_run_record({
+            "run_id": "healthy", "status": "FINISHED", "schema_version": 2,
+            "code_version": "healthy-code", "data_version": "healthy-data",
+            "timestamp": "2026-09-10T00:00:00+08:00",
+            "params_hash": "healthy-params",
             "metrics": {"max_drawdown": "0.12", "win_rate": "0.55",
                         "annual_turnover": "2.0", "round_trips": 40},
-        }), encoding="utf-8")
-        ok, _, _ = evaluate_acceptance(art)
-        assert ok is True
+        }), ensure_ascii=False), encoding="utf-8")
+        ok, criteria, _ = evaluate_acceptance(art)
+        assert ok is True, [c for c in criteria if not c["passed"]]
         assert acc_main(["--artifact", str(art)]) == 0
 
     def test_master_audit_acceptance_flag_exits_nonzero(self, monkeypatch):

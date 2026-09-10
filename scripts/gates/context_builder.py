@@ -95,9 +95,19 @@ def build_repo_context(repo_root: Path | str | None = None) -> tuple[dict[str, A
         if fees_total:
             ctx["total_stamp_tax"] = str(fees_total.get("STAMP_TAX", "0"))
             ctx["total_commission"] = str(fees_total.get("COMMISSION", "0"))
-        ctx["data_hash"] = hashlib.sha256(
-            (str(record.get("data_version", "")) + str(record.get("params_hash", ""))).encode("utf-8")
-        ).hexdigest()
+        # 出处 data_hash 统一口径（QA ㉙）：优先取产物的内容寻址 data_hash；
+        # legacy 无该字段时，退回与 registry **同一函数** provenance.hash_path_manifest
+        # （⛔ 不再用「data_version+params_hash」的第三种合成值——同名不同算法无法互认）。
+        data_hash = record.get("data_hash")
+        if not data_hash:
+            try:
+                from reporting.provenance import hash_path_manifest
+
+                data_hash = hash_path_manifest(root / "data" / "dividend_stocks")
+            except Exception:                # noqa: BLE001 —— 取不到则交门禁判 INCONCLUSIVE
+                data_hash = None
+        if data_hash:
+            ctx["data_hash"] = str(data_hash)
         source = f"产物 {path.name}（{'已签名' if record.get('anti_tamper_signature') else '未签名'}）"
 
     # E-1 五必挂真跑

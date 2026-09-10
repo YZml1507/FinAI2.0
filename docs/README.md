@@ -99,9 +99,9 @@ flowchart TD
 
 | 路径 / 文档 | 说明 | 对应阶段 / 类别 |
 |---|---|---|
-| [`../scripts/gates/`](../scripts/gates/) | **六维质量防伪门禁包**：D-L-E-A-S-G 全六维 28 项机读门禁与调度器 `gate_master_audit.py` | Phase 1~3 |
+| [`../scripts/gates/`](../scripts/gates/) | **六维质量防伪门禁包**：D-L-E-A-S-G 全六维机读门禁与调度器 `gate_master_audit.py`；门禁**数量以 `scripts/gates/gate_master_audit.py` 的门禁注册表为单一事实源（⛔ 不硬编码具体数值）** | Phase 1~3 |
 | [`../scripts/gates/tamper_guard.py`](../scripts/gates/tamper_guard.py) | **防伪硬化与防篡改签名引擎**：SHA-256 结构化验签、tasks 证据验签与镜像比对 | Phase 3 (T-GATE-P3) |
-| [`../scripts/hooks/`](../scripts/hooks/) & [`.githooks/`](../.githooks/) | **本地 Git Hooks 拦截体系**：pre-commit（370行+tasks+产物验签）与 pre-push（760 单测基线硬拦截，2026-09-10 实测） | Phase 3 (T-GATE-P3) |
+| [`../scripts/hooks/`](../scripts/hooks/) & [`.githooks/`](../.githooks/) | **本地 Git Hooks 拦截体系**：pre-commit（370行+tasks+产物验签）与 pre-push（单测基线硬拦截，**基线真值以 `scripts/gates/constants.py::TEST_BASELINE_PASSED` 为单一事实源（⛔ 不硬编码具体数值）**） | Phase 3 (T-GATE-P3) |
 | [`../scripts/install_hooks.py`](../scripts/install_hooks.py) | **Git 门禁钩子一键装配工具**：支持 `--verify` 自动化核验与状态自愈 | Phase 3 (T-GATE-P3) |
 | [`../.github/workflows/ci.yml`](../.github/workflows/ci.yml) | **云端 GitHub Actions CI 防伪流水线**：370 行守卫+5/5 防伪审计+门禁总检+单测全绿 | Phase 3 (T-GATE-P3) |
 | [`../scripts/gates/runner.py`](../scripts/gates/runner.py) | **执行流前置/后置闸门运行器**：`run_pre_run_gates` 与 `run_post_run_gates` | Phase 2 (T-GATE-P2) |

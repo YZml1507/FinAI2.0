@@ -584,7 +584,7 @@ def run_post_run_gates(
         "git_commit": str(ctx.get("git_commit") or _get_git_commit()),
         "timestamp": str(ctx.get("timestamp") or datetime.datetime.now(datetime.timezone.utc).isoformat()),
     }
-    if "data_hash" in ctx and str(ctx["data_hash"]).strip():
+    if "data_hash" in ctx and ctx.get("data_hash") is not None and str(ctx["data_hash"]).strip():
         g1_ctx["data_hash"] = str(ctx["data_hash"])
         _check_result(g1_gate.evaluate(g1_ctx))
     else:

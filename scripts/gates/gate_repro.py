@@ -69,6 +69,19 @@ def _collect_run_records(context: Any) -> list[dict[str, Any]]:
     return records
 
 
+def _load_adopted_run_id() -> str | None:
+    """当前"已采纳产物"的 run_id（无采纳 / 读取失败 ⇒ ``None``）。"""
+    try:
+        from .adoption import load_adopted
+
+        adopted = load_adopted()
+    except Exception:                        # noqa: BLE001
+        return None
+    if not adopted:
+        return None
+    return str(adopted.get("run_id") or "") or None
+
+
 class ReproducibilityGate(BaseGate):
     """G-REPRO-1: 复现一致性门禁（BLOCKER）。
 
@@ -145,6 +158,29 @@ class ReproducibilityGate(BaseGate):
             legacy_keys = sorted({
                 LEGACY_PREFIX + str(r.get("params_hash", "unknown")) for r in legacy_records
             })
+            # ㉛：legacy 可存在、可研究，但**不得作为晋升依据**——
+            # 若"已被采纳登记的产物"落在 legacy 里，其 INCONCLUSIVE 必须是 BLOCKER（不是 WARN）。
+            adopted_run_id = _load_adopted_run_id()
+            adopted_is_legacy = adopted_run_id is not None and any(
+                str(r.get("run_id", "")) == adopted_run_id for r in legacy_records
+            )
+            if adopted_is_legacy:
+                return self._make(
+                    GateStatus.INCONCLUSIVE,
+                    (
+                        f"ADOPTED_LEGACY_UNVERIFIED: 被采纳产物 {adopted_run_id} 为 legacy"
+                        "（缺 repro_fingerprint 内容寻址出处）⇒ 复现性无法验证 ⇒ **BLOCKER**"
+                        "（legacy 可存在、可研究，⛔ 但不得作为晋升依据）"
+                    ),
+                    metrics={
+                        "adopted_run_id": adopted_run_id,
+                        "ci_blocking": True,     # ci_policy 据此把它当 BLOCKER（非 WARN）
+                        "legacy_records": len(legacy_records),
+                        "legacy_groups": legacy_keys[:20],
+                        "total_records": len(records),
+                    },
+                    severity=GateSeverity.BLOCKER,
+                )
             return self._make(
                 GateStatus.INCONCLUSIVE,
                 (
@@ -173,9 +209,15 @@ class ReproducibilityGate(BaseGate):
             },
         )
 
-    def _make(self, status: GateStatus, message: str, metrics: dict[str, Any] | None = None) -> GateResult:
+    def _make(
+        self,
+        status: GateStatus,
+        message: str,
+        metrics: dict[str, Any] | None = None,
+        severity: GateSeverity | None = None,
+    ) -> GateResult:
         return GateResult(
             gate_id=self.gate_id, name=self.name, category=self.category,
-            status=status, severity=self.severity, message=message,
+            status=status, severity=severity or self.severity, message=message,
             metrics=metrics or {}, threshold=self.threshold_desc, evidence=self.evidence,
         )

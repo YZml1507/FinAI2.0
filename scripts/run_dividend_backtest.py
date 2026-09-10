@@ -12,7 +12,6 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import logging
 import sys
 from datetime import date as _date, datetime as _datetime, timezone as _timezone
@@ -134,19 +133,18 @@ def _group_exdiv_by_date(
     return by_date
 
 
-def _compute_data_hash(data_path: Path) -> str:
-    """数据快照真实哈希（文件名 + 字节数），供 G-1 出处三件套使用。
+def _compute_data_hash(data_path: Path) -> str | None:
+    """数据快照**内容哈希**（供 G-1 出处三件套）——与 registry **同一函数**（QA ㉙）。
 
-    ⛔ 取代 runner 中 `hashlib.sha256(b"FinAI2.0-provenance")` 的**常量假哈希**：
-    只要数据目录内容变化，哈希即变化，出处可追溯。
+    ⛔ 曾用「文件名 + 字节数」的**另一种**算法，与 ``registry`` 调用的
+    ``provenance.hash_path_manifest``（内容哈希）**同名不同算法** ⇒ 同一 run 存在两个
+    互不相等的 ``data_hash``，两处门禁各比各的、结论无法互认。
+    现统一为 ``provenance.hash_path_manifest``（相对路径 + 文件内容 SHA-256 聚合）：
+
+    * 空目录 ⇒ ``None``（显式缺失，⛔ 不产出一个"合法外观"的哈希）；
+    * 目录不存在 ⇒ 抛 ``MissingDataError``（路径写错/被误删 ⇒ 响亮失败）。
     """
-    digest = hashlib.sha256()
-    if data_path.exists():
-        for p in sorted(data_path.rglob("*")):
-            if p.is_file():
-                digest.update(p.relative_to(data_path).as_posix().encode("utf-8"))
-                digest.update(str(p.stat().st_size).encode("utf-8"))
-    return digest.hexdigest()
+    return hash_path_manifest(data_path)
 
 
 def _compute_index_below_ma200(
