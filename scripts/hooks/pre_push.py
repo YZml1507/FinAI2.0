@@ -133,7 +133,19 @@ def run_master_gate_guard() -> tuple[bool, str]:
 
     pass_cnt = sum(1 for r in results if r.status == GateStatus.PASS)
     warn_note = f"，WARN {len(warn_results)} 项（展示不阻断）" if warn_results else ""
-    return True, f"六维门禁总检通过 (共注册 {len(results)} 道门禁，PASS: {pass_cnt}{warn_note})"
+    # ⓿ 口径必须显式：``len(results)`` 是**推送期子集**（PUSH_TIME_GATE_IDS），
+    #    ⛔ 不得打印成"共注册 N 道门禁"——那会让人以为全库只有这么几道（口径混用）。
+    push_cnt = len(results)
+    total_cnt = len(GateMasterAudit.get_standard_gates())
+    deferred_cnt = total_cnt - push_cnt
+    deferred_note = (
+        f"；另有 {deferred_cnt} 道需回测证据的门禁不在推送期校验（见定时全量审计）"
+        if deferred_cnt > 0 else ""
+    )
+    return True, (
+        f"六维门禁总检通过（推送期 {push_cnt} 道 / 全库 {total_cnt} 道；"
+        f"PASS: {pass_cnt}{warn_note}{deferred_note}）"
+    )
 
 
 def _write_bypass_audit() -> dict:

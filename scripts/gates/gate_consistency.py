@@ -365,14 +365,33 @@ _DOC_METRIC_SPECS: tuple[tuple[str, str, str, str | None], ...] = (
 )
 
 #: 行内出现以下短语时跳过（预期/容忍/需求描述/对照/比较类，不是"实测结论"）。
+#: ⛔ ``gate-doc-ignore`` **不在**此列——它必须带**非空理由**方生效（见
+#: :func:`line_ignore_reason`），否则"随手写个裸标记就整行免检"会成为逃逸口。
 _DOC_LINE_SKIP_PHRASES: tuple[str, ...] = (
-    "gate-doc-ignore",
     "预期", "容忍", "熔断", "压力测试结果", "测试区间", "股灾", "熊市",
     "判据", "验收", "注入", "示例", "例如", "→", "≠", "↔", "vs",
     "真值", "本文写", "作废", "待重写", "冻结",
     # 目标/阈值/预期类（是"要求"不是"实测结论"，与权威产物不可比）
     "目标", "预期", "阈值", "容忍", "门槛", "准入", "建议", "要求",
 )
+
+#: 行内豁免标记：``<!-- gate-doc-ignore: <非空理由> -->``（⛔ 只豁免**本行**，不扩散）。
+#: 契约与 ``gate-doc-void`` 同类：**理由非空**方生效；裸标记 ``<!-- gate-doc-ignore -->``
+#: 或缺理由（``: -->``）⇒ **不生效**（该行照常校验），防"拿它消掉真缺陷"。
+_IGNORE_MARKER_RE = re.compile(r"<!--\s*gate-doc-ignore\s*:\s*(.+?)\s*-->")
+
+
+def line_ignore_reason(line: str) -> str | None:
+    """行内 ``<!-- gate-doc-ignore: <理由> -->`` 的**非空**理由；无标记/理由为空 ⇒ ``None``。
+
+    ⛔ 作用域**仅本行**（调用方逐行判定），不扩散到整段/整文件——
+    文件级作废请用 :func:`is_void_doc`（``gate-doc-void``，需文首标记 + 计数上限）。
+    """
+    m = _IGNORE_MARKER_RE.search(line)
+    if not m:
+        return None
+    reason = m.group(1).strip()
+    return reason or None
 
 #: 数值前若紧跟比较符，则视为"阈值/约束"而非实测值。
 _COMPARISON_OPS = ("<", ">", "≤", "≥", "≈", "=")
@@ -558,6 +577,7 @@ def _declaration_violations_in_text(
     text: str,
     expected_gate_count: int,
     expected_baseline: int,
+    stats: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     """全文级「门禁数量 / 单测基线」声明漂移（结构化匹配，返回**带行号**条目）。
 
@@ -570,10 +590,14 @@ def _declaration_violations_in_text(
     * 「本行已含真值 ⇒ 跳过」必须用**数字集合比对**（⛔ 不用子串——``"29" in "129"``
       会让 ``129 道门禁`` 整行被静默放过：这是 QA ㉘ 点名的最坏漏判）；
     * 复用 ``_DOC_LINE_SKIP_PHRASES`` 排除预期/阈值/更正类散文（与指标比对同口径），
-      历史快照行以行内 ``<!-- gate-doc-ignore -->`` 标注豁免。
+      历史快照行以**带非空理由**的行内 ``<!-- gate-doc-ignore: <理由> -->`` 标注豁免；
+    * ``stats["ignored_linenos"]`` 收集被行内 ignore 豁免的**行号**（豁免必须**可见**，⛔ 不得静默；
+      调用方按 ``(文件, 行号)`` 去重，避免同一行被多处扫描重复计数）。
     """
     orig_lines = text.splitlines()
     norm = _normalize_text(_strip_md(text))
+
+    ignored_lines: set[int] = set()
 
     def _lineno(pos: int) -> int:
         return norm.count("\n", 0, pos) + 1
@@ -583,6 +607,15 @@ def _declaration_violations_in_text(
 
     def _line_nums(ln: int) -> set[Decimal]:
         return set(_line_numbers(_orig_line(ln)))
+
+    def _skipped(ln: int) -> bool:
+        line = _orig_line(ln)
+        if any(p in line for p in _DOC_LINE_SKIP_PHRASES):
+            return True
+        if line_ignore_reason(line) is not None:
+            ignored_lines.add(ln)
+            return True
+        return False
 
     out: list[dict[str, Any]] = []
     seen: set[tuple[int, str, str]] = set()
@@ -601,7 +634,7 @@ def _declaration_violations_in_text(
     for pat in _GATE_COUNT_RES:
         for m in pat.finditer(norm):
             ln = _lineno(m.start())
-            if any(p in _orig_line(ln) for p in _DOC_LINE_SKIP_PHRASES):
+            if _skipped(ln):
                 continue
             val = int(m.group(1))
             if val == expected_gate_count or Decimal(expected_gate_count) in _line_nums(ln):
@@ -612,12 +645,15 @@ def _declaration_violations_in_text(
     for pat in _TEST_BASELINE_RES:
         for m in pat.finditer(norm):
             ln = _lineno(m.start())
-            if any(p in _orig_line(ln) for p in _DOC_LINE_SKIP_PHRASES):
+            if _skipped(ln):
                 continue
             val = int(m.group(1))
             if val == expected_baseline or Decimal(expected_baseline) in _line_nums(ln):
                 continue
             _emit(ln, "单测基线", val, expected_baseline)
+
+    if stats is not None:
+        stats.setdefault("ignored_linenos", set()).update(ignored_lines)   # type: ignore[union-attr]
 
     out.sort(key=lambda e: (e["lineno"], e["metric"], e["doc_value"]))
     return out
@@ -690,7 +726,8 @@ class DocMetricConsistencyGate(BaseGate):
     抽取 ``docs/**/*.md``（含计划仓 ``tasks.md`` 镜像）中形如
     ``年化换手率 92.51%`` / ``最大回撤 MDD 15.23%`` 的关键指标，
     与 ``experiments/runs/*.json``（权威产物）真值比对；不一致即 FAIL，
-    并指向**具体文件与行号**。行尾 ``<!-- gate-doc-ignore -->`` 可显式豁免。
+    并指向**具体文件与行号**。行尾 ``<!-- gate-doc-ignore: <非空理由> -->`` 可显式豁免
+    **本行**（⛔ 理由为空/裸标记不生效；豁免行数经 ``ignored_lines`` 可见计数）。
 
     此外（任务 3 补充）核验**文档声称的门禁数量 / 单测基线**：
     ``N 道门禁``（含机读/自动闸门/六维等变体）必须等于
@@ -720,6 +757,7 @@ class DocMetricConsistencyGate(BaseGate):
         files = _doc_files(context)
         void_docs = 0                            # 作废文档（gate-doc-void 标记）⛔ 必须可见计数
         historical_docs = 0                      # 历史归档快照（显式白名单）⛔ 必须可见计数
+        ignored_keys: set[tuple[str, int]] = set()   # 行内 ignore 豁免（(文件,行号) 去重，必须可见）
         exp_gate_count = expected_gate_count(context)        # 动态：GateMasterAudit 实际长度
         exp_baseline = expected_test_baseline(context)       # 单一事实源常量
         for path in files:
@@ -734,15 +772,23 @@ class DocMetricConsistencyGate(BaseGate):
             if is_hist:
                 historical_docs += 1
             else:
-                # ④ 门禁数量 / 单测基线声明漂移（全文级，含跨行/加粗/个|项|道；历史快照豁免）。
-                for decl in _declaration_violations_in_text(text, exp_gate_count, exp_baseline):
+                # ④ 门禁数量 / 单测基线声明漂移（结构化匹配；历史快照豁免；ignore/void 计数可见）。
+                decl_stats: dict[str, Any] = {}
+                for decl in _declaration_violations_in_text(
+                    text, exp_gate_count, exp_baseline, decl_stats,
+                ):
                     declarations.append({"file": str(path), **decl})
+                for ln in decl_stats.get("ignored_linenos", set()):
+                    ignored_keys.add((str(path), int(ln)))
             lines = text.splitlines()
             other_strategy = _doc_references_other_strategy(path, text)
             truth_id = _RUN_ID_RE.search(Path(truth_path).name)
             truth_id_token = truth_id.group(1) if truth_id else None
             for lineno, line in enumerate(lines, start=1):
                 if any(phrase in line for phrase in _DOC_LINE_SKIP_PHRASES):
+                    continue
+                if line_ignore_reason(line) is not None:    # 行内豁免（须带非空理由）
+                    ignored_keys.add((str(path), lineno))
                     continue
                 # 行内若引用别的 run 标识（描述的是另一份产物），跳过避免误报。
                 line_ids = set(_RUN_ID_RE.findall(line))
@@ -784,6 +830,7 @@ class DocMetricConsistencyGate(BaseGate):
                             violations.append(entry)
 
         excluded = stats.get("excluded", 0)
+        ignored_lines = len(ignored_keys)         # (文件,行号) 去重后可见计数
         # 去重（同文同值的门禁数量/基线声明只保留首处行号）。
         seen_decl: set[tuple[str, str, str]] = set()
         unique_decl: list[dict[str, Any]] = []
@@ -798,6 +845,7 @@ class DocMetricConsistencyGate(BaseGate):
         head = (
             f"void_docs: {void_docs}（gate-doc-void 豁免，必须可见）；"
             f"historical_snapshot_docs: {historical_docs}（历史归档快照白名单，必须可见）；"
+            f"ignored_lines: {ignored_lines}（行内 gate-doc-ignore 豁免，必须可见）；"
             f"④ 门禁数量/单测基线声明漂移 {len(declarations)} 处"
             f"（期望 门禁数={exp_gate_count}、基线={exp_baseline}）"
             f"；① 真实违规 {len(violations)} 处（M4/M5 待重写）；"
@@ -813,6 +861,7 @@ class DocMetricConsistencyGate(BaseGate):
                     "void_docs": void_docs,
                     "max_void_docs": MAX_VOID_DOCS,
                     "historical_snapshot_docs": historical_docs,
+                    "ignored_lines": ignored_lines,
                     "truth_run": Path(truth_path).name,
                 },
             )
@@ -830,6 +879,7 @@ class DocMetricConsistencyGate(BaseGate):
                 metrics={
                     "void_docs": void_docs,
                     "historical_snapshot_docs": historical_docs,
+                    "ignored_lines": ignored_lines,
                     "expected_gate_count": exp_gate_count,
                     "expected_test_baseline": exp_baseline,
                     "violations_total": len(violations),
@@ -855,6 +905,7 @@ class DocMetricConsistencyGate(BaseGate):
                 metrics={
                     "void_docs": void_docs,
                     "historical_snapshot_docs": historical_docs,
+                    "ignored_lines": ignored_lines,
                     "expected_gate_count": exp_gate_count,
                     "expected_test_baseline": exp_baseline,
                     "violations_total": 0,
@@ -872,6 +923,7 @@ class DocMetricConsistencyGate(BaseGate):
             metrics={
                 "void_docs": void_docs,
                 "historical_snapshot_docs": historical_docs,
+                "ignored_lines": ignored_lines,
                 "expected_gate_count": exp_gate_count,
                 "expected_test_baseline": exp_baseline,
                 "scanned_files": len(files),
@@ -954,6 +1006,7 @@ class DocPathReferenceGate(BaseGate):
         violations: list[dict[str, Any]] = []
         whitelisted_hits = 0
         void_docs = 0                            # 作废文档（gate-doc-void 标记）⛔ 必须可见计数
+        ignored_lines = 0                        # 行内 ignore 豁免行数（⛔ 必须可见，不得静默隐藏）
         files = _doc_files(context)
 
         for path in files:
@@ -966,7 +1019,8 @@ class DocPathReferenceGate(BaseGate):
                 continue
             lines = text.splitlines()
             for lineno, line in enumerate(lines, start=1):
-                if "gate-doc-ignore" in line:
+                if line_ignore_reason(line) is not None:    # 行内豁免（须带非空理由，仅本行）
+                    ignored_lines += 1
                     continue
                 for m in _REPO_PATH_RE.finditer(line):
                     ref = _clean_reference(m.group(0))
@@ -1014,11 +1068,13 @@ class DocPathReferenceGate(BaseGate):
                 GateStatus.FAIL,
                 (
                     f"豁免文档数 {void_docs} 超过上限 {MAX_VOID_DOCS}（gate-doc-void 滥用嫌疑）—— "
-                    f"void_docs: {void_docs}（gate-doc-void 豁免，必须可见）；max={MAX_VOID_DOCS}"
+                    f"void_docs: {void_docs}（gate-doc-void 豁免，必须可见）；"
+                    f"ignored_lines: {ignored_lines}（行内豁免，必须可见）；max={MAX_VOID_DOCS}"
                 ),
                 metrics={
                     "void_docs": void_docs,
                     "max_void_docs": MAX_VOID_DOCS,
+                    "ignored_lines": ignored_lines,
                     "violations_total": len(unique),
                     "scanned_files": len(files),
                 },
@@ -1030,6 +1086,7 @@ class DocPathReferenceGate(BaseGate):
                 (
                     f"检出 {len(unique)} 处文档引用了不存在的仓内路径 —— "
                     f"void_docs: {void_docs}（gate-doc-void 豁免，必须可见）；"
+                    f"ignored_lines: {ignored_lines}（行内 gate-doc-ignore 豁免，必须可见）；"
                     f"档A 幽灵证据引用(高危) {len(elevated)} 处；"
                     f"档B 文档-实现路径不一致(低危) {len(low_risk)} 处；"
                     f"档C 运行期产物(白名单) {whitelisted_hits} 处已豁免。"
@@ -1037,6 +1094,7 @@ class DocPathReferenceGate(BaseGate):
                 ),
                 metrics={
                     "void_docs": void_docs,
+                    "ignored_lines": ignored_lines,
                     "violations_total": len(unique),
                     "elevated_total": len(elevated),
                     "low_risk_total": len(low_risk),
@@ -1050,9 +1108,11 @@ class DocPathReferenceGate(BaseGate):
         return self._make(
             GateStatus.PASS,
             f"已扫描 {len(files)} 份文档，引用路径全部存在"
-            f"（白名单豁免 {whitelisted_hits} 处；void_docs: {void_docs}（gate-doc-void 豁免，必须可见））",
+            f"（白名单豁免 {whitelisted_hits} 处；void_docs: {void_docs}（gate-doc-void 豁免，必须可见）；"
+            f"ignored_lines: {ignored_lines}（行内 gate-doc-ignore 豁免，必须可见））",
             metrics={
                 "void_docs": void_docs,
+                "ignored_lines": ignored_lines,
                 "scanned_files": len(files),
                 "whitelisted_skipped_total": whitelisted_hits,
             },

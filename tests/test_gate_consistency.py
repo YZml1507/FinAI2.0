@@ -965,6 +965,128 @@ class TestGateCountStructuredPatterns:
 
 
 # =====================================================================
+# 9d. ② 行内 gate-doc-ignore 豁免的作用域/可见性/理由契约（防新逃逸口）
+# =====================================================================
+
+class TestGateDocIgnoreScope:
+    """行内豁免必须：① 只豁免本行（不扩散）；② 计数可见；③ 须带**非空理由**。"""
+
+    _REASON = "阶段一历史快照（当时值），⛔ 不改史"
+
+    @staticmethod
+    def _doc(tmp_path: Path, name: str, *extra_lines: str) -> Path:
+        truth = json.loads(_AUTHORITATIVE_RUN.read_text(encoding="utf-8"))["metrics"]
+        md = tmp_path / name
+        md.write_text(
+            "# t\n\n"
+            f"最大回撤 {float(truth['max_drawdown']) * 100:.2f}%\n"
+            + "\n".join(extra_lines) + "\n",
+            encoding="utf-8",
+        )
+        return md
+
+    def _eval(self, md: Path):
+        return DocMetricConsistencyGate().evaluate(
+            {"doc_paths": [str(md)], "truth_run_path": str(_AUTHORITATIVE_RUN)}
+        )
+
+    def test_ignore_is_line_scoped_not_file_wide(self, tmp_path: Path):
+        """豁免**只作用于本行**：同文件另一行（无 ignore）的漂移仍必须被报出。"""
+        n = len(GateMasterAudit.get_standard_gates())
+        md = self._doc(
+            tmp_path, "scope.md",
+            f"本仓共 {n + 5} 道门禁。 <!-- gate-doc-ignore: {self._REASON} -->",   # 豁免
+            f"另有 {n + 7} 道门禁。",                                              # 未豁免 ⇒ 必须报
+        )
+        res = self._eval(md)
+        assert res.status == GateStatus.FAIL, "行内豁免不得扩散到整份文档"
+        decls = res.metrics["declaration_violations"]
+        assert all(d["doc_value"] == str(n + 7) for d in decls), f"被豁免行不应报出：{decls}"
+        assert res.metrics["ignored_lines"] == 1, "豁免计数应只含被豁免的那 1 行"
+
+    def test_bare_marker_without_reason_is_not_effective(self, tmp_path: Path):
+        """裸标记 ``<!-- gate-doc-ignore -->`` **不生效** ⇒ 该行照常校验（类比 void 需非空 reason）。"""
+        n = len(GateMasterAudit.get_standard_gates())
+        md = self._doc(tmp_path, "bare.md", f"本仓共 {n + 5} 道门禁。 <!-- gate-doc-ignore -->")
+        res = self._eval(md)
+        assert res.status == GateStatus.FAIL, "裸 ignore 标记不得生效"
+        assert res.metrics["ignored_lines"] == 0
+
+    def test_empty_reason_is_not_effective(self, tmp_path: Path):
+        """``<!-- gate-doc-ignore: -->`` 理由栏为空 ⇒ **不生效**。"""
+        n = len(GateMasterAudit.get_standard_gates())
+        md = self._doc(tmp_path, "empty_reason.md", f"本仓共 {n + 5} 道门禁。 <!-- gate-doc-ignore: -->")
+        res = self._eval(md)
+        assert res.status == GateStatus.FAIL, "空理由 ignore 标记不得生效"
+        assert res.metrics["ignored_lines"] == 0
+
+    def test_wrong_number_with_empty_reason_is_flagged(self, tmp_path: Path):
+        """② 点名场景：含 ignore 的行若数字与真值不符**且理由为空** ⇒ 不得生效（必须报）。"""
+        n = len(GateMasterAudit.get_standard_gates())
+        md = self._doc(tmp_path, "wrong_no_reason.md", f"共 {n + 9} 道门禁 <!-- gate-doc-ignore:  -->")
+        res = self._eval(md)
+        assert res.status == GateStatus.FAIL
+        assert any(d["metric"] == "门禁数量" and d["doc_value"] == str(n + 9)
+                   for d in res.metrics["declaration_violations"])
+
+    def test_ignore_count_is_visible_in_message(self, tmp_path: Path):
+        """豁免必须**可见**：``ignored_lines`` 须出现在 message 与 metrics（⛔ 不得静默隐藏）。"""
+        n = len(GateMasterAudit.get_standard_gates())
+        md = self._doc(tmp_path, "visible.md", f"本仓共 {n + 5} 道门禁。 <!-- gate-doc-ignore: {self._REASON} -->")
+        res = self._eval(md)
+        assert res.metrics["ignored_lines"] == 1
+        assert "ignored_lines: 1" in res.message
+
+    def test_line_ignore_reason_helper_contract(self):
+        from scripts.gates.gate_consistency import line_ignore_reason
+
+        assert line_ignore_reason("x <!-- gate-doc-ignore: 历史快照 -->") == "历史快照"
+        assert line_ignore_reason("x <!-- gate-doc-ignore -->") is None
+        assert line_ignore_reason("x <!-- gate-doc-ignore: -->") is None
+        assert line_ignore_reason("x <!-- gate-doc-ignore:    -->") is None
+        assert line_ignore_reason("普通行，无标记") is None
+
+    def test_ref_gate_ignore_line_scoped_and_counted(self, tmp_path: Path):
+        """G-REF-1 同行内豁免：被豁免行的幽灵路径不报，未豁免行照报，计数可见。"""
+        md = tmp_path / "ref_scope.md"
+        md.write_text(
+            "# t\n"
+            "旧路径 `data/stress_test/` <!-- gate-doc-ignore: 路径已迁移（历史） -->\n"
+            "新幽灵 `data/stress_test/other/`\n",
+            encoding="utf-8",
+        )
+        res = DocPathReferenceGate().evaluate({"doc_paths": [str(md)]})
+        assert res.status == GateStatus.FAIL
+        refs = {v["reference"] for v in res.metrics["violations"]}
+        assert "data/stress_test/other/" in refs
+        assert res.metrics["ignored_lines"] == 1
+        assert "ignored_lines: 1" in res.message
+
+    def test_ref_gate_bare_marker_not_effective(self, tmp_path: Path):
+        md = tmp_path / "ref_bare.md"
+        md.write_text("见 `data/stress_test/` <!-- gate-doc-ignore -->\n", encoding="utf-8")
+        res = DocPathReferenceGate().evaluate({"doc_paths": [str(md)]})
+        assert res.status == GateStatus.FAIL
+        assert res.metrics["ignored_lines"] == 0
+
+    def test_repo_ignore_usage_is_only_the_historical_snapshot_line(self):
+        """全仓 ignore 使用清单守卫：当前仅 1 处（阶段一历史快照行），⛔ 防滥用扩散。"""
+        from scripts.gates.gate_consistency import line_ignore_reason
+
+        root = Path(__file__).resolve().parents[1]
+        hits: list[tuple[str, int]] = []
+        for p in list(root.glob("docs/**/*.md")) + [root / "README.md", root / "CLAUDE.md"]:
+            if not p.is_file():
+                continue
+            for i, line in enumerate(p.read_text(encoding="utf-8").splitlines(), start=1):
+                if line_ignore_reason(line) is not None:
+                    hits.append((str(p.relative_to(root)).replace("\\", "/"), i))
+        assert hits == [("docs/project_status_flowchart.md", 117)], (
+            f"行内 ignore 使用清单发生变化（新增豁免须复核是否为真历史快照）：{hits}"
+        )
+
+
+# =====================================================================
 # 10. 任务 1：晋升/准入层（G-MDD-1 的 BLOCKER 归属地）
 # =====================================================================
 
@@ -1038,6 +1160,10 @@ class TestThreeLayerMddPushWarn:
             def get_push_time_gates():
                 return []
 
+            @staticmethod
+            def get_standard_gates():
+                return [object()]      # ①③ 口径行需要"全库"计数
+
             def audit(self, context=None, strict=False):  # noqa: ANN001
                 return [_mdd_fail()]
 
@@ -1047,6 +1173,63 @@ class TestThreeLayerMddPushWarn:
         assert ok is True, "推送期 G-MDD-1 属 WARN，不得阻断推送"
         assert "[WARN] G-MDD-1" in out
         assert "MDD=0.4308 > 0.35" in out
+
+
+# =====================================================================
+# 11b. ①③ 推送期成功行的**口径**：推送期子集 vs 全库，⛔ 不得混用
+# =====================================================================
+
+class TestPrePushGateCountWording:
+    """``len(results)`` 是**推送期子集**（``PUSH_TIME_GATE_IDS``），⛔ 不得打印成"共注册 N 道"。
+
+    并须提示"另有 N 道需回测证据的门禁不在推送期校验"，否则"推送期全绿"会被误读为"全库全绿"。
+    """
+
+    def _fake_master(self, push_results_n: int, total_n: int):
+        from scripts.gates.base import GateResult as _GR
+        from scripts.gates.base import GateCategory as _GC, GateSeverity as _GS
+
+        def _pass(i: int) -> _GR:
+            return _GR(gate_id=f"X-{i}", name=f"g{i}", category=_GC.G_GATE,
+                       status=GateStatus.PASS, severity=_GS.INFO, message="ok")
+
+        class _FakeMaster:
+            def __init__(self, *a, **k):  # noqa: ANN002, ANN003
+                pass
+
+            @staticmethod
+            def get_push_time_gates():
+                return []
+
+            @staticmethod
+            def get_standard_gates():
+                return [object()] * total_n
+
+            def audit(self, context=None, strict=False):  # noqa: ANN001
+                return [_pass(i) for i in range(push_results_n)]
+
+        return _FakeMaster
+
+    def test_success_line_states_both_scopes(self, monkeypatch):
+        import scripts.hooks.pre_push as pp
+
+        monkeypatch.setattr(pp, "GateMasterAudit", self._fake_master(3, 29))
+        ok, msg = pp.run_master_gate_guard()
+        assert ok is True
+        assert "推送期 3 道" in msg, f"须标出推送期子集口径：{msg}"
+        assert "全库 29 道" in msg, f"须标出全库口径：{msg}"
+        assert "另有 26 道" in msg and "不在推送期校验" in msg, f"须提示未覆盖门禁：{msg}"
+        assert "共注册" not in msg, f"⛔ 不得把子集说成'共注册 N 道门禁'：{msg}"
+
+    def test_success_line_no_deferred_note_when_full_scope(self, monkeypatch):
+        """全库 == 推送期（子集已全覆盖）时，无需"另有"提示。"""
+        import scripts.hooks.pre_push as pp
+
+        monkeypatch.setattr(pp, "GateMasterAudit", self._fake_master(29, 29))
+        ok, msg = pp.run_master_gate_guard()
+        assert ok is True
+        assert "推送期 29 道 / 全库 29 道" in msg
+        assert "另有" not in msg
 
 
 if __name__ == "__main__":
