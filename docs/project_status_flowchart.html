@@ -1,40 +1,93 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>FinAI2.0 项目状态流程图</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FinAI2.0 项目状态流程图 · 2026-09-10</title>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 <style>
 body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    max-width: 1400px;
-    margin: 40px auto;
-    padding: 0 20px;
-    background: #0f172a;
-    color: #f8fafc;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 28px 20px 48px;
+  background: #0f172a;
+  color: #f8fafc;
+  line-height: 1.6;
 }
-h1, h2 { color: #38bdf8; }
+header { margin-bottom: 8px; }
+h1 {
+  color: #38bdf8;
+  font-size: 1.65rem;
+  margin: 0 0 8px;
+}
+.meta {
+  color: #94a3b8;
+  font-size: 0.95rem;
+  margin-bottom: 4px;
+}
+.meta code {
+  color: #e2e8f0;
+  background: #1e293b;
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+h2 {
+  color: #7dd3fc;
+  font-size: 1.2rem;
+  margin: 32px 0 10px;
+  padding-top: 8px;
+  border-top: 1px solid #334155;
+}
 .mermaid {
-    background: white;
-    padding: 20px;
-    border-radius: 8px;
-    margin: 20px 0;
+  background: #ffffff;
+  color: #0f172a;
+  padding: 18px 16px;
+  border-radius: 10px;
+  margin: 0 0 8px;
+  overflow-x: auto;
 }
-pre {
-    background: #1e293b;
-    padding: 15px;
-    border-radius: 8px;
-    overflow-x: auto;
+.note {
+  color: #94a3b8;
+  font-size: 0.95rem;
+  margin: 0 0 10px;
+}
+hr {
+  border: none;
+  border-top: 1px solid #334155;
+  margin: 36px 0 12px;
+}
+ul.history {
+  margin: 8px 0 0 1.2em;
+  padding: 0;
+  color: #cbd5e1;
+  font-size: 0.95rem;
+}
+ul.history li { margin: 8px 0; }
+ul.history b { color: #f8fafc; }
+footer {
+  margin-top: 36px;
+  padding-top: 14px;
+  border-top: 1px solid #334155;
+  color: #64748b;
+  font-size: 0.9rem;
 }
 </style>
 </head>
 <body>
-<h1>FinAI2.0 · 项目状态流程图（2026-09-10 更新）<br/><br/>> 渲染器：支持 mermaid 的 Markdown 查看器（VS Code / Obsidian / GitHub）
-> 数据来源：本会话真实命令输出 + research-finai spec 三件套
-> 交互版见：`docs/project_status_flowchart.html`<br/><br/>#<h1>仓库 / 基建总览<br/><br/><div class="mermaid">
+
+<header>
+  <h1>FinAI2.0 · 项目状态流程图</h1>
+  <div class="meta">更新：<b>2026-09-10</b></div>
+  <div class="meta">渲染：VS Code / Obsidian / 浏览器（本文件）｜ Markdown 镜像：<code>docs/project_status_flowchart.md</code></div>
+  <div class="meta">数据来源：本仓真实命令输出 + research-finai spec 三件套</div>
+</header>
+
+<h2>1. 仓库 / 基建总览</h2>
+<div class="mermaid">
 flowchart TD
   subgraph REPO["双仓（Private）"]
-    F["代码仓 FinAI2.0<br/>HEAD 4d93246 ✅<br/>origin=github.com/YZml1507/FinAI2.0"] 
+    F["代码仓 FinAI2.0<br/>HEAD 4d93246 ✅<br/>origin=github.com/YZml1507/FinAI2.0"]
     R["计划仓 research-finai<br/>HEAD 71e69a1 ✅<br/>origin=github.com/YZml1507/research-finai"]
     F -->|git fetch research 本地路径| R
     F -->|docs/spec 快照 逐字节一致| R
@@ -47,7 +100,10 @@ flowchart TD
   style R fill:#dcfce7,stroke:#16a34a,color:#0f172a
   style DEL fill:#fee2e2,stroke:#dc2626,color:#0f172a
   style TASK fill:#dcfce7,stroke:#16a34a,color:#0f172a
-</div><br/><br/>#<h1>门禁与当前阶段<br/><br/><div class="mermaid">
+</div>
+
+<h2>2. 门禁与当前阶段</h2>
+<div class="mermaid">
 flowchart LR
   G0["G0 spec 三件套齐备 ✅"] --> R15["R1–R5 清零 ✅ af20d85"] --> UT["717 离线单测全绿 ✅ 2026-09-07"]
   UT --> P1["Phase 1 数据层 ✅<br/>T101–T110"]
@@ -73,7 +129,10 @@ flowchart LR
   style G_AUDIT2 fill:#dcfce7,stroke:#16a34a,color:#0f172a
   style G_AUDIT3 fill:#fef3c7,stroke:#f59e0b,color:#0f172a
   style P4 fill:#f1f5f9,stroke:#94a3b8,color:#64748b
-</div><br/><br/>#<h1>Phase 3.5 红利策略执行现状（2026-09-07）<br/><br/><div class="mermaid">
+</div>
+
+<h2>3. Phase 3.5 红利策略执行现状（2026-09-07）</h2>
+<div class="mermaid">
 flowchart LR
   T309["T309 红利税真集成 ✅<br/>FIFO扣税+拆股因子适配+流水入账"] --> T310["T310 跳空缺口滑点 ✅<br/>26 单测全绿"]
   T310 --> T311["T311 红利策略实现 ✅<br/>市值加权生效+MA200择时"]
@@ -88,7 +147,10 @@ flowchart LR
   style T312 fill:#dcfce7,stroke:#16a34a
   style AUDIT fill:#dcfce7,stroke:#16a34a
   style G45 fill:#dbeafe,stroke:#2563eb,color:#0f172a
-</div><br/><br/>#<h1>T312 审计防伪与硬伤修复全景<br/><br/><div class="mermaid">
+</div>
+
+<h2>4. T312 审计防伪与硬伤修复全景</h2>
+<div class="mermaid">
 flowchart TB
   subgraph FIX_AND_AUDIT["T312 底层硬伤根治与防伪实证 (5/5 PASS)"]
     direction TB
@@ -113,7 +175,10 @@ flowchart TB
   style DATA_FIX fill:#dbeafe,stroke:#2563eb,color:#0f172a
   style ENGINE_FIX fill:#dcfce7,stroke:#16a34a,color:#0f172a
   style AUDIT_GATE fill:#dcfce7,stroke:#16a34a,color:#0f172a
-</div><br/><br/>#<h1>测试基线演进<br/><br/><div class="mermaid">
+</div>
+
+<h2>5. 测试基线演进</h2>
+<div class="mermaid">
 flowchart LR
   B0["Phase 0 起点<br/>19 passed"] --> B1["Phase 1 数据层<br/>162 passed"]
   B1 --> B2["Phase 2 回测引擎<br/>394 passed"]
@@ -140,7 +205,11 @@ flowchart LR
   style GATES2 fill:#dcfce7,stroke:#16a34a,color:#0f172a
   style GATES3 fill:#dcfce7,stroke:#16a34a,color:#0f172a
   style PHASE4 fill:#dcfce7,stroke:#16a34a,color:#0f172a
-</div><br/><br/>#<h1>当前位置与运行状态<br/><br/><div class="mermaid">
+</div>
+
+<h2>6. 当前位置与运行状态</h2>
+<p class="note">诊断报告：<code>docs/diagnosis/t312_full_period_diagnosis.md</code></p>
+<div class="mermaid">
 flowchart TD
   GATE_DONE["六维防伪与质量门禁体系 ✅ 三大阶段完工<br/>24 道门禁 / tamper_guard / CI / 725 passed"]
   GATE_DONE --> P4_ADMIT["Phase 4 准入基建与 T405 报备 ✅<br/>日终执行器 / 跟踪总账 / 725 单测"]
@@ -156,19 +225,35 @@ flowchart TD
   style HOLD fill:#fee2e2,stroke:#dc2626,color:#0f172a
   style DECIDE fill:#fee2e2,stroke:#dc2626,color:#0f172a
   style OK fill:#f1f5f9,stroke:#94a3b8,color:#64748b
-</div><br/><br/>---<br/><br/>**更新历史**：
-- 2026-08-31：Phase 0–1 完成标记
-- 2026-09-01：Phase 2–3 完成标记 + G3/G4 门禁通过
-- 2026-09-02：Phase 3.5 红利策略切换完成 + G4.5 门禁通过 + 测试基线 524
-- 2026-09-02：T402 偏差容忍带 + T401/T403/T404 修复与台账自动化完成 + 测试基线 619
-- 2026-09-07：T312 底层四大硬伤彻底根治 + 回测引擎红利税真集成与送转拆股容错 + 市值加权生效 + 自动化防伪审计 5/5 全 PASS + 真实 10 年全周期回测正式落盘（Run ID 20260907-150402，总收益 -27.72%，CAGR -3.20%，实扣红利税 5,043.75 元，每一分钱有据可查）+ 测试基线提升至 629 passed 全绿。
-- 2026-09-07：第 17 号《中低频量化研发防伪与工程质量门禁体系深度调研报告》定稿（Commit `3119acd`）。确立学术三里程碑、工业平台准入门禁与监管法案；明确 10~15 万纯多头无对冲散户客观物理约束；构建六维防御门禁（D-L-E-A-S-G）体系；代码仓冻结待命。
-- 2026-09-07：六维门禁体系【阶段一：独立门禁工具包开发】完工闭环（Commit `4d93246`）。落盘 scripts/gates/ 工具包（23 项机读门禁 + gate_master_audit.py 调度器）；tests/test_gates.py 52 项单测全绿；测试基线提升至 681 passed 全绿；母库 FINDING- 守卫恒等于 370 行。
-- 2026-09-07：六维门禁体系【阶段二：执行流前置/后置闸门植入】完工闭环。回测主流程 scripts/run_dividend_backtest.py 深度挂接前置与后置闸门；新增 runner.py 与 tests/test_gate_integration.py（18 单测全绿）；全库回归单测提升至 699 passed 全绿；母库 370 行守卫严格保持。
-- 2026-09-07：六维门禁体系【阶段三：CI / Git Hooks 自动化防伪硬化与防篡改签名】完工闭环（Commit `4878ffe`）。落地 tamper_guard.py 验签引擎；扩展至 24 道机读门禁；装配 pre-commit 与 pre-push 本地硬卡；两仓 CI 流水线；单测提升至 717 passed 全绿。
-- 2026-09-07：Phase 4 模拟盘准入启动与合规报备核验（T405）完工闭环。发布准入决议书；完成策略说明书、系统架构说明书与 7 项必须项清单（T405 合规审计报告 100% PASS 签署）；研发落地日终执行器 scripts/run_paper_trading_daily.py 与 6 个月跟踪总账 docs/paper_trading/paper_trading_ledger.md 并完成 Day 1 首日执行；编写 Phase 4 单测 tests/test_t405_compliance_and_paper_e2e.py（8 例全绿）；全库回归单测跃升至 725 passed in 18.02s 全绿！Phase 4 模拟盘 6 个月常态化跟踪（T406）正式进入长跑轨道。
-- 2026-09-10：Colab 云端验收 + T312 全周期诊断（P0 仓位不足）+ Phase 4 暂停待 A/B；CI Gate5 修复；完整阶段流程图恢复。
+</div>
 
-<script>mermaid.initialize({ startOnLoad: true, theme: "default" });</script>
+<hr>
+<h2 style="border-top:none;margin-top:0;padding-top:0;">7. 更新历史</h2>
+<ul class="history">
+  <li><b>2026-08-31</b>　Phase 0–1 完成标记</li>
+  <li><b>2026-09-01</b>　Phase 2–3 完成标记 + G3/G4 门禁通过</li>
+  <li><b>2026-09-02</b>　Phase 3.5 红利策略切换完成 + G4.5 + 基线 524</li>
+  <li><b>2026-09-02</b>　T402 / T401 / T403 / T404 + 基线 619</li>
+  <li><b>2026-09-07</b>　T312 硬伤根治 + 审计 5/5 + 真实 10 年回测（Run 20260907-150402，总收益 −27.72%，CAGR −3.20%，红利税 5,043.75 元）+ 基线 629</li>
+  <li><b>2026-09-07</b>　17 号防伪门禁调研定稿（Commit <code>3119acd</code>）</li>
+  <li><b>2026-09-07</b>　门禁阶段一（Commit <code>4d93246</code>，基线 681）</li>
+  <li><b>2026-09-07</b>　门禁阶段二（基线 699）</li>
+  <li><b>2026-09-07</b>　门禁阶段三（Commit <code>4878ffe</code>，基线 717）</li>
+  <li><b>2026-09-07</b>　Phase 4 准入 + T405 + 日终执行器 + 基线 <b>725 passed</b></li>
+  <li><b>2026-09-10</b>　Colab 云端验收 + T312 全周期诊断（P0 仓位不足）+ <b>Phase 4 暂停</b>待 A/B；CI Gate5 修复；完整阶段流程图恢复</li>
+</ul>
+
+<footer>
+  真值源：research-finai spec/plan/tasks ｜ 代码仓 FinAI2.0 ｜ 母库 FINDING=370 ｜ 离线 725 passed
+</footer>
+
+<script>
+mermaid.initialize({
+  startOnLoad: true,
+  theme: "default",
+  securityLevel: "loose",
+  flowchart: { htmlLabels: true, useMaxWidth: true }
+});
+</script>
 </body>
 </html>
