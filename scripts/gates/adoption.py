@@ -48,7 +48,14 @@ def adoption_dir(base_dir: Path | str | None = None) -> Path:
 
 
 def load_adopted(base_dir: Path | str | None = None) -> dict[str, Any] | None:
-    """读取当前采纳指针；未采纳 / 指针非法 ⇒ ``None``（⇒ 准入步无操作）。"""
+    """读取当前采纳指针；未采纳 / 指针非法 ⇒ ``None``（⇒ 准入步无操作）。
+
+    「非法」不仅指 JSON 坏/非对象/缺 ``artifact``，也包括 ``artifact`` **非非空字符串**
+    （如 ``123`` / ``None`` / ``[]`` / ``{}``）——否则下游 ``Path()``/``open()`` 会抛异常，
+    把"脏指针"变成"异常 ⇒ 阻断"，与"未采纳 ⇒ 无操作"两种语义混淆。
+    ⛔ fail-closed 不受影响：``run_adoption_gate`` 对**登记在册**的产物一律**重跑**准入判定，
+    从不信任指针里的状态字段。
+    """
     path = adoption_dir(base_dir) / ADOPTED_FILENAME
     if not path.exists():
         return None
@@ -56,8 +63,11 @@ def load_adopted(base_dir: Path | str | None = None) -> dict[str, Any] | None:
         data = json.loads(path.read_text(encoding="utf-8"))
     except Exception:                        # noqa: BLE001 —— 脏指针视同"未采纳"
         return None
-    if not isinstance(data, dict) or not data.get("artifact"):
+    if not isinstance(data, dict):
         return None
+    artifact = data.get("artifact")
+    if not isinstance(artifact, str) or not artifact.strip():
+        return None                          # 非非空字符串 ⇒ 契约上与"未采纳"同义
     return data
 
 

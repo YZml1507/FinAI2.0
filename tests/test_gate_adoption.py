@@ -148,6 +148,43 @@ class TestDirtyPointerTreatedAsUnadopted:
         (d / ADOPTED_FILENAME).write_text(payload, encoding="utf-8")
         assert load_adopted(tmp_path) is None, f"脏指针应视同未采纳：{payload!r}"
 
+    @pytest.mark.parametrize("artifact", [123, None, [], {}, True, "", "   ", 1.5])
+    def test_non_string_artifact_matches_docstring(self, tmp_path: Path, artifact):
+        """契约：``artifact`` **非非空字符串** ⇒ ``load_adopted`` 返回 ``None``（同"未采纳"）。
+
+        真实契约不一致（team-lead 实测）：原实现只判 ``not data.get("artifact")``，
+        ``artifact=123`` / ``["list"]`` 会**返回 dict**，下游 ``Path()`` 抛异常 ⇒ 语义从
+        "未采纳 ⇒ 无操作"漂成"异常 ⇒ 阻断"。此处锁定 docstring 契约。
+        """
+        d = adoption_dir(tmp_path)
+        d.mkdir(parents=True, exist_ok=True)
+        (d / ADOPTED_FILENAME).write_text(
+            json.dumps({"run_id": "x", "artifact": artifact}), encoding="utf-8",
+        )
+        assert load_adopted(tmp_path) is None, f"非字符串 artifact 应视同未采纳：{artifact!r}"
+
+    def test_non_string_artifact_gate_is_noop_not_exception(self, tmp_path: Path):
+        """非字符串 ``artifact`` ⇒ 走"未采纳 ⇒ 无操作"路径（⛔ 不再是"异常 ⇒ 阻断"）。"""
+        d = adoption_dir(tmp_path)
+        d.mkdir(parents=True, exist_ok=True)
+        (d / ADOPTED_FILENAME).write_text(
+            json.dumps({"run_id": "x", "artifact": 123}), encoding="utf-8",
+        )
+        ok, _msg, meta = run_adoption_gate(tmp_path)
+        assert ok is True, "非字符串 artifact ⇒ 无操作，不得抛异常阻断"
+        assert meta["adopted"] is None
+
+    def test_valid_string_artifact_still_loaded(self, tmp_path: Path):
+        """反向锁定：``artifact`` 为**非空字符串**时照常返回 dict（⛔ 不得一刀切返回 None）。"""
+        d = adoption_dir(tmp_path)
+        d.mkdir(parents=True, exist_ok=True)
+        (d / ADOPTED_FILENAME).write_text(
+            json.dumps({"run_id": "x", "artifact": "experiments/runs/a.json"}),
+            encoding="utf-8",
+        )
+        loaded = load_adopted(tmp_path)
+        assert isinstance(loaded, dict) and loaded["run_id"] == "x"
+
     def test_dirty_pointer_gate_is_noop_not_block(self, tmp_path: Path):
         """脏指针 ⇒ 视同未采纳 ⇒ 准入步无操作（⛔ 不得因脏指针把 CI 判红）。"""
         d = adoption_dir(tmp_path)
@@ -155,6 +192,17 @@ class TestDirtyPointerTreatedAsUnadopted:
         (d / ADOPTED_FILENAME).write_text("{ 脏 JSON", encoding="utf-8")
         ok, _msg, meta = run_adoption_gate(tmp_path)
         assert ok is True and meta["adopted"] is None
+
+    def test_fail_closed_preserved_for_registered_unhealthy_artifact(self, tmp_path: Path):
+        """⛔ fail-closed 仍成立：**合法指针**登记在册的不合格产物 ⇒ 准入步必判 FAIL。
+
+        （收紧只影响"脏指针 ⇒ 未采纳"，不影响"登记在册 ⇒ 重跑准入"这条拦截主路径。）
+        """
+        art = _unhealthy_artifact(tmp_path / "registered_bad.json")
+        adopt(art, require_acceptance_pass=False, base_dir=tmp_path)
+        assert load_adopted(tmp_path) is not None, "前置：合法指针应能读出"
+        ok, msg, _meta = run_adoption_gate(tmp_path)
+        assert ok is False and "FAIL" in msg, "登记在册的不合格产物必须被拦（fail-closed）"
 
 
 # =====================================================================
