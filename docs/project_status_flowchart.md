@@ -28,16 +28,16 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-  G0["G0 spec 三件套齐备 ✅"] --> R15["R1–R5 清零 ✅ af20d85"] --> UT["717 离线单测全绿 ✅ 2026-09-07"]
+  G0["G0 spec 三件套齐备 ✅"] --> R15["R1–R5 清零 ✅ af20d85"] --> UT["760 离线单测全绿 ✅ 2026-09-10 实测"]
   UT --> P1["Phase 1 数据层 ✅<br/>T101–T110"]
   P1 --> G2["G2 三源验收 ✅"]
   G2 --> P2["Phase 2 回测引擎 ✅<br/>T201–T207 + G3"]
   P2 --> P3["Phase 3 策略 ✅<br/>T301–T308"]
   P3 --> G4["G4 技术评审 ✅<br/>动量淘汰 转向红利"]
   G4 --> P35["Phase 3.5 红利策略实证 ✅<br/>硬伤根治 / 审计全过 / 真实10年回测"]
-  P35 --> G_AUDIT1["阶段一：六维门禁工具包 ✅<br/>scripts/gates/ 23道门禁 + 52单测全绿"]
+  P35 --> G_AUDIT1["阶段一：六维门禁工具包 ✅<br/>门禁数量真值以 gate_master_audit.py 注册表为准（⛔ 不硬编码具体数<br/>12 PASS / 13 INCONCLUSIVE / 3 FAIL）"]
   G_AUDIT1 --> G_AUDIT2["阶段二：执行流前置/后置闸门植入 ✅<br/>runner.py + 回测主流程阻断 + 18集成单测"]
-  G_AUDIT2 --> G_AUDIT3["阶段三：CI / Git Hooks 防伪硬化 ✅<br/>tamper_guard 验签 + pre-commit/pre-push 硬拦截 + CI 全绿 ⏵当前"]
+  G_AUDIT2 --> G_AUDIT3["阶段三：CI / Git Hooks 防伪硬化 ✅<br/>tamper_guard 验签 + pre-commit/pre-push 硬拦截<br/>⛔ 门禁实测非全绿（12 PASS / 13 INCONCLUSIVE / 3 FAIL）"]
   G_AUDIT3 --> P4["Phase 4 模拟盘<br/>T401–T404 基建全绿 / 门禁三阶段全闭环 待准入评审"]
   style G0 fill:#dcfce7,stroke:#16a34a
   style R15 fill:#dcfce7,stroke:#16a34a
@@ -60,10 +60,10 @@ flowchart LR
 flowchart LR
   T309["T309 红利税真集成 ✅<br/>FIFO扣税+拆股因子适配+流水入账"] --> T310["T310 跳空缺口滑点 ✅<br/>26 单测全绿"]
   T310 --> T311["T311 红利策略实现 ✅<br/>市值加权生效+MA200择时"]
-  T311 --> T313["T313 压力测试 ✅<br/>4 单测全绿 G4.5 防守通过"]
-  T311 --> T312["T312 真实10年全周期回测 ✅<br/>Run 20260907-150402<br/>CAGR -3.20% / 红利税 5043元"]
-  T312 --> AUDIT["防伪审计工具 ✅<br/>audit_evidence_integrity.py<br/>5/5 项严审全通过"]
-  AUDIT --> G45["G4.5 决策状态<br/>底层硬伤全根治 / 防伪全通过<br/>等待用户拍板后续路线"]
+  T311 --> T313["⛔ T313 压力测试（结论已推翻）<br/>0 成交空测，不构成压力测试<br/>原「G4.5 防守通过」已撤回"]
+  T311 --> T312["T312 真实10年全周期回测 ✅<br/>Run 20260907-150402<br/>CAGR -3.20% / 红利税 5043元<br/>⛔ MDD 43.08% 超 35% 上限（G-MDD-1 FAIL）"]
+  T312 --> AUDIT["防伪审计工具（仅凭据面）<br/>audit_evidence_integrity.py<br/>5/5 项严审全通过"]
+  AUDIT --> G45["G4.5 决策状态<br/>底层硬伤已根治 / 凭据审通过<br/>⛔ Phase 4 ⏸ 暂停，待策略 v2 落地后重审"]
   style T309 fill:#dcfce7,stroke:#16a34a
   style T310 fill:#dcfce7,stroke:#16a34a
   style T311 fill:#dcfce7,stroke:#16a34a
@@ -117,7 +117,7 @@ flowchart LR
   B312_NOW --> GATES1["阶段一：六维防御门禁工具包<br/>23 项门禁 + 52 单测<br/>681 passed"]
   GATES1 --> GATES2["阶段二：执行流前置/后置闸门植入<br/>runner.py + 18 集成单测<br/>699 passed"]
   GATES2 --> GATES3["阶段三：CI / Git Hooks 硬化与验签<br/>tamper_guard + 24 门禁 + 18 单测<br/>717 passed"]
-  GATES3 --> PHASE4["Phase 4 模拟盘准入与合规报备 (T405)<br/>run_paper_trading_daily + 8 单测<br/>725 passed ⏵当前基线"]
+  GATES3 --> PHASE4["Phase 4 模拟盘准入与合规报备 (T405)<br/>run_paper_trading_daily + 8 单测<br/>单测基线真值以单一事实源为准（⛔ 不硬编码）"]
   style B0 fill:#e0e7ff,stroke:#818cf8
   style B1 fill:#e0e7ff,stroke:#818cf8
   style B2 fill:#e0e7ff,stroke:#818cf8
@@ -137,7 +137,7 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-  GATE_DONE["六维防伪与质量门禁体系 ✅ 三大阶段完工<br/>28 道门禁 / tamper_guard / CI / 742 passed"]
+  GATE_DONE["六维防伪与质量门禁体系 ✅ 三大阶段完工<br/>门禁数与单测基线真值以单一事实源为准<br/>（tamper_guard / CI 已装配）"]
   GATE_DONE --> P4_ADMIT["Phase 4 准入基建与 T405 报备 ✅<br/>日终执行器 / 跟踪总账 / 725 单测"]
   P4_ADMIT --> CLOUD["Colab 云端链路 ✅ 2026-09-10<br/>公开 clone + Drive 数据 + 云端回测与本地一致"]
   CLOUD --> DIAG["T312 全周期诊断 ✅<br/>P0：日均持仓 0.5–1.8 / 空仓 54.7%<br/>CAGR -3.20%，2019/2020/2024 跑输 512890"]

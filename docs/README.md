@@ -1,7 +1,7 @@
 # FinAI2.0 · 文档全景导航索引（Documentation Index）
 
 > 更新日期：2026-09-10  
-> 对应项目版本：Phase 0~3.5 与门禁体系完成；Colab 云端链路验收；T312 全周期诊断完成（P0=仓位不足）；**Phase 4 ⏸ 暂停，待策略 v2 落地后重审**；基线 **760 passed**（2026-09-10 实测）
+> 对应项目版本：Phase 0~3.5 与门禁体系完成；Colab 云端链路验收；T312 全周期诊断完成（P0=仓位不足）；**Phase 4 ⏸ 暂停，待策略 v2 落地后重审**；基线**真值以 `scripts/gates/constants.py` 的 `TEST_BASELINE_PASSED` 为单一事实源（⛔ 不硬编码具体数值）**
 > 外部计划与理论权威：`D:\Projects\research-finai\`（00–17 号报告 + `specs\001-a-stock-longonly-daily-quant\`）
 
 ---
@@ -18,8 +18,8 @@ flowchart TD
   DOCS --> D2["2. 回测引擎与门禁 (Phase 2)<br/>• T204 价格与敏感度<br/>• T207 G3 门禁验收"]
   DOCS --> D3["3. 策略风控与防伪 (Phase 3)<br/>• T304 动量压测<br/>• T305 评审报告<br/>• 前视偏差审计<br/>• 缺口滑点 / 高价股过滤"]
   DOCS --> D4["4. 红利策略实证 (Phase 3.5)<br/>• T309 红利税真集成<br/>• T311 红利策略<br/>• T312 硬伤根治与10年回测<br/>• T313 压测（⛔ 0 成交空测，结论已推翻）"]
-  DOCS --> D5["5. Phase 4 ⏸ 暂停（待策略 v2 落地后重审）<br/>• 准入决议书 & T405 合规材料（⛔ 已标注作废/待重写）<br/>• run_paper_trading_daily 日终执行器<br/>• paper_trading_ledger 总账已停计时<br/>• tests/ 760 passed 100% 全绿"]
-  DOCS --> D6["6. 六维质量防伪门禁 (Phase 1~3 全闭环)<br/>• scripts/gates/ 28道门禁+tamper_guard<br/>• .githooks/ & CI 本地云端双拦截<br/>• delivery/ 阶段一~三完工总结"]
+  DOCS --> D5["5. Phase 4 ⏸ 暂停（待策略 v2 落地后重审）<br/>• 准入决议书 & T405 合规材料（已按事实重做：❌ 不通过）<br/>• run_paper_trading_daily 日终执行器<br/>• paper_trading_ledger 总账已停计时<br/>• tests/ 单测基线真值以单一事实源为准（⛔ 不硬编码）"]
+  DOCS --> D6["6. 六维质量防伪门禁 (Phase 1~3 全闭环)<br/>• scripts/gates/ 门禁数真值以注册表为准 + tamper_guard<br/>• .githooks/ & CI 本地云端双拦截<br/>• delivery/ 阶段一~三完工总结"]
   DOCS --> D7["7. 流程图与交付归档<br/>• project_status_flowchart (md/html)<br/>• docs/delivery/ 归档区"]
 ```
 
@@ -82,7 +82,7 @@ flowchart TD
 |---|---|---|
 | [`delivery/PHASE4_ADMISSION_RESOLUTION.md`](delivery/PHASE4_ADMISSION_RESOLUTION.md) | **Phase 4 准入决议书**：⛔ 原「准予准入」结论**已撤回**；Phase 4 现为 ⏸ 暂停（保留留痕） | Phase 4 准入 |
 | [`compliance/strategy_description_template.md`](compliance/strategy_description_template.md) | **程序化交易策略说明书**（锁定 commit `4878ffe`、T312 10 年回测与单测基线） | T405 (FR-COMP-1) |
-| [`compliance/system_architecture_template.md`](compliance/system_architecture_template.md) | **程序化交易系统架构说明书**（披露六层物理架构与 28 道六维防伪门禁；已按实现更正 ST/参与率/告警/基线口径） | T405 (FR-COMP-1) |
+| [`compliance/system_architecture_template.md`](compliance/system_architecture_template.md) | **程序化交易系统架构说明书**（披露六层物理架构与六维防伪门禁，数量真值以注册表为准；已按实现更正 ST/参与率/告警/基线口径） | T405 (FR-COMP-1) |
 | [`compliance/filing_checklist.md`](compliance/filing_checklist.md) | **程序化交易报备材料清单**（7 项必须项核验与报备时间表） | T405 (FR-COMP-1) |
 | [`compliance/T405_COMPLIANCE_AUDIT.md`](compliance/T405_COMPLIANCE_AUDIT.md) | **T405 合规审计报告**（⛔ 已重做为 ❌ 不通过；原「100% PASS 终审签署」已撤回） | T405 (FR-COMP-1) |
 | [`docs/paper_trading/paper_trading_ledger.md`](file:///D:/Projects/FinAI2.0/docs/paper_trading/paper_trading_ledger.md) | **模拟盘 6 个月运行跟踪总账**（T406 每日流水、对账状态与防篡改签名留痕） | T406 (G5 前半) |
@@ -109,9 +109,9 @@ flowchart TD
 | [`../tests/test_gates.py`](../tests/test_gates.py) | **门禁自动化单测套件**（52 个单测 100% 全绿覆盖 PASS/FAIL 阻断/边界） | 测试闭环 |
 | [`../tests/test_gate_integration.py`](../tests/test_gate_integration.py) | **执行流集成测试套件**（18 个单测验证合规全通与违规精准拦截） | 集成验证 |
 | [`../tests/test_gate_p3_hardening.py`](../tests/test_gate_p3_hardening.py) | **阶段三防伪硬化单测套件**（18 个单测验证签名、篡改拦截、tasks 验签与钩子逻辑） | 硬化测试 |
-| [`delivery/GATE_PHASE1_COMPLETION_SUMMARY.md`](delivery/GATE_PHASE1_COMPLETION_SUMMARY.md) | **阶段一完工交付验收总结**：23 项门禁实现全景、散户约束映射与 681 passed 基线证明 | 阶段交付归档 |
-| [`delivery/GATE_PHASE2_COMPLETION_SUMMARY.md`](delivery/GATE_PHASE2_COMPLETION_SUMMARY.md) | **阶段二完工交付验收总结**：前置/后置闸门植入、Fail-Closed 机制与 699 passed 基线证明 | 阶段交付归档 |
-| [`delivery/GATE_PHASE3_COMPLETION_SUMMARY.md`](delivery/GATE_PHASE3_COMPLETION_SUMMARY.md) | **阶段三完工交付验收总结**：CI/Git Hooks 硬拦截、防篡改验签与**阶段三时点快照 717 passed** 基线证明（当前基线 760 passed） | 阶段交付归档 |
+| [`delivery/GATE_PHASE1_COMPLETION_SUMMARY.md`](delivery/GATE_PHASE1_COMPLETION_SUMMARY.md) | **阶段一完工交付验收总结**：阶段一当时 23 项门禁实现全景、散户约束映射与阶段一基线证明　（历史时点快照 → 门禁数/基线真值以单一事实源为准） | 阶段交付归档 |
+| [`delivery/GATE_PHASE2_COMPLETION_SUMMARY.md`](delivery/GATE_PHASE2_COMPLETION_SUMMARY.md) | **阶段二完工交付验收总结**：前置/后置闸门植入、Fail-Closed 机制与阶段二基线证明　（历史时点快照 → 门禁数/基线真值以单一事实源为准） | 阶段交付归档 |
+| [`delivery/GATE_PHASE3_COMPLETION_SUMMARY.md`](delivery/GATE_PHASE3_COMPLETION_SUMMARY.md) | **阶段三完工交付验收总结**：CI/Git Hooks 硬拦截、防篡改验签与阶段三基线证明　（历史时点快照 → 门禁数/基线真值以单一事实源为准） | 阶段交付归档 |
 | [`delivery/gate_phase1_test_output.txt`](delivery/gate_phase1_test_output.txt) | 全库 681 passed in 21.01s 完整控制台单测执行日志真实物理落盘 | 真实物理留痕 |
 | [`delivery/gate_phase2_test_output.txt`](delivery/gate_phase2_test_output.txt) | 全库 699 passed in 18.82s 完整控制台单测执行日志真实物理落盘 | 真实物理留痕 |
 | [`delivery/gate_audit_report.json`](delivery/gate_audit_report.json) | 调度器 `gate_master_audit.py` 导出的机读 JSON 审计报告 | 机器签名留痕 |

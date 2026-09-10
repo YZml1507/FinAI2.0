@@ -12,7 +12,7 @@
 > | 交易胜率 | `46.88%` | **28.21%** | 产物 `metrics.win_rate` |
 > | 往返交易次数 | `102 次` | **78 次** | 产物 `metrics.round_trips` |
 > | 期末总资产 (NAV) | `108,421.32` | **108,421.14** | 产物 `metrics.final_nav` |
-> | 测试基线 | `629 passed` | **760 passed**（2026-09-10 实测） | `py -3.11 -m pytest tests/ -p no:ddtrace` |
+> | 测试基线 | `629 passed` | **真值以 `scripts/gates/constants.py` 的 `TEST_BASELINE_PASSED` 为单一事实源**（⛔ 不硬编码具体数值） | `py -3.11 -m pytest tests/ -p no:ddtrace` |
 >
 > **二、已更正的摩擦成本分项（原文逐项皆错、仅合计凑对，属「倒挤凑数」；分项一律以产物 `fees_total` 为准）**：
 > | 费用科目 | 原文（失实） | 更正后（产物真值） | 出处 |
@@ -29,7 +29,7 @@
 **任务编号**: T312  
 **更新日期**: 2026-09-07  
 **状态**: 底层硬伤根治 + 回测引擎真实集成 + 凭据脚本 5/5 PASS + 真实 10 年全周期回测已落盘。⛔ 但产物未通过回撤上限门禁 `G-MDD-1`（43.08% 高于 35% 上限），Phase 4 ⏸ 暂停，不得据此宣称准入达标  
-**测试状态**: **760 passed**（2026-09-10 实测，0 failed, 0 errors, 100% PASS；原文 629 passed in 15.69s 为过期值）  
+**测试状态**: 单测基线**真值以 `scripts/gates/constants.py` 的 `TEST_BASELINE_PASSED` 为单一事实源**（⛔ 文档不硬编码具体数值；原文所载 629 passed in 15.69s 为过期值）  
 **母库台账**: `finai/sources/` 下 `FINDING-` 行数严格保持 **370** 行基线不变  
 **正式回测产物**: `experiments/runs/20260907-150402-t312-dividend-v1-noseed.json`（唯一事实源，带 `anti_tamper_signature`）  
 
