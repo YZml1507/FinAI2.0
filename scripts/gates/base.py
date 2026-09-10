@@ -16,11 +16,21 @@ from typing import Any
 
 
 class GateStatus(str, Enum):
-    """门禁评定状态"""
+    """门禁评定状态
+
+    语义严格区分（Fail-Closed 铁律）：
+
+    * ``PASS``         —— 门禁**适用**且检验**通过**（唯一计入通过的状态）。
+    * ``FAIL``         —— 门禁**适用**且检验**不通过**（阻断）。
+    * ``WARNING``      —— 门禁适用、检出风险但未达阻断级别（不计入通过）。
+    * ``SKIP``         —— 门禁**不适用**（如该维数据在本场景本就不存在），**不计入通过**。
+    * ``INCONCLUSIVE`` —— 门禁**适用**但**证据/数据不足无法判定**，**严禁视为通过**。
+    """
     PASS = "PASS"
     FAIL = "FAIL"
     WARNING = "WARNING"
     SKIP = "SKIP"
+    INCONCLUSIVE = "INCONCLUSIVE"
 
 
 class GateSeverity(str, Enum):
@@ -70,7 +80,13 @@ class GateResult:
 
     @property
     def is_pass(self) -> bool:
-        return self.status in (GateStatus.PASS, GateStatus.SKIP)
+        """仅 ``PASS`` 视为通过。
+
+        ⛔ SKIP（不适用）与 INCONCLUSIVE（证据不足）**一律不得计为通过**，
+        否则"应检而未检"会伪装成"已检通过"——这正是 24 道门禁 23 SKIP 却
+        报"全绿"的根因（G-SKIP-1 修正）。
+        """
+        return self.status == GateStatus.PASS
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -85,6 +101,18 @@ class GateResult:
             "evidence": self.evidence,
             "timestamp": self.timestamp,
         }
+
+
+def is_blocking_result(result: "GateResult") -> bool:
+    """Fail-Closed 阻断判定：``FAIL`` **或** ``INCONCLUSIVE``（应检未检）且级别 >= CRITICAL。
+
+    ⛔ INCONCLUSIVE 表示"门禁适用但证据不足"，与 FAIL 同为"未通过"，
+    必须在所有拦截路径（CI/Hook/--strict）产生阻断——展示与退出码不得背离。
+    """
+    return result.status in (GateStatus.FAIL, GateStatus.INCONCLUSIVE) and result.severity in (
+        GateSeverity.BLOCKER,
+        GateSeverity.CRITICAL,
+    )
 
 
 class BaseGate(ABC):

@@ -44,13 +44,14 @@ class FeeSumBalanceGate(BaseGate):
 
         trades = context.get("trades", []) if isinstance(context, dict) else getattr(context, "trades", [])
         if not trades:
+            # ⛔ Fail-Closed：无成交证据 ⇒ INCONCLUSIVE（无证据 ≠ 通过）
             return GateResult(
                 gate_id=self.gate_id,
                 name=self.name,
                 category=self.category,
-                status=GateStatus.PASS,
+                status=GateStatus.INCONCLUSIVE,
                 severity=self.severity,
-                message="无交易记录，通过",
+                message="无交易记录，无法对账七科目费用平衡（无证据 ≠ 通过）",
                 threshold=self.threshold_desc,
                 evidence=self.evidence,
             )
@@ -129,13 +130,14 @@ class DailyCashConserveGate(BaseGate):
 
         flows = context.get("daily_cash_flows", []) if isinstance(context, dict) else getattr(context, "daily_cash_flows", [])
         if not flows:
+            # ⛔ Fail-Closed：空账本 ⇒ INCONCLUSIVE（无证据 ≠ 守恒）
             return GateResult(
                 gate_id=self.gate_id,
                 name=self.name,
                 category=self.category,
-                status=GateStatus.PASS,
+                status=GateStatus.INCONCLUSIVE,
                 severity=self.severity,
-                message="无现金流水，通过",
+                message="无每日对账流水（空账本），无法验证现金流守恒（无证据 ≠ 守恒）",
                 threshold=self.threshold_desc,
                 evidence=self.evidence,
             )
@@ -221,13 +223,14 @@ class GoldenRoundtripGate(BaseGate):
 
         rt_fee = context.get("roundtrip_total_fee") if isinstance(context, dict) else getattr(context, "roundtrip_total_fee", None)
         if rt_fee is None:
+            # ⛔ Fail-Closed：缺外部基准实测值 ⇒ INCONCLUSIVE（不得由被检引擎自算自证）
             return GateResult(
                 gate_id=self.gate_id,
                 name=self.name,
                 category=self.category,
-                status=GateStatus.SKIP,
+                status=GateStatus.INCONCLUSIVE,
                 severity=self.severity,
-                message="缺少 roundtrip_total_fee 参数",
+                message="缺少独立黄金算例实测费用（roundtrip_total_fee），无法判定（无外部基准 ≠ 通过）",
                 threshold=self.threshold_desc,
                 evidence=self.evidence,
             )
@@ -293,13 +296,14 @@ class SegmentRateScheduleGate(BaseGate):
 
         trades = context.get("trades", []) if isinstance(context, dict) else getattr(context, "trades", [])
         if not trades:
+            # ⛔ Fail-Closed：无成交证据 ⇒ INCONCLUSIVE（无证据 ≠ 通过）
             return GateResult(
                 gate_id=self.gate_id,
                 name=self.name,
                 category=self.category,
-                status=GateStatus.PASS,
+                status=GateStatus.INCONCLUSIVE,
                 severity=self.severity,
-                message="无成交数据，通过",
+                message="无成交数据，无法穿透历史分段费率时序（无证据 ≠ 通过）",
                 threshold=self.threshold_desc,
                 evidence=self.evidence,
             )

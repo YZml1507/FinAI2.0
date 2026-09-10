@@ -24,15 +24,29 @@ import pytest
 
 from backtest.constants import FeeItem, OrderSide
 from scripts.gates import (
+    AttributionEvidenceGate,
+    DailyCashConserveGate,
+    DividendTaxLockGate,
+    FeatureLivenessGate,
     GateBlockerError,
     GateCategory,
     GateResult,
     GateSeverity,
     GateStatus,
+    HighPriceLotGate,
+    MustFailCasesGate,
+    ProvenanceTriadGate,
+    StaticAstCallGate,
+    SuspensionVolumeGate,
+    TimingExitSurvivalGate,
+    TurnoverCeilingGate,
     run_post_run_gates,
     run_pre_run_gates,
 )
 from scripts.run_dividend_backtest import run_dividend_backtest_2015_2024
+
+#: E-1 五必挂全通过的合法证据（供"验证后置其它门禁"的用例前置满足 E-1，避免被 E-1 INCONCLUSIVE 先拦）
+_MF_OK = {c: True for c in MustFailCasesGate.STANDARD_CASES}
 
 
 # =====================================================================
@@ -172,7 +186,7 @@ class TestGateIntegration:
             }
         ]
         with pytest.raises(GateBlockerError) as exc_info:
-            run_post_run_gates(context={"trades": invalid_trades}, strict=True)
+            run_post_run_gates(context={"trades": invalid_trades, "must_fail_results": _MF_OK}, strict=True)
 
         assert exc_info.value.gate_id == "E-3"
         assert "突破涨跌停板价限幅" in str(exc_info.value)
@@ -190,7 +204,7 @@ class TestGateIntegration:
             }
         ]
         with pytest.raises(GateBlockerError) as exc_info:
-            run_post_run_gates(context={"trades": unbalanced_trades}, strict=True)
+            run_post_run_gates(context={"trades": unbalanced_trades, "must_fail_results": _MF_OK}, strict=True)
 
         assert exc_info.value.gate_id == "A-1"
         assert "七科目费用求和与总费用不平" in str(exc_info.value)
@@ -207,19 +221,26 @@ class TestGateIntegration:
                 "fees": {"STAMP_TAX": Decimal("50.00")},  # 10万卖出按 0.5‰ 扣了 50 元 (应为 100 元)
             }
         ]
+        # 需同时给出可判的 A-2 现金流（否则 A-2 先判 INCONCLUSIVE 阻断，与预期 A-4 冲突）
+        compliant_flows = [{
+            "date": "2023-08-20", "cash_start": "100000", "trade_in": "0", "trade_out": "100000",
+            "fee_out": "50", "dividend_in": "0", "dividend_tax_out": "0", "cash_end": "-50",
+        }]
         with pytest.raises(GateBlockerError) as exc_info:
-            run_post_run_gates(context={"trades": time_travel_trades}, strict=True)
+            run_post_run_gates(
+                context={"trades": time_travel_trades, "must_fail_results": _MF_OK,
+                         "daily_cash_flows": compliant_flows},
+                strict=True,
+            )
 
         assert exc_info.value.gate_id == "A-4"
         assert "历史分段印花税违规" in str(exc_info.value)
 
     def test_s1_excessive_turnover_blocks_post_run(self):
-        """6. 注入年化单边换手率 > 400% 触发 S-1 GateBlockerError 并阻断"""
-        with pytest.raises(GateBlockerError) as exc_info:
-            run_post_run_gates(context={"annualized_turnover": 4.85}, strict=True)
-
-        assert exc_info.value.gate_id == "S-1"
-        assert "超过散户硬顶 400%" in str(exc_info.value)
+        """6. 年化单边换手率 > 400% ⇒ S-1 FAIL（门禁级；S-1 归 run 内可判门禁）"""
+        res = TurnoverCeilingGate(max_turnover=4.0).evaluate({"annualized_turnover": 4.85})
+        assert res.status == GateStatus.FAIL
+        assert "超过散户硬顶 400%" in res.message
 
     def test_no_gates_skips_audit_and_records(self, tmp_path: Path):
         """7. --no-gates 模式下跳过门禁审计，即使数据含异常日线仍完成落盘"""
@@ -252,119 +273,79 @@ class TestIndividualGatesModular:
     """各前置与后置门禁单元契约与拦截精度验证"""
 
     def test_d4_suspension_volume_blocks(self):
-        """D-4 停牌日非零成交量拦截"""
-        context = {
-            "bars": [
-                {"date": "2024-01-02", "tradestatus": "0", "volume": 5000},
-            ]
-        }
-        with pytest.raises(GateBlockerError) as exc_info:
-            run_pre_run_gates(context=context, strict=True)
-        assert exc_info.value.gate_id == "D-4"
+        """D-4 停牌日非零成交量 ⇒ FAIL（门禁级；D-4 归 run 内可判门禁）"""
+        res = SuspensionVolumeGate().evaluate({"bars": [{"date": "2024-01-02", "tradestatus": "0", "volume": 5000}]})
+        assert res.status == GateStatus.FAIL
 
     def test_d5_high_price_lot_blocks(self):
-        """D-5 买入单价 > 300 或非 100 整手拦截"""
-        context = {
-            "orders": [
-                {"side": "BUY", "price": 350.0, "volume": 100},
-            ]
-        }
-        with pytest.raises(GateBlockerError) as exc_info:
-            run_pre_run_gates(context=context, strict=True)
-        assert exc_info.value.gate_id == "D-5"
+        """D-5 买入单价 > 300 或非 100 整手 ⇒ FAIL（门禁级；D-5 需委托明细，归 run/CI）"""
+        res = HighPriceLotGate().evaluate({"orders": [{"side": "BUY", "price": 350.0, "volume": 100}]})
+        assert res.status == GateStatus.FAIL
+        assert res.metrics["violations_count"] == 1
 
     def test_l1_missing_dividend_tax_blocks(self):
-        """L-1 前置未启用 DIVIDEND_TAX 拦截"""
-        context = {
-            "active_features": [],  # 未声明启用 DIVIDEND_TAX
-        }
-        with pytest.raises(GateBlockerError) as exc_info:
-            run_pre_run_gates(context=context, strict=True)
-        assert exc_info.value.gate_id == "L-1"
+        """L-1 前置未启用 DIVIDEND_TAX ⇒ FAIL（门禁级）"""
+        res = FeatureLivenessGate(required_features=["DIVIDEND_TAX"]).evaluate(
+            {"active_features": [], "is_pre_run": True}
+        )
+        assert res.status == GateStatus.FAIL
 
     def test_l3_missing_calls_blocks(self):
-        """L-3 源码 AST 缺少必调函数拦截"""
-        context = {
-            "source_code": "def dummy(): pass",
-            "required_calls": ["non_existent_engine_call"],
-        }
-        with pytest.raises(GateBlockerError) as exc_info:
-            run_pre_run_gates(context=context, strict=True)
-        assert exc_info.value.gate_id == "L-3"
+        """L-3 源码 AST 缺少必调函数 ⇒ FAIL（门禁级；L-3 需运行期追踪，归 CI）"""
+        res = StaticAstCallGate().evaluate(
+            {"source_code": "def dummy(): pass", "required_calls": ["non_existent_engine_call"]}
+        )
+        assert res.status == GateStatus.FAIL
 
     def test_e1_must_fail_cases_blocks(self):
-        """E-1 5 必挂用例未全通拦截"""
-        context = {
-            "must_fail_results": {
-                "LIMIT_UP_BUY_REJECT": False,  # 涨停买入未被拒
-            }
-        }
+        """E-1 5 必挂用例未全通 ⇒ 经 run_post_run_gates(strict) 阻断（E-1 为首道可判门禁）"""
+        context = {"must_fail_results": {"LIMIT_UP_BUY_REJECT": False}}  # 涨停买入未被拒
         with pytest.raises(GateBlockerError) as exc_info:
             run_post_run_gates(context=context, strict=True)
         assert exc_info.value.gate_id == "E-1"
 
     def test_a2_daily_cash_leak_blocks(self):
-        """A-2 每日现金流不守恒拦截"""
+        """A-2 每日现金流不守恒 ⇒ FAIL（门禁级）"""
         context = {
-            "daily_cash_flows": [
-                {
-                    "date": "2024-01-02",
-                    "cash_start": Decimal("100000"),
-                    "trade_in": Decimal("0"),
-                    "trade_out": Decimal("50000"),
-                    "fee_out": Decimal("25"),
-                    "dividend_in": Decimal("0"),
-                    "dividend_tax_out": Decimal("0"),
-                    "cash_end": Decimal("49900"),  # 应为 49975，漏损 75 元
-                }
-            ]
+            "daily_cash_flows": [{
+                "date": "2024-01-02", "cash_start": Decimal("100000"), "trade_in": Decimal("0"),
+                "trade_out": Decimal("50000"), "fee_out": Decimal("25"), "dividend_in": Decimal("0"),
+                "dividend_tax_out": Decimal("0"), "cash_end": Decimal("49900"),  # 应为 49975
+            }]
         }
-        with pytest.raises(GateBlockerError) as exc_info:
-            run_post_run_gates(context=context, strict=True)
-        assert exc_info.value.gate_id == "A-2"
+        res = DailyCashConserveGate().evaluate(context)
+        assert res.status == GateStatus.FAIL
 
     def test_s2_timing_exit_survival_blocks(self):
-        """S-2 破 MA200 熊市死扛未空仓避险拦截"""
-        context = {
+        """S-2 破 MA200 熊市死扛未空仓避险 ⇒ FAIL（门禁级）"""
+        res = TimingExitSurvivalGate().evaluate({
             "index_below_ma200_dates": ["2024-01-15"],
-            "daily_positions_ratio": {"2024-01-15": 0.80},  # 仓位 80% > 5%
-        }
-        with pytest.raises(GateBlockerError) as exc_info:
-            run_post_run_gates(context=context, strict=True)
-        assert exc_info.value.gate_id == "S-2"
+            "daily_positions_ratio": {"2024-01-15": 0.80},
+        })
+        assert res.status == GateStatus.FAIL
 
     def test_s4_dividend_tax_penalty_blocks(self):
-        """S-4 惩罚性红利税占比超 20% 拦截"""
-        context = {
+        """S-4 惩罚性红利税占比超 20% ⇒ FAIL（门禁级；S-4 需分红分档真相，归 CI）"""
+        res = DividendTaxLockGate().evaluate({
             "penalty_tax_amount": Decimal("500.00"),
-            "total_dividend_received": Decimal("1000.00"),  # 50% > 20%
-        }
-        with pytest.raises(GateBlockerError) as exc_info:
-            run_post_run_gates(context=context, strict=True)
-        assert exc_info.value.gate_id == "S-4"
+            "total_dividend_received": Decimal("1000.00"),
+        })
+        assert res.status == GateStatus.FAIL
 
     def test_s5_tariff_cheat_blocks(self):
-        """S-5 存在成交但印花税为 0 关税作弊拦截"""
-        context = {
-            "trades_count": 10,
-            "total_stamp_tax": Decimal("0.00"),
-            "total_commission": Decimal("50.00"),
-            "code_evidence": "backtest/metrics.py:L142",
-        }
-        with pytest.raises(GateBlockerError) as exc_info:
-            run_post_run_gates(context=context, strict=True)
-        assert exc_info.value.gate_id == "S-5"
+        """S-5 存在成交但印花税为 0 关税作弊 ⇒ FAIL（门禁级）"""
+        res = AttributionEvidenceGate().evaluate({
+            "trades_count": 10, "total_stamp_tax": Decimal("0.00"),
+            "total_commission": Decimal("50.00"), "code_evidence": "backtest/metrics.py:L142",
+        })
+        assert res.status == GateStatus.FAIL
 
     def test_g1_incomplete_triad_blocks(self):
-        """G-1 缺少有效 Git SHA 拦截"""
-        context = {
-            "git_commit": "INVALID_SHA",
-            "data_hash": "a" * 64,
-            "timestamp": "2026-09-07T16:00:00Z",
-        }
-        with pytest.raises(GateBlockerError) as exc_info:
-            run_post_run_gates(context=context, strict=True)
-        assert exc_info.value.gate_id == "G-1"
+        """G-1 缺少有效 Git SHA ⇒ FAIL（门禁级）"""
+        res = ProvenanceTriadGate().evaluate({
+            "git_commit": "INVALID_SHA", "data_hash": "a" * 64, "timestamp": "2026-09-07T16:00:00Z",
+        })
+        assert res.status == GateStatus.FAIL
 
     def test_g3_master_finding_guard_verified(self):
         """G-3 母库只读区 FINDING- 守卫行数必须恒等于 370 行"""

@@ -49,8 +49,19 @@ def get_staged_files() -> list[str]:
         return []
 
 
-def run_pre_commit_checks(staged_files: list[str] | None = None) -> tuple[bool, list[str]]:
-    """执行全部 pre-commit 门禁检验。返回 (all_passed, error_messages)"""
+def run_pre_commit_checks(
+    staged_files: list[str] | None = None,
+    repo_root: str | Path | None = None,
+) -> tuple[bool, list[str]]:
+    """执行全部 pre-commit 门禁检验。返回 (all_passed, error_messages)
+
+    Args:
+        staged_files: 暂存文件名列表（相对仓根）；``None`` 时读 git 暂存区。
+        repo_root: 仓根覆盖（⛔ 测试必须传 ``tmp_path``，不得写真实仓库）；
+            ``None`` 时回退到本模块所在仓库根。
+    """
+    base_root = Path(repo_root).resolve() if repo_root is not None else Path(__file__).resolve().parent.parent.parent
+
     errors: list[str] = []
     if staged_files is None:
         staged_files = get_staged_files()
@@ -58,7 +69,7 @@ def run_pre_commit_checks(staged_files: list[str] | None = None) -> tuple[bool, 
     print("[PRE-COMMIT] 正在执行 FinAI2.0 提交前防伪与质量硬门禁检查...")
 
     # 1. 母库只读区 370 行红线检查（每次提交必检）
-    ok_m, cnt_m, msg_m = check_mother_library_guard(repo_root)
+    ok_m, cnt_m, msg_m = check_mother_library_guard(base_root)
     if not ok_m:
         errors.append(f"母库红线违约: {msg_m}")
     else:
@@ -67,7 +78,7 @@ def run_pre_commit_checks(staged_files: list[str] | None = None) -> tuple[bool, 
     # 2. tasks.md 防伪签名检查（若暂存区涉及 tasks.md）
     tasks_staged = [f for f in staged_files if f.endswith("tasks.md")]
     for tf in tasks_staged:
-        full_path = repo_root / tf
+        full_path = base_root / tf
         if full_path.exists():
             ok_t, viols_t, stats_t = verify_tasks_markdown(full_path)
             if not ok_t:
@@ -78,7 +89,7 @@ def run_pre_commit_checks(staged_files: list[str] | None = None) -> tuple[bool, 
     # 3. 回测落盘产物防篡改签名检查（若暂存区涉及 runs/*.json）
     runs_staged = [f for f in staged_files if f.endswith(".json") and ("runs/" in f.replace("\\", "/") or "experiments/" in f.replace("\\", "/"))]
     for rf in runs_staged:
-        full_path = repo_root / rf
+        full_path = base_root / rf
         if full_path.exists():
             try:
                 import json
@@ -97,7 +108,7 @@ def run_pre_commit_checks(staged_files: list[str] | None = None) -> tuple[bool, 
     # 4. Python 语法编译检查
     py_staged = [f for f in staged_files if f.endswith(".py")]
     for pf in py_staged:
-        full_path = repo_root / pf
+        full_path = base_root / pf
         if full_path.exists():
             try:
                 py_compile.compile(str(full_path), doraise=True)

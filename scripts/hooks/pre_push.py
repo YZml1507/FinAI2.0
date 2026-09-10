@@ -3,8 +3,8 @@
 """Pre-push Hook: 推送前防倒退与六维门禁总检拦截（FinAI2.0 防伪硬化）
 
 在 git push 时自动触发，执行以下刚性检查：
-1. 离线回归单测套件全量执行，要求 100% PASS 且通过数不得低于基线 (当前基线 699 passed)；
-2. 六维门禁总调度器 (GateMasterAudit) 自动化运行，严禁存在 BLOCKER 或 CRITICAL 违约；
+1. 离线回归单测套件全量执行，要求 100% PASS（0 failed）且通过数不得低于基线 (当前基线 760 passed)；
+2. 六维门禁总调度器 (GateMasterAudit) 以**仓库现状真实 ctx** 运行推送期门禁，FAIL 或 INCONCLUSIVE 均阻断；
 3. 任一条件不满足坚决拒绝向远端仓库推送。
 """
 
@@ -28,11 +28,12 @@ if str(repo_root) not in sys.path:
     sys.path.insert(0, str(repo_root))
 
 from scripts.gates.gate_master_audit import GateMasterAudit
-from scripts.gates.base import GateStatus, GateSeverity
+from scripts.gates.base import GateStatus, GateSeverity, is_blocking_result
 
 
 #: 历史核准的单测最低通过基线（任何时候不得低于此数值）
-MIN_TEST_BASELINE = 725
+#: 760 = P0 门禁 + ⑦/⑧⑨/⑩/⑪/⑫/⑲/⑳/㉑/㉒ + ㉕/㉖（CI 真实 ctx + 定时审计）后的收集数。
+MIN_TEST_BASELINE = 760
 
 
 def run_pytest_guard(baseline: int = MIN_TEST_BASELINE) -> tuple[bool, str]:
@@ -63,10 +64,17 @@ def run_pytest_guard(baseline: int = MIN_TEST_BASELINE) -> tuple[bool, str]:
         return False, f"回归测试启动异常: {e}"
 
     output = proc.stdout + "\n" + proc.stderr
+
+    # 硬断言 0 failed（防倒退的语义核心；仅比 passed 数会在"有 skip"时误判）
+    failed_match = re.search(r"(\d+)\s+failed", output)
+    failed_count = int(failed_match.group(1)) if failed_match else 0
+    if failed_count > 0:
+        return False, f"检出 {failed_count} 个失败用例（要求 0 failed）:\n{output[-1000:]}"
+
     if proc.returncode != 0:
         return False, f"单测套件执行失败 (exit code: {proc.returncode}):\n{output[-1000:]}"
 
-    # 正则提取 passed 数量，如 "699 passed in 18.84s"
+    # 正则提取 passed 数量，如 "742 passed in 18.84s"
     match = re.search(r"(\d+)\s+passed", output)
     if not match:
         return False, f"未能从 pytest 输出中解析出 passed 数量:\n{output[-500:]}"
@@ -75,26 +83,73 @@ def run_pytest_guard(baseline: int = MIN_TEST_BASELINE) -> tuple[bool, str]:
     if passed_count < baseline:
         return False, f"单测通过数 ({passed_count}) 低于法定基线 ({baseline})！检测到测试用例倒退！"
 
-    return True, f"回归单测 100% 全绿 (实际通过: {passed_count} passed，高于基线 {baseline})"
+    return True, f"回归单测 100% 全绿 (0 failed，实际通过: {passed_count} passed，高于基线 {baseline})"
+
+
+def _build_pre_push_context() -> tuple[dict, str]:
+    """（薄封装）推送期门禁 ctx：复用 ``context_builder.build_repo_context``（与 CI 同源，㉖）。"""
+    from scripts.gates.context_builder import build_repo_context
+
+    return build_repo_context(repo_root)
 
 
 def run_master_gate_guard() -> tuple[bool, str]:
-    """运行六维门禁体系总检，确保无阻断违规"""
+    """运行六维门禁体系总检（以仓库现状构造的真实 ctx），确保无阻断违规。"""
     print("[PRE-PUSH] 2. 正在运行六维防伪门禁体系全量自检 (Gate Master Audit)...")
-    master = GateMasterAudit()
-    results = master.audit(context={}, strict=False)
+    ctx, source = _build_pre_push_context()
+    print(f"[PRE-PUSH]    门禁取证来源: {source}（ctx 键 {len(ctx)} 个）")
+    # ㉓ 归属：推送期只跑"能真取证"的门禁子集；其余归回测后 + 定时全量 CI
+    master = GateMasterAudit(gates=GateMasterAudit.get_push_time_gates())
+    results = master.audit(context=ctx, strict=False)
 
-    blockers = [
-        r for r in results
-        if r.status == GateStatus.FAIL and r.severity in (GateSeverity.BLOCKER, GateSeverity.CRITICAL)
-    ]
+    # ⛔ INCONCLUSIVE（门禁适用但证据不足）与 FAIL 同为"未通过"，必须阻断（⑦：退出码不得与展示背离）
+    blockers = [r for r in results if is_blocking_result(r)]
 
     if blockers:
-        msgs = [f"[{b.gate_id}] {b.name}: {b.message}" for b in blockers]
-        return False, f"检出 {len(blockers)} 项阻断性门禁失败:\n    " + "\n    ".join(msgs)
+        msgs = [f"[{b.gate_id}/{b.status.value}] {b.name}: {b.message}" for b in blockers]
+        return False, f"检出 {len(blockers)} 项阻断性门禁未通过（FAIL/INCONCLUSIVE）:\n    " + "\n    ".join(msgs)
 
     pass_cnt = sum(1 for r in results if r.status == GateStatus.PASS)
     return True, f"六维门禁总检通过 (共注册 {len(results)} 道门禁，PASS: {pass_cnt})"
+
+
+def _write_bypass_audit() -> dict:
+    """逃生阀留痕**落盘**（stdout 会丢 ⇒ 必须写 runs/gate_bypass_audit.jsonl）。"""
+    import datetime as _dt
+    import json
+    import subprocess
+
+    operator = os.environ.get("USERNAME") or os.environ.get("USER", "unknown")
+    try:
+        git_head = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=str(repo_root), text=True, stderr=subprocess.DEVNULL
+        ).strip()
+    except Exception:                       # noqa: BLE001
+        git_head = ""
+    try:
+        changed = subprocess.check_output(
+            ["git", "status", "--porcelain"], cwd=str(repo_root), text=True, stderr=subprocess.DEVNULL
+        ).splitlines()
+    except Exception:                       # noqa: BLE001
+        changed = []
+
+    record = {
+        "timestamp": _dt.datetime.now().astimezone().isoformat(),
+        "operator": operator,
+        "git_head": git_head,
+        "skipped_scope": "Gate Master Audit (六维门禁总检)",
+        "reason": os.environ.get("FINAI_SKIP_PUSH_GATES_REASON", ""),
+        "changed_files_count": len(changed),
+        "changed_files": changed[:200],
+    }
+    audit_path = repo_root / "runs" / "gate_bypass_audit.jsonl"
+    try:
+        audit_path.parent.mkdir(parents=True, exist_ok=True)
+        with audit_path.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(record, ensure_ascii=False) + "\n")
+    except Exception as exc:                # noqa: BLE001
+        print(f"[!!! 告警：逃生阀留痕落盘失败: {exc}]")
+    return record
 
 
 def main() -> None:
@@ -110,13 +165,25 @@ def main() -> None:
         sys.exit(1)
     print(f"[PASS] {msg_test}")
 
-    # 2. 六维门禁总检
-    ok_gate, msg_gate = run_master_gate_guard()
-    if not ok_gate:
-        print(f"[-] [BLOCKED] {msg_gate}")
+    # 2. 六维门禁总检（显式逃生阀：FINAI_SKIP_PUSH_GATES=1，醒目告警 + **落盘**留痕，⛔ 不得静默）
+    if os.environ.get("FINAI_SKIP_PUSH_GATES", "").strip().lower() in ("1", "true", "yes", "on"):
+        import datetime as _dt
+
+        record = _write_bypass_audit()
         print("=" * 70)
-        sys.exit(1)
-    print(f"[PASS] {msg_gate}")
+        print("[!!! 紧急逃生阀已开启 !!!] FINAI_SKIP_PUSH_GATES=1 —— 跳过六维门禁总检")
+        print("[!!! 告警：本次推送未经门禁保护，禁止用于常规提交，仅限紧急恢复 !!!]")
+        print(f"[!!! 留痕] 时间={record['timestamp']}；操作者={record['operator']}；"
+              f"git HEAD={record['git_head']}；跳过={record['skipped_scope']}")
+        print(f"[!!! 留痕已落盘] runs/gate_bypass_audit.jsonl（本次共 {record['changed_files_count']} 个改动文件）")
+        print("=" * 70)
+    else:
+        ok_gate, msg_gate = run_master_gate_guard()
+        if not ok_gate:
+            print(f"[-] [BLOCKED] {msg_gate}")
+            print("=" * 70)
+            sys.exit(1)
+        print(f"[PASS] {msg_gate}")
 
     print("=" * 70)
     print("[ALL PASS] 验证完毕，允许向远端仓库推送！\n")

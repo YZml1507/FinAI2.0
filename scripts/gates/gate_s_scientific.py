@@ -46,13 +46,14 @@ class TurnoverCeilingGate(BaseGate):
 
         turnover = context.get("annualized_turnover") if isinstance(context, dict) else getattr(context, "annualized_turnover", None)
         if turnover is None:
+            # ⛔ Fail-Closed：缺换手率数据 ⇒ INCONCLUSIVE（无证据 ≠ 通过）
             return GateResult(
                 gate_id=self.gate_id,
                 name=self.name,
                 category=self.category,
-                status=GateStatus.SKIP,
+                status=GateStatus.INCONCLUSIVE,
                 severity=self.severity,
-                message="缺少 annualized_turnover 参数",
+                message="缺少 annualized_turnover 参数，无法判定换手率硬顶（无证据 ≠ 通过）",
                 threshold=self.threshold_desc,
                 evidence=self.evidence,
             )
@@ -113,14 +114,39 @@ class TimingExitSurvivalGate(BaseGate):
         below_dates = context.get("index_below_ma200_dates", []) if isinstance(context, dict) else getattr(context, "index_below_ma200_dates", [])
         pos_ratios = context.get("daily_positions_ratio", {}) if isinstance(context, dict) else getattr(context, "daily_positions_ratio", {})
 
-        if not below_dates or not pos_ratios:
+        # ⛔ Fail-Closed：数据缺失 ≠ 通过。缺证据 ⇒ INCONCLUSIVE；有证据表明不适用 ⇒ SKIP。
+        have_below = isinstance(context, dict) and "index_below_ma200_dates" in context
+        if not have_below:
             return GateResult(
                 gate_id=self.gate_id,
                 name=self.name,
                 category=self.category,
-                status=GateStatus.PASS,
+                status=GateStatus.INCONCLUSIVE,
                 severity=self.severity,
-                message="无破位交易日或仓位数据，通过",
+                message="缺少破 MA200 日期证据（index_below_ma200_dates），无法判定择时空仓生存（无证据 ≠ 通过）",
+                threshold=self.threshold_desc,
+                evidence=self.evidence,
+            )
+        if not below_dates:
+            return GateResult(
+                gate_id=self.gate_id,
+                name=self.name,
+                category=self.category,
+                status=GateStatus.SKIP,
+                severity=self.severity,
+                message="回测区间内基准指数未跌破 MA200（有证据表明该门禁不适用）",
+                threshold=self.threshold_desc,
+                evidence=self.evidence,
+            )
+        if not pos_ratios:
+            return GateResult(
+                gate_id=self.gate_id,
+                name=self.name,
+                category=self.category,
+                status=GateStatus.INCONCLUSIVE,
+                severity=self.severity,
+                message="存在破 MA200 交易日，但缺少逐日仓位比例数据，无法判定是否已空仓避险（证据不足 ≠ 通过）",
+                metrics={"below_dates_count": len(below_dates)},
                 threshold=self.threshold_desc,
                 evidence=self.evidence,
             )
@@ -206,6 +232,19 @@ class DynamicSlippageAdvGate(BaseGate):
                 evidence=self.evidence,
             )
 
+        # ⛔ Fail-Closed：缺基准/压力情景收益率 ⇒ INCONCLUSIVE（无证据 ≠ 通过）
+        if base_ret is None or stress_ret is None:
+            return GateResult(
+                gate_id=self.gate_id,
+                name=self.name,
+                category=self.category,
+                status=GateStatus.INCONCLUSIVE,
+                severity=self.severity,
+                message="缺少基准收益率或滑点压力情景收益率，无法判定抗压性（无证据 ≠ 通过）",
+                threshold=self.threshold_desc,
+                evidence=self.evidence,
+            )
+
         # 检验滑点 +50% 压测
         if base_ret is not None and stress_ret is not None:
             if base_ret > 0 and stress_ret <= 0:
@@ -262,15 +301,29 @@ class DividendTaxLockGate(BaseGate):
 
         penalty = Decimal(str(context.get("penalty_tax_amount", 0) if isinstance(context, dict) else getattr(context, "penalty_tax_amount", 0)))
         total_div = Decimal(str(context.get("total_dividend_received", 0) if isinstance(context, dict) else getattr(context, "total_dividend_received", 0)))
+        penalty_given = isinstance(context, dict) and "penalty_tax_amount" in context
 
+        # ⛔ Fail-Closed：无分红 / 缺分档税数据均不得判通过。
         if total_div <= Decimal("0"):
             return GateResult(
                 gate_id=self.gate_id,
                 name=self.name,
                 category=self.category,
-                status=GateStatus.PASS,
+                status=GateStatus.INCONCLUSIVE,
                 severity=self.severity,
-                message="无分红入账，通过",
+                message="回测区间无分红入账（总分红为 0），无法检验红利税避税锁定期（无证据 ≠ 通过）",
+                threshold=self.threshold_desc,
+                evidence=self.evidence,
+            )
+        if not penalty_given:
+            return GateResult(
+                gate_id=self.gate_id,
+                name=self.name,
+                category=self.category,
+                status=GateStatus.INCONCLUSIVE,
+                severity=self.severity,
+                message="有分红入账但缺少 20% 档惩罚性红利税分项数据，无法判定跨期税损（证据不足 ≠ 通过）",
+                metrics={"total_div": str(total_div)},
                 threshold=self.threshold_desc,
                 evidence=self.evidence,
             )

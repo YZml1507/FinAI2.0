@@ -1,0 +1,70 @@
+name: FinAI2.0 Scheduled Full Gate Audit
+
+# ㉕ 承接"被移出推送期的 14 道需 run 证据门禁"（D-5/L-1/L-2/L-3/E-3/A-1/A-2/A-3/A-4/S-2~S-5/G-STRESS-1）
+# ——它们推送口客观不可判，故归这里（回测后 + 定时全量 CI），而不是"移到一个不存在的地方"。
+#
+# 已知缺口（如实登记，⛔ 不写成已解决）：
+#   回测当前只落盘 metrics 级产物（experiments/runs/*.json），**不含 trade 级明细**
+#   （trades / daily_cash_flows / orders）⇒ E-3/A-1/A-2/A-4/S-2/S-3/S-5 等在 CI 仍为 WARN-only。
+#   待 M4+ 让回测落盘 trade 级证据后，本 workflow 只需上传/下载该 artifact，无需改门禁。
+#
+# 告警：飞书链路当前为 stub（ops/feishu_alert.py 未实现，见 G-REF-1），本 workflow **不伪造已接**，
+#   仅以非零退出使 job 变红，并在日志显式标注"告警未实际发送"。
+
+on:
+  schedule:
+    # 每日 02:17 UTC（北京时间 10:17）全量审计一次
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+
+jobs:
+  scheduled-audit:
+    name: Scheduled Full Gate Audit (run-internal evidence)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    env:
+      PYTHONPATH: .
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: 'requirements.txt'
+
+      - name: Install Core Dependencies
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          python -m pip install "pytest>=8,<9" "pandas>=2.0,<3" "pyarrow>=14" "numpy>=1.24,<3" requests
+
+      - name: Download run artifacts (if previously uploaded)
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: backtest-run-artifacts
+          path: experiments/runs
+
+      - name: "Scheduled Gate Audit: full 28 gates with real repo ctx"
+        run: |
+          set -euo pipefail
+          python -m scripts.gates.gate_master_audit --ci
+
+      - name: Alert on failure (feishu link is a STUB — not actually sent)
+        if: failure()
+        run: |
+          echo "=============================================================="
+          echo "[ALERT] Scheduled full gate audit FAILED."
+          echo "[ALERT] 飞书告警链路当前为 stub（ops/feishu_alert.py 未实现），本次未实际发送。"
+          echo "[ALERT] 请人工查看 workflow 日志中的 [CI][BLOCKED] 明细。"
+          echo "=============================================================="
+          exit 1

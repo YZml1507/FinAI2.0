@@ -11,7 +11,7 @@
 6. tasks.md 两仓镜像一致性校验（完全一致 PASS、哈希偏离 FAIL）；
 7. 母库只读区 370 行守卫检查（实际仓 PASS、模拟篡改行数 FAIL）；
 8. Pre-commit 门禁运行器逻辑核验（合法文件放行、违规件拦截）；
-9. GateMasterAudit 调度器标准门禁包含 G-1 ~ G-4 全四道治理门禁（共 24 道门禁）。
+9. GateMasterAudit 调度器标准门禁包含 G-1 ~ G-4 治理门禁与 P0 一致性四道门禁（共 28 道门禁）。
 """
 
 from __future__ import annotations
@@ -268,24 +268,27 @@ def test_run_pre_commit_checks_clean():
 
 
 def test_run_pre_commit_catches_tampered_run(tmp_path, sample_run_record):
-    """Pre-commit 拦截被篡改的回测记录暂存文件"""
+    """Pre-commit 拦截被篡改的回测记录暂存文件（⛔ 全程隔离在 tmp_path，不碰真实仓库）"""
     tampered = copy.deepcopy(sample_run_record)
     tampered["anti_tamper_signature"] = "fake_bad_sig_123"
-    
-    # 模拟在 runs/ 目录下创建文件
-    runs_dir = Path(__file__).resolve().parent.parent / "runs"
-    runs_dir.mkdir(exist_ok=True)
+
+    # 在临时仓根下的 runs/ 目录造被篡改产物，绝不写真实仓库 runs/
+    runs_dir = tmp_path / "runs"
+    runs_dir.mkdir(parents=True, exist_ok=True)
     fake_run_file = runs_dir / "temp_tampered_test.json"
     fake_run_file.write_text(json.dumps(tampered), encoding="utf-8")
 
     try:
         rel_path = "runs/temp_tampered_test.json"
-        ok, errs = run_pre_commit_checks(staged_files=[rel_path])
+        ok, errs = run_pre_commit_checks(staged_files=[rel_path], repo_root=tmp_path)
         assert ok is False
         assert any("防篡改校验失败" in e for e in errs)
     finally:
-        if fake_run_file.exists():
-            fake_run_file.unlink()
+        # 清理失败（如沙箱删除 shim 抛错）绝不允许污染业务断言
+        try:
+            fake_run_file.unlink(missing_ok=True)
+        except OSError:
+            pass
 
 
 # =====================================================================
@@ -293,11 +296,9 @@ def test_run_pre_commit_catches_tampered_run(tmp_path, sample_run_record):
 # =====================================================================
 
 def test_master_audit_contains_g4_and_all_standard_gates():
-    """六维门禁总调度器涵盖 24 项全量门禁，且包含 G-1, G-2, G-3, G-4"""
+    """六维门禁总调度器涵盖 28 项全量门禁，且包含 G-1~G-4 与 P0 一致性四道门禁"""
     master = GateMasterAudit()
     gate_ids = [g.gate_id for g in master.gates]
-    assert len(gate_ids) == 24
-    assert "G-1" in gate_ids
-    assert "G-2" in gate_ids
-    assert "G-3" in gate_ids
-    assert "G-4" in gate_ids
+    assert len(gate_ids) == 28
+    for gid in ("G-1", "G-2", "G-3", "G-4", "G-MDD-1", "G-DOC-1", "G-STRESS-1", "G-REF-1"):
+        assert gid in gate_ids

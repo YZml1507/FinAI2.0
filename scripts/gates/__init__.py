@@ -13,6 +13,7 @@ from .base import (
     GateResult,
     GateSeverity,
     GateStatus,
+    is_blocking_result,
 )
 from .gate_a_accounting import (
     DailyCashConserveGate,
@@ -38,6 +39,12 @@ from .gate_g_governance import (
     ProvenanceTriadGate,
     TasksSignGate,
 )
+from .gate_consistency import (
+    DocMetricConsistencyGate,
+    DocPathReferenceGate,
+    MaxDrawdownCeilingGate,
+    StressValidityGate,
+)
 from .gate_l_liveness import (
     AllocationFidelityGate,
     FeatureLivenessGate,
@@ -51,6 +58,7 @@ from .gate_s_scientific import (
     TurnoverCeilingGate,
 )
 from .gate_master_audit import GateMasterAudit
+from .must_fail_probe import run_must_fail_cases
 from .runner import run_post_run_gates, run_pre_run_gates
 from .tamper_guard import (
     check_mother_library_guard,
@@ -65,6 +73,7 @@ __all__ = [
     "GateMasterAudit",
     "run_pre_run_gates",
     "run_post_run_gates",
+    "run_must_fail_cases",
     # Base
     "GateStatus",
     "GateSeverity",
@@ -73,6 +82,7 @@ __all__ = [
     "GateBlockerError",
     "GateResult",
     "BaseGate",
+    "is_blocking_result",
     # D-Gate
     "RawPriceJumpGate",
     "FloatMarketCapGate",
@@ -103,6 +113,11 @@ __all__ = [
     "TasksSignGate",
     "MasterFindingGate",
     "AntiTamperSignatureGate",
+    # P0 一致性门禁
+    "MaxDrawdownCeilingGate",
+    "DocMetricConsistencyGate",
+    "StressValidityGate",
+    "DocPathReferenceGate",
     # Tamper Guard utils
     "compute_run_signature",
     "sign_run_record",

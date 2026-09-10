@@ -45,17 +45,19 @@ class RawPriceJumpGate(BaseGate):
                 evidence=self.evidence,
             )
 
-        bars = context.get("bars") if isinstance(context, dict) else getattr(context, "bars", [])
+        bars = context.get("bars") if isinstance(context, dict) else getattr(context, "bars", None)
         symbol = context.get("symbol", "UNKNOWN") if isinstance(context, dict) else getattr(context, "symbol", "UNKNOWN")
+        bars = list(bars or [])
 
-        if not bars or len(bars) < 2:
+        # ⛔ Fail-Closed：缺 bars / 样本不足 2 条 ⇒ INCONCLUSIVE（无证据 ≠ 通过；⛔ 不得 len(None) 崩溃）
+        if len(bars) < 2:
             return GateResult(
                 gate_id=self.gate_id,
                 name=self.name,
                 category=self.category,
-                status=GateStatus.PASS,
+                status=GateStatus.INCONCLUSIVE,
                 severity=self.severity,
-                message=f"[{symbol}] 样本不足 2 条，通过",
+                message=f"[{symbol}] 原始日线样本不足 2 条，无法判定跳变率（无证据 ≠ 通过）",
                 metrics={"bars_count": len(bars)},
                 threshold=self.threshold_desc,
                 evidence=self.evidence,
@@ -144,13 +146,14 @@ class FloatMarketCapGate(BaseGate):
         amounts = context.get("amount_list", []) if isinstance(context, dict) else getattr(context, "amount_list", [])
 
         if not float_mvs:
+            # ⛔ Fail-Closed：无市值样本 ⇒ INCONCLUSIVE（无证据 ≠ 通过）
             return GateResult(
                 gate_id=self.gate_id,
                 name=self.name,
                 category=self.category,
-                status=GateStatus.SKIP,
+                status=GateStatus.INCONCLUSIVE,
                 severity=self.severity,
-                message="流通市值列表为空，跳过检验",
+                message="流通市值列表为空，无法判定市值分布真实性（无证据 ≠ 通过）",
                 threshold=self.threshold_desc,
                 evidence=self.evidence,
             )
@@ -199,6 +202,20 @@ class FloatMarketCapGate(BaseGate):
                     evidence=self.evidence,
                 )
 
+        # ⛔ Fail-Closed：样本不足（< 30）无法做分布判定 ⇒ INCONCLUSIVE（不得因样本小就当通过）
+        if n < 30:
+            return GateResult(
+                gate_id=self.gate_id,
+                name=self.name,
+                category=self.category,
+                status=GateStatus.INCONCLUSIVE,
+                severity=self.severity,
+                message=f"样本数 {n} < 30，不足以判定全池市值分布真实性（无证据 ≠ 通过）",
+                metrics={"sample_size": n},
+                threshold=self.threshold_desc,
+                evidence=self.evidence,
+            )
+
         return GateResult(
             gate_id=self.gate_id,
             name=self.name,
@@ -242,13 +259,14 @@ class PitDividendYieldGate(BaseGate):
         year = context.get("year", 0) if isinstance(context, dict) else getattr(context, "year", 0)
 
         if not daily_yields or len(daily_yields) < 60:
+            # ⛔ Fail-Closed：样本不足 60 天 ⇒ INCONCLUSIVE（无证据 ≠ 通过）
             return GateResult(
                 gate_id=self.gate_id,
                 name=self.name,
                 category=self.category,
-                status=GateStatus.PASS,
+                status=GateStatus.INCONCLUSIVE,
                 severity=self.severity,
-                message=f"样本不足 60 天，通过",
+                message=f"股息率样本 {len(daily_yields)} 天 < 60，不足以判定 PIT 动态性（无证据 ≠ 通过）",
                 metrics={"sample_count": len(daily_yields)},
                 threshold=self.threshold_desc,
                 evidence=self.evidence,
@@ -311,13 +329,14 @@ class SuspensionVolumeGate(BaseGate):
 
         bars = context.get("bars", []) if isinstance(context, dict) else getattr(context, "bars", [])
         if not bars:
+            # ⛔ Fail-Closed：无日线证据 ⇒ INCONCLUSIVE（无证据 ≠ 通过）
             return GateResult(
                 gate_id=self.gate_id,
                 name=self.name,
                 category=self.category,
-                status=GateStatus.PASS,
+                status=GateStatus.INCONCLUSIVE,
                 severity=self.severity,
-                message="无日线数据，通过",
+                message="无日线数据，无法判定停牌日成交量是否为零（无证据 ≠ 通过）",
                 threshold=self.threshold_desc,
                 evidence=self.evidence,
             )
@@ -385,13 +404,14 @@ class HighPriceLotGate(BaseGate):
 
         orders = context.get("orders", []) if isinstance(context, dict) else getattr(context, "orders", [])
         if not orders:
+            # ⛔ Fail-Closed：无委托证据 ⇒ INCONCLUSIVE（无证据 ≠ 通过）
             return GateResult(
                 gate_id=self.gate_id,
                 name=self.name,
                 category=self.category,
-                status=GateStatus.PASS,
+                status=GateStatus.INCONCLUSIVE,
                 severity=self.severity,
-                message="无委托记录，通过",
+                message="无委托记录，无法判定高价股/整手约束是否被遵守（无证据 ≠ 通过）",
                 threshold=self.threshold_desc,
                 evidence=self.evidence,
             )

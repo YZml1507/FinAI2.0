@@ -49,8 +49,22 @@ class MustFailCasesGate(BaseGate):
                 evidence=self.evidence,
             )
 
+        # ⛔ Fail-Closed 必须在**门禁类内部**：缺 must_fail_results ⇒ INCONCLUSIVE（不依赖调用方兜底）
+        has_results = isinstance(context, dict) and "must_fail_results" in context
         results = context.get("must_fail_results", {}) if isinstance(context, dict) else getattr(context, "must_fail_results", {})
         explicit_fails = context.get("failed_cases", []) if isinstance(context, dict) else getattr(context, "failed_cases", [])
+
+        if not has_results and not explicit_fails:
+            return GateResult(
+                gate_id=self.gate_id,
+                name=self.name,
+                category=self.category,
+                status=GateStatus.INCONCLUSIVE,
+                severity=self.severity,
+                message="缺少 5 必挂极限用例的逐用例结果（must_fail_results），无法判定撮合引擎保真性（无证据 ≠ 通过）",
+                threshold=self.threshold_desc,
+                evidence=self.evidence,
+            )
 
         failed = list(explicit_fails)
         checked_count = 0
@@ -117,6 +131,19 @@ class BonusSplitFifoGate(BaseGate):
 
         fifo_errors = context.get("fifo_errors", []) if isinstance(context, dict) else getattr(context, "fifo_errors", [])
         final_pos = context.get("final_positions", {}) if isinstance(context, dict) else getattr(context, "final_positions", {})
+
+        # ⛔ Fail-Closed：无任何送转拆股证据（既无 fail 记录也无最终持仓快照）时不得判通过。
+        if not fifo_errors and not final_pos:
+            return GateResult(
+                gate_id=self.gate_id,
+                name=self.name,
+                category=self.category,
+                status=GateStatus.INCONCLUSIVE,
+                severity=self.severity,
+                message="缺少送转拆股 FIFO 证据（fifo_errors / final_positions 均为空），无法判定份额一致性（无证据 ≠ 通过）",
+                threshold=self.threshold_desc,
+                evidence=self.evidence,
+            )
 
         if fifo_errors:
             return GateResult(
@@ -185,13 +212,14 @@ class SlippagePriceCapGate(BaseGate):
 
         trades = context.get("trades", []) if isinstance(context, dict) else getattr(context, "trades", [])
         if not trades:
+            # ⛔ Fail-Closed：无成交证据 ⇒ INCONCLUSIVE（无证据 ≠ 通过）
             return GateResult(
                 gate_id=self.gate_id,
                 name=self.name,
                 category=self.category,
-                status=GateStatus.PASS,
+                status=GateStatus.INCONCLUSIVE,
                 severity=self.severity,
-                message="无成交记录，通过",
+                message="无成交记录，无法判定滑点是否突破板价（无证据 ≠ 通过）",
                 threshold=self.threshold_desc,
                 evidence=self.evidence,
             )

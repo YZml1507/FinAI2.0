@@ -142,6 +142,19 @@ class TasksSignGate(BaseGate):
             )
 
         # 模式 B: 单任务参数签名核验
+        # ⛔ Fail-Closed：未显式提供 is_checked 状态时不得默认"未勾选 ⇒ 通过"。
+        if isinstance(context, dict) and "is_checked" not in context:
+            return GateResult(
+                gate_id=self.gate_id,
+                name=self.name,
+                category=self.category,
+                status=GateStatus.INCONCLUSIVE,
+                severity=self.severity,
+                message="未提供任务勾选状态（is_checked）或 tasks 文档，无法判定勾选是否具备门禁签名（证据不足 ≠ 通过）",
+                threshold=self.threshold_desc,
+                evidence=self.evidence,
+            )
+
         task_id = str(context.get("task_id", "") if isinstance(context, dict) else getattr(context, "task_id", ""))
         is_checked = bool(context.get("is_checked", False) if isinstance(context, dict) else getattr(context, "is_checked", False))
         sig = context.get("gate_signature") if isinstance(context, dict) else getattr(context, "gate_signature", None)

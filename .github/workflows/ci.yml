@@ -55,12 +55,16 @@ jobs:
           set -euo pipefail
           python scripts/gates/tamper_guard.py --verify-all
 
-      - name: "Gate Check 4: Six-Dimensional Gate Master Audit"
+      - name: "Gate Check 4: Six-Dimensional Gate Master Audit (real repo ctx / CI policy)"
         run: |
           set -euo pipefail
-          python -m scripts.gates.gate_master_audit --strict
+          # ㉖：不再用空 context（会因需 run 产物的 INCONCLUSIVE 永久红）。
+          # --ci 以仓库现状构造真实 ctx（与 pre_push 同源）：
+          #   FAIL 或「静态可判门禁的 INCONCLUSIVE」⇒ exit=1；
+          #   「需 run 产物门禁的 INCONCLUSIVE」⇒ 仅告警、不阻断。
+          python -m scripts.gates.gate_master_audit --ci
 
-      - name: "Gate Check 5: Offline Pytest Regression Suite (>=725 passed)"
+      - name: "Gate Check 5: Offline Pytest Regression Suite (>=758 passed)"
         run: |
           set -euo pipefail
           python -m pytest tests/ -q -p no:cacheprovider

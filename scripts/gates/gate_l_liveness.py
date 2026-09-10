@@ -71,6 +71,19 @@ class FeatureLivenessGate(BaseGate):
                 evidence=self.evidence,
             )
 
+        # ⛔ Fail-Closed（运行期）：未声明任何启用特性 ⇒ 无从判定死代码（默认值不得代替证据）
+        if not active:
+            return GateResult(
+                gate_id=self.gate_id,
+                name=self.name,
+                category=self.category,
+                status=GateStatus.INCONCLUSIVE,
+                severity=self.severity,
+                message="未声明本轮启用特性集合（active_features），无法判定死代码（无证据 ≠ 通过）",
+                threshold=self.threshold_desc,
+                evidence=self.evidence,
+            )
+
         item_counts: dict[str, int] = {}
         item_amounts: dict[str, Decimal] = {}
 
@@ -174,13 +187,14 @@ class AllocationFidelityGate(BaseGate):
         if isinstance(tw, dict) and isinstance(av, dict):
             common_keys = sorted(set(tw.keys()) & set(av.keys()))
             if len(common_keys) < 3:
+                # ⛔ Fail-Closed：样本 < 3 无法做秩相关 ⇒ INCONCLUSIVE（不得自动通过）
                 return GateResult(
                     gate_id=self.gate_id,
                     name=self.name,
                     category=self.category,
-                    status=GateStatus.PASS,
+                    status=GateStatus.INCONCLUSIVE,
                     severity=self.severity,
-                    message=f"重合标的数 {len(common_keys)} < 3，不进行秩相关统计，默认通过",
+                    message=f"重合标的数 {len(common_keys)} < 3，样本不足以做秩相关统计（无证据 ≠ 通过）",
                     metrics={"common_keys_count": len(common_keys)},
                     threshold=self.threshold_desc,
                     evidence=self.evidence,
@@ -193,9 +207,9 @@ class AllocationFidelityGate(BaseGate):
                     gate_id=self.gate_id,
                     name=self.name,
                     category=self.category,
-                    status=GateStatus.PASS,
+                    status=GateStatus.INCONCLUSIVE,
                     severity=self.severity,
-                    message="标的序列长度不足 3 或不匹配，通过",
+                    message="标的序列长度不足 3 或不匹配，样本不足（无证据 ≠ 通过）",
                     threshold=self.threshold_desc,
                     evidence=self.evidence,
                 )
@@ -293,9 +307,23 @@ class StaticAstCallGate(BaseGate):
                 evidence=self.evidence,
             )
 
+        executed_present = isinstance(context, dict) and "executed_calls" in context
         executed = set(context.get("executed_calls", []) if isinstance(context, dict) else getattr(context, "executed_calls", []))
         required = set(context.get("required_calls", []) if isinstance(context, dict) else getattr(context, "required_calls", []))
         source_code = context.get("source_code", "") if isinstance(context, dict) else getattr(context, "source_code", "")
+
+        # ⛔ Fail-Closed：未提供必调链路清单 ⇒ 无从审计（无证据 ≠ 通过）
+        if not required:
+            return GateResult(
+                gate_id=self.gate_id,
+                name=self.name,
+                category=self.category,
+                status=GateStatus.INCONCLUSIVE,
+                severity=self.severity,
+                message="未提供必调链路清单（required_calls），无法审计调用链（无证据 ≠ 通过）",
+                threshold=self.threshold_desc,
+                evidence=self.evidence,
+            )
 
         if source_code and required:
             try:
@@ -333,6 +361,23 @@ class StaticAstCallGate(BaseGate):
                 )
 
         if required:
+            # ⛔ Fail-Closed：未提供运行期调用追踪（executed_calls）时，静态可达 ≠ 运行时已调用，
+            # 不得判 PASS；判定为 INCONCLUSIVE（证据不足），交由具备追踪能力的环境补证。
+            if not executed_present:
+                return GateResult(
+                    gate_id=self.gate_id,
+                    name=self.name,
+                    category=self.category,
+                    status=GateStatus.INCONCLUSIVE,
+                    severity=self.severity,
+                    message=(
+                        f"必调链路 {sorted(required)} 静态可达，但缺少运行期调用追踪（executed_calls），"
+                        "无法判定是否真实调用（无证据 ≠ 通过）"
+                    ),
+                    metrics={"required_count": len(required), "missing_executed_trace": True},
+                    threshold=self.threshold_desc,
+                    evidence=self.evidence,
+                )
             missing_exec = [r for r in required if r not in executed]
             if missing_exec:
                 return GateResult(
