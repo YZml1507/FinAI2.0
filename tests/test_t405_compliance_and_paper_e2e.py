@@ -57,6 +57,20 @@ def _pct(value: Any) -> str:
     return f"{float(value) * 100:.2f}%"
 
 
+def _doc_declares_gate_count(text: str) -> bool:
+    """文档是否**声明了**六维门禁数量（数字声明 或 单一事实源引用）。
+
+    PM 现行文档政策（2026-09-10）= **不硬编码冻结值**，改为引用单一事实源
+    （``scripts/gates/constants.TEST_BASELINE_PASSED`` / 门禁注册表）；
+    故接受两种合法形态之一。⛔ 两者皆无 ⇒ 判 False（不得"永远通过"）。
+    """
+    return bool(
+        re.search(r"\d+\s*(项|道)[^\n]{0,12}门禁", text)
+        or "门禁注册表" in text
+        or "单一事实源" in text
+    )
+
+
 # ======================================================================
 # 1. T405 合规报备材料完整性与一致性测试
 # ======================================================================
@@ -82,11 +96,9 @@ class TestT405ComplianceDocs:
         # ⚠ 门禁数量现行文档政策（2026-09-10 PM 口径统一）= **不硬编码冻结值**，
         #    改为引用"单一事实源 / 门禁注册表"；故此处接受「数字声明」或「单一事实源引用」二者之一。
         assert re.search(r"\d+\s+passed", text), "策略说明书未记录单测基线声明（格式: '<N> passed'）"
-        assert (
-            re.search(r"\d+\s*(项|道)[^\n]{0,12}门禁", text)
-            or "门禁注册表" in text
-            or "单一事实源" in text
-        ), "策略说明书未记录六维防御门禁数量声明（数字声明 或 单一事实源引用）"
+        assert _doc_declares_gate_count(text), (
+            "策略说明书未记录六维防御门禁数量声明（数字声明 或 单一事实源引用）"
+        )
 
         # T312 10 年实证核心数据穿透（真值取自权威产物，而非硬编码）
         assert "2015-01-05" in text and "2024-12-31" in text, "未记录 10 年回测完整区间"
@@ -102,6 +114,15 @@ class TestT405ComplianceDocs:
         assert "最高申报速率" in text and "<1 笔/分钟" in text
         assert "单日最高申报笔数" in text and "20 笔" in text
         assert "无杠杆" in text
+
+    def test_gate_count_declaration_assertion_not_vacuous(self):
+        """防'永远通过'：文档**既不写数字、又不引用单一源**时，该断言必须判 False。
+
+        证明 :func:`_doc_declares_gate_count` 的放宽（接受单一事实源引用）不是空断言。
+        """
+        assert _doc_declares_gate_count("六维防御门禁：已实现（无数字、无引用）") is False
+        assert _doc_declares_gate_count("22 项门禁已闭环") is True
+        assert _doc_declares_gate_count("数量真值以 `gate_master_audit.py` 的门禁注册表 为单一事实源") is True
 
     def test_system_architecture_template_complete(self):
         """系统架构说明书必须完备披露六层物理架构与防伪防线。"""

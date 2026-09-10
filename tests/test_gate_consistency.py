@@ -797,6 +797,55 @@ class TestGateCountBaselineConsistency:
         md = self._write_truth_doc(tmp_path, "ok_count.md", f"本仓共 {n} 道机读门禁。")
         assert self._eval(md).status == GateStatus.PASS
 
+    def test_gate_count_phrase_variant_fails(self, tmp_path: Path):
+        """数字**不紧跟**"门禁"的变体（『门禁包已重做为 28 道（…）』）也必须被命中。
+
+        真实漂移实例：`docs/delivery/PHASE4_ADMISSION_RESOLUTION.md:32` —— 当前时态结论写 28 道。
+        """
+        n = len(GateMasterAudit.get_standard_gates())
+        md = self._write_truth_doc(
+            tmp_path, "variant.md", f"门禁包已重做为 **{n + 3} 道**（`scripts/gates/`）；全面闭环。",
+        )
+        res = self._eval(md)
+        assert res.status == GateStatus.FAIL
+        assert any(
+            d["metric"] == "门禁数量" and d["doc_value"] == str(n + 3)
+            for d in res.metrics["declaration_violations"]
+        )
+
+    def test_gate_count_no_false_positive(self, tmp_path: Path):
+        """放宽后的误报防线：① 有关键词但无「N 道」；② 有「N 道」但无关键词 ⇒ 均不得报。"""
+        md1 = self._write_truth_doc(tmp_path, "kw_only.md", "六维防御门禁已全面闭环。")
+        assert self._eval(md1).status == GateStatus.PASS
+        md2 = self._write_truth_doc(tmp_path, "num_only.md", "本章共 7 道工序。")
+        assert self._eval(md2).status == GateStatus.PASS
+
+    def test_baseline_constant_matches_collected_count(self):
+        """防'单一事实源自己漂移'：常量必须**等于** pytest 真实收集数（⛔ 不许 ``>=`` 软化）。
+
+        口径 = **收集数**（``--collect-only``，稳定）；⛔ 不是 ``passed``（会因偶发 skip 波动）。
+        """
+        import re as _re
+        import subprocess
+        import sys as _sys
+
+        from scripts.gates.constants import TEST_BASELINE_PASSED
+
+        repo_root = Path(__file__).resolve().parents[1]
+        proc = subprocess.run(
+            [_sys.executable, "-m", "pytest", str(repo_root / "tests"), "--collect-only", "-q",
+             "-p", "no:ddtrace", "-p", "no:ddtrace.pytest_bdd"],
+            capture_output=True, text=True, cwd=str(repo_root),
+        )
+        output = proc.stdout + "\n" + proc.stderr
+        m = _re.search(r"(\d+)\s+tests?\s+collected", output)
+        assert m, f"未能从 pytest --collect-only 解析收集数:\n{output[-800:]}"
+        actual_collected = int(m.group(1))
+        assert TEST_BASELINE_PASSED == actual_collected, (
+            f"单一事实源漂移：TEST_BASELINE_PASSED={TEST_BASELINE_PASSED} "
+            f"!= 实际收集数 {actual_collected}（请同步 scripts/gates/constants.py）"
+        )
+
     def test_wrong_baseline_fails(self, tmp_path: Path):
         from scripts.gates.constants import TEST_BASELINE_PASSED
 

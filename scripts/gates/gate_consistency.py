@@ -456,10 +456,23 @@ def is_void_doc(text: str) -> bool:
 # 门禁数量 / 单测基线声明一致性（任务 3 补充）：动态核 doc 声称数 vs 单一事实源
 # ---------------------------------------------------------------------------
 
-#: 「N 道门禁 / N 道机读门禁 / N 道自动闸门 / N 道六维(防伪)门禁」——门禁数量声明。
-_GATE_COUNT_RE = re.compile(
-    r"(\d+)\s*道(?:六维|机读|自动|防伪|质量|一致|P0)*(?:门禁|闸门)"
-)
+#: 门禁数量声明的**同行关键词**：同行出现「N 道」且出现任一关键词 ⇒ 视为门禁数量声明。
+_GATE_COUNT_KEYWORDS: tuple[str, ...] = ("门禁", "闸门", "防御", "机读", "六维", "自动")
+
+#: 「N 道」计数 token（放宽形态：数字**不必**紧跟"门禁"，
+#: 以命中「门禁包已重做为 28 道（`scripts/gates/`）」这类当前时态结论）。
+_GATE_COUNT_RE = re.compile(r"(\d+)\s*道")
+
+
+def _gate_count_claims(norm_line: str) -> list[int]:
+    """同一行内的门禁数量声明值（仅当同行含 :data:`_GATE_COUNT_KEYWORDS` 任一）。
+
+    ⛔ 放宽是有意的：真实漂移曾以「重做为 28 道（…）」形态出现，数字后不紧跟"门禁"。
+    关键词约束用于抑制"纯散文里的 N 道"误报。
+    """
+    if not any(k in norm_line for k in _GATE_COUNT_KEYWORDS):
+        return []
+    return [int(m.group(1)) for m in _GATE_COUNT_RE.finditer(norm_line)]
 
 #: 「N passed」/「基线 N」中的**基线声明**——必须紧邻"基线"字样，
 #: 以免把历史进度计数（如流程图里 19/162/.../742 的单测演进、子集运行 "18 passed"）
@@ -524,8 +537,7 @@ def _declaration_violations(
     norm = _normalize_text(line)
 
     if str(expected_gate_count) not in norm:
-        for m in _GATE_COUNT_RE.finditer(norm):
-            val = int(m.group(1))
+        for val in _gate_count_claims(norm):
             if val != expected_gate_count:
                 out.append({
                     "metric": "门禁数量",
