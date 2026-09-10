@@ -23,7 +23,7 @@ from .base import (
     GateStatus,
     is_blocking_result,
 )
-from .context_builder import STATIC_GATE_IDS, build_repo_context, ci_policy
+from .context_builder import STATIC_GATE_IDS, WARN_GATE_IDS, build_repo_context, ci_policy
 from .gate_a_accounting import (
     DailyCashConserveGate,
     FeeSumBalanceGate,
@@ -54,6 +54,7 @@ from .gate_consistency import (
     MaxDrawdownCeilingGate,
     StressValidityGate,
 )
+from .gate_repro import ReproducibilityGate
 from .gate_l_liveness import (
     AllocationFidelityGate,
     FeatureLivenessGate,
@@ -79,7 +80,7 @@ class GateMasterAudit:
 
     @classmethod
     def get_standard_gates(cls) -> list[BaseGate]:
-        """获取标准全量门禁全家桶（D-L-E-A-S-G 六维 + P0 一致性四道 = 28 道）"""
+        """获取标准全量门禁全家桶（D-L-E-A-S-G 六维 + P0 一致性四道 + G-REPRO-1 = 29 道）"""
         return [
             # D-Gate
             RawPriceJumpGate(),
@@ -116,11 +117,15 @@ class GateMasterAudit:
             DocMetricConsistencyGate(),
             StressValidityGate(),
             DocPathReferenceGate(),
+            # G-REPRO-1 复现一致性门禁（M2/PM-1 修复，见 docs/audit/repro_root_cause.md）
+            ReproducibilityGate(),
         ]
 
-    #: 推送期归属（㉓）：推送期即可真取证的门禁。其余门禁归"回测后 + 定时全量 CI"。
-    #: 单一事实源在 ``context_builder.STATIC_GATE_IDS``（推送期与 CI 共用，㉖）。
-    PUSH_TIME_GATE_IDS: frozenset[str] = STATIC_GATE_IDS
+    #: 推送期归属（㉓）：推送期即可真取证的门禁（静态 + 展示性 WARN 门禁）。
+    #: 其余门禁归"回测后 + 定时全量 CI"。
+    #: 单一事实源在 ``context_builder``：``STATIC_GATE_IDS`` ∪ ``WARN_GATE_IDS``（㉖）。
+    #: ⚠ 三层分层（任务 1）：``G-MDD-1`` 归 WARN——**评估并展示**但 ``run_master_gate_guard`` 不阻断。
+    PUSH_TIME_GATE_IDS: frozenset[str] = frozenset(set(STATIC_GATE_IDS) | set(WARN_GATE_IDS))
 
     @classmethod
     def get_push_time_gates(cls) -> list[BaseGate]:
@@ -231,10 +236,17 @@ def main() -> None:
     parser.add_argument("--report", type=str, default="", help="输出 JSON 审计报告路径")
     parser.add_argument("--category", type=str, default="", help="仅运行指定分类，如 D, L, E, A, S, G")
     parser.add_argument("--mdd", type=str, default="", help="仅对指定回测产物运行 G-MDD-1 回撤上限门禁")
+    parser.add_argument("--acceptance", type=str, default="",
+                        help="晋升/准入层判定（任务 1）：读产物 metrics，MDD>0.35/胜率<0.35/换手>4.0 判 FAIL（exit≠0）")
     parser.add_argument("--ci", action="store_true",
-                        help="CI 模式（㉖）：以仓库现状真实 ctx 运行全部 28 道门禁；"
-                             "FAIL 或(静态门禁)INCONCLUSIVE 阻断；需 run 产物的 INCONCLUSIVE 只告警")
+                        help="CI 模式（㉖）：以仓库现状真实 ctx 运行全部 29 道门禁；"
+                             "FAIL 或(静态门禁)INCONCLUSIVE 阻断；WARN 门禁与需 run 产物的 INCONCLUSIVE 只告警")
     args = parser.parse_args()
+
+    # 晋升/准入层（任务 1）：G-MDD-1 的 BLOCKER 能力归属地（推送/回测期均不阻断）。
+    if args.acceptance:
+        from .acceptance import main as _acceptance_main
+        sys.exit(_acceptance_main(["--artifact", args.acceptance]))
 
     # CI 模式：真实 ctx（复用 context_builder，与 pre_push 同源），避免空 ctx 永久红
     if args.ci:
@@ -243,10 +255,15 @@ def main() -> None:
         results = GateMasterAudit().audit(context=ctx, strict=False)
         GateMasterAudit().print_summary(results)
         blocking, blockers, warnings = ci_policy(results)
-        if warnings:
+        # 三层分层（任务 1）：WARN 门禁（如 G-MDD-1）**显式打印但不阻断**。
+        warn_gates = [w for w in warnings if w.gate_id in WARN_GATE_IDS]
+        for w in warn_gates:
+            print(f"[WARN] {w.gate_id} {w.message}")
+        other_warns = [w for w in warnings if w.gate_id not in WARN_GATE_IDS]
+        if other_warns:
             print("=" * 80)
-            print(f"[CI][告警] {len(warnings)} 道需 run 产物的门禁因无证据判 INCONCLUSIVE（只告警不阻断）：")
-            for w in warnings:
+            print(f"[CI][告警] {len(other_warns)} 道需 run 产物的门禁因无证据判 INCONCLUSIVE（只告警不阻断）：")
+            for w in other_warns:
                 print(f"    [{w.gate_id}] {w.name}: {w.message[:90]}")
         print("=" * 80)
         if blockers:

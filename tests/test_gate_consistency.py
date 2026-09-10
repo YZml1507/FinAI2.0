@@ -163,9 +163,17 @@ class TestDocMetricConsistencyGate:
         )
         assert res.status == GateStatus.PASS
 
-    def test_repo_compliance_doc_flags_stale_turnover(self):
-        """合规文档仍载有 92.51%（真值 201.14%）⇒ 必须被指认为违规。"""
-        res = DocMetricConsistencyGate().evaluate({})
+    def test_stale_turnover_doc_flagged(self, tmp_path: Path):
+        """合规类文档若载有失实换手率（92.51%，真值 201.14%）⇒ 必须被指认为违规。
+
+        ⚠ 断言改用合成文档（不再耦合仓库文档现状）——仓库 docs/ 由其它工作流并行修订，
+        门禁对"仓库现状"的判定会随文档修订而变，不应把测试绑死在某一时刻的文档内容上。
+        """
+        md = tmp_path / "strategy_description_template.md"
+        md.write_text("# 策略说明\n\n年化换手率 92.51%\n", encoding="utf-8")
+        res = DocMetricConsistencyGate().evaluate(
+            {"doc_paths": [str(md)], "truth_run_path": str(_AUTHORITATIVE_RUN)}
+        )
         assert res.status == GateStatus.FAIL
         refs = {v["file"] for v in res.metrics["violations"]}
         assert any("strategy_description_template.md" in f for f in refs)
@@ -193,8 +201,15 @@ class TestDocPathReferenceGate:
         res = DocPathReferenceGate().evaluate({"doc_paths": [str(md)]})
         assert res.status == GateStatus.PASS
 
-    def test_repo_reports_known_phantoms(self):
-        res = DocPathReferenceGate().evaluate({})
+    def test_phantom_reference_flagged(self, tmp_path: Path):
+        """幽灵路径引用（如 ``ops/feishu_alert.py``）必须被指认为违规。
+
+        ⚠ 断言改用合成文档（不再耦合仓库文档现状）——docs/ 由其它工作流并行修订，
+        门禁对"仓库现状"的判定会随文档修订而变，不应把测试绑死在某一时刻的文档内容上。
+        """
+        md = tmp_path / "compliance_like.md"
+        md.write_text("变更通知见 `ops/feishu_alert.py`\n", encoding="utf-8")
+        res = DocPathReferenceGate().evaluate({"doc_paths": [str(md)]})
         assert res.status == GateStatus.FAIL
         refs = {v["reference"] for v in res.metrics["violations"]}
         assert "ops/feishu_alert.py" in refs
@@ -394,6 +409,12 @@ def _passing_context(gate_id: str, tmp_path: Path) -> dict | None:
         "G-DOC-1": {"doc_paths": [str(ok_md)], "truth_run_path": str(_AUTHORITATIVE_RUN)},
         "G-REF-1": {"doc_paths": [str(ok_ref)]},
         "G-STRESS-1": {"round_trips": 40, "trading_days": 260},
+        "G-REPRO-1": {"run_records": [
+            {"run_id": "r-a", "params_hash": "ph", "repro_fingerprint": "fp-ok",
+             "metrics": {"max_drawdown": "0.10", "round_trips": 20, "cagr": "0.05"}},
+            {"run_id": "r-b", "params_hash": "ph", "repro_fingerprint": "fp-ok",
+             "metrics": {"max_drawdown": "0.10", "round_trips": 20, "cagr": "0.05"}},
+        ]},
     }
     return mapping.get(gate_id)
 
@@ -440,6 +461,12 @@ def _violating_context(gate_id: str, tmp_path: Path) -> dict | None:
         "G-MDD-1": {"metrics": {"max_drawdown": "0.40", "round_trips": 20}},
         "G-DOC-1": {"doc_paths": [str(md_bad)]},
         "G-REF-1": {"doc_paths": [str(md_ref)]},
+        "G-REPRO-1": {"run_records": [
+            {"run_id": "r-a", "params_hash": "ph", "repro_fingerprint": "fp-bad",
+             "metrics": {"max_drawdown": "0.10", "round_trips": 20, "cagr": "0.05"}},
+            {"run_id": "r-b", "params_hash": "ph", "repro_fingerprint": "fp-bad",
+             "metrics": {"max_drawdown": "0.10", "round_trips": 20, "cagr": "0.09"}},
+        ]},
     }
     return mapping.get(gate_id)
 
@@ -448,11 +475,17 @@ class TestNoSilentPassMeta:
     """⑫ 元测试：杜绝"恒过门禁"。"""
 
     def test_no_gate_passes_on_empty_context_except_self_sourced(self):
-        # G-3（母库 370 守卫）证据来自仓库自身，允许空 context 下 PASS；其余一律不得 PASS。
-        self_sourced = {"G-3"}
+        """空 context 下，除"证据直接来自仓库现状"的门禁外，一律不得 PASS。
+
+        ``G-3``  母库 370 行守卫；``G-DOC-1`` / ``G-REF-1`` 默认扫描全仓文档——
+        三者的 PASS **反映真实仓库合规状态**（文档已合规/作废 ⇒ 无违规 ⇒ PASS），
+        并非"恒过门禁"（其对违规输入的 FAIL 能力由 ``test_every_gate_has_at_least_one_failing_input``
+        与 ``test_violating_contexts_are_specific`` 另行保证）。
+        """
+        repo_self_sourced = {"G-3", "G-DOC-1", "G-REF-1"}
         offenders = [
             g.gate_id for g in GateMasterAudit.get_standard_gates()
-            if g.gate_id not in self_sourced and g.evaluate({}).status == GateStatus.PASS
+            if g.gate_id not in repo_self_sourced and g.evaluate({}).status == GateStatus.PASS
         ]
         assert not offenders, f"空 context 下仍 PASS 的门禁: {offenders}"
 
@@ -497,14 +530,15 @@ class TestNoSilentPassMeta:
         assert not offenders, f"违规 ctx 交叉污染（应只让目标门禁 FAIL）: {offenders}"
 
     def test_ci_policy_blocks_fail_and_static_inconclusive_warns_run_evidence(self):
-        """㉖：CI 策略 —— FAIL 阻断；静态门禁 INCONCLUSIVE 阻断；需 run 产物门禁 INCONCLUSIVE 只告警。"""
+        """㉖：CI 策略 —— FAIL 阻断；静态门禁 INCONCLUSIVE 阻断；需 run 产物门禁 INCONCLUSIVE 只告警；
+        WARN 门禁（G-MDD-1，任务 1 三层分层）FAIL 亦降级为告警。"""
         from scripts.gates.context_builder import ci_policy
 
         def res(gid, status):
             return GateResult(gate_id=gid, name=gid, category=GateCategory.G_GATE,
                               status=status, severity=GateSeverity.BLOCKER, message="x")
 
-        b1, bl1, w1 = ci_policy([res("G-MDD-1", GateStatus.FAIL)])
+        b1, bl1, w1 = ci_policy([res("G-DOC-1", GateStatus.FAIL)])           # 静态 FAIL ⇒ 阻断
         assert b1 and len(bl1) == 1 and not w1
 
         b2, bl2, w2 = ci_policy([res("G-1", GateStatus.INCONCLUSIVE)])       # 静态门禁
@@ -513,10 +547,34 @@ class TestNoSilentPassMeta:
         b3, bl3, w3 = ci_policy([res("G-STRESS-1", GateStatus.INCONCLUSIVE)])  # 需 run 产物
         assert not b3 and not bl3 and len(w3) == 1
 
-    def test_ci_cli_exit_nonzero_with_real_defects(self, monkeypatch):
-        """㉖：`gate_master_audit --ci` 在"3 条真实 FAIL 存在"时 exit=1。"""
+        # 三层分层（任务 1）：G-MDD-1 FAIL 只告警不阻断（BLOCKER 能力下移到准入层）。
+        b4, bl4, w4 = ci_policy([res("G-MDD-1", GateStatus.FAIL)])
+        assert not b4 and not bl4 and len(w4) == 1 and w4[0].gate_id == "G-MDD-1"
+
+    def test_ci_cli_exit_nonzero_when_blocker_present(self, monkeypatch):
+        """㉖：`gate_master_audit --ci` 在存在静态 FAIL 阻断项时 exit=1。
+
+        ⚠ 用**注入的 FAIL 门禁**判定（不再依赖仓库文档现状）——docs/ 由其它工作流并行修订，
+        若把"真实缺陷"写死在测试里，会随文档修订而失真。
+        """
         import scripts.gates.gate_master_audit as gma
 
+        def _fail():
+            return GateResult(gate_id="G-DOC-1", name="doc", category=GateCategory.G_GATE,
+                              status=GateStatus.FAIL, severity=GateSeverity.CRITICAL, message="x")
+
+        class _FakeMaster:
+            def __init__(self, *a, **k):  # noqa: ANN002, ANN003
+                pass
+
+            def audit(self, context=None, strict=False):  # noqa: ANN001
+                return [_fail()]
+
+            def print_summary(self, results):  # noqa: ANN001
+                return None
+
+        monkeypatch.setattr(gma, "GateMasterAudit", _FakeMaster)
+        monkeypatch.setattr(gma, "build_repo_context", lambda *a, **k: ({}, "fake"))
         monkeypatch.setattr(sys, "argv", ["gate_master_audit", "--ci"])
         with pytest.raises(SystemExit) as ei:
             gma.main()
@@ -534,6 +592,250 @@ class TestNoSilentPassMeta:
             if res.status != GateStatus.PASS:
                 offenders.append(f"{gate.gate_id}(got {res.status.value})")
         assert not offenders, f"无法判 PASS 的门禁（恒不过风险）: {offenders}"
+
+
+# =====================================================================
+# 7. 任务 3 元测试之一：门禁分类完备性（防"新增门禁忘记登记 ⇒ 被 ci_policy 静默忽略"）
+# =====================================================================
+
+class TestGateClassificationCompleteness:
+    """``STATIC_GATE_IDS ∪ RUN_EVIDENCE_GATE_IDS`` 必须覆盖全部注册门禁。"""
+
+    def test_classification_covers_all_registered_gates(self):
+        from scripts.gates.context_builder import (
+            RUN_EVIDENCE_GATE_IDS,
+            STATIC_GATE_IDS,
+            WARN_GATE_IDS,
+        )
+
+        registered = {g.gate_id for g in GateMasterAudit.get_standard_gates()}
+        classified = set(STATIC_GATE_IDS) | set(RUN_EVIDENCE_GATE_IDS)
+        assert classified == registered, (
+            f"未登记门禁 {sorted(registered - classified)}（其 SKIP/INCONCLUSIVE 会被静默忽略）；"
+            f"登记了不存在的门禁 {sorted(classified - registered)}"
+        )
+        # 两类必须互斥（否则 ci_policy 语义歧义）。
+        assert not (set(STATIC_GATE_IDS) & set(RUN_EVIDENCE_GATE_IDS)), "静态/需产物门禁集合必须互斥"
+        # WARN 门禁必须也是注册门禁（三层分层的降级集合须合法）。
+        assert set(WARN_GATE_IDS) <= registered, f"WARN 门禁未注册: {sorted(set(WARN_GATE_IDS) - registered)}"
+
+    def test_ci_policy_never_silently_ignores_registered_gate(self):
+        """每道注册门禁的 INCONCLUSIVE / FAIL 必须落入 blocker 或 warning 之一（⛔ 无静默忽略）。"""
+        from scripts.gates.context_builder import ci_policy
+
+        offenders: list[str] = []
+        for gid in sorted({g.gate_id for g in GateMasterAudit.get_standard_gates()}):
+            for status in (GateStatus.INCONCLUSIVE, GateStatus.FAIL):
+                r = GateResult(gate_id=gid, name=gid, category=GateCategory.G_GATE,
+                               status=status, severity=GateSeverity.BLOCKER, message="x")
+                _, blockers, warnings = ci_policy([r])
+                if (r in blockers) == (r in warnings):
+                    offenders.append(f"{gid}/{status.value}")
+        assert not offenders, f"被 ci_policy 静默忽略的门禁结果: {offenders}"
+
+
+# =====================================================================
+# 8. 任务 3 元测试之二 + G-REPRO-1：复现一致性门禁（PM-1）
+# =====================================================================
+
+class TestReproducibilityGate:
+    """G-REPRO-1：同 repro_fingerprint 必得同 metrics；legacy 报 LEGACY_UNVERIFIED。"""
+
+    def test_fails_on_same_fingerprint_inconsistent_metrics(self):
+        """任务 3 反向测试：同 repro_fingerprint 但 metrics 不一致 ⇒ 必须判 FAIL。"""
+        from scripts.gates.gate_repro import ReproducibilityGate
+
+        recs = [
+            {"run_id": "a", "params_hash": "ph", "repro_fingerprint": "fp1",
+             "metrics": {"cagr": "0.05", "max_drawdown": "0.10"}},
+            {"run_id": "b", "params_hash": "ph", "repro_fingerprint": "fp1",
+             "metrics": {"cagr": "0.09", "max_drawdown": "0.10"}},
+        ]
+        res = ReproducibilityGate().evaluate({"run_records": recs})
+        assert res.status == GateStatus.FAIL
+        assert res.metrics["violations_total"] == 1
+
+    def test_passes_on_same_fingerprint_identical_metrics(self):
+        from scripts.gates.gate_repro import ReproducibilityGate
+
+        same = {"cagr": "0.05", "max_drawdown": "0.10"}
+        recs = [
+            {"run_id": "a", "params_hash": "ph", "repro_fingerprint": "fp1", "metrics": dict(same)},
+            {"run_id": "b", "params_hash": "ph", "repro_fingerprint": "fp1", "metrics": dict(same)},
+        ]
+        assert ReproducibilityGate().evaluate({"run_records": recs}).status == GateStatus.PASS
+
+    def test_legacy_same_params_hash_never_fails_but_unverified(self):
+        """legacy 组（无 repro_fingerprint）即便 metrics 不一致也**不判 FAIL**——因为无出处键无法归因。"""
+        from scripts.gates.gate_repro import ReproducibilityGate
+
+        recs = [
+            {"run_id": "l1", "params_hash": "f54c298d5168eac5", "metrics": {"cagr": "0.05"}},
+            {"run_id": "l2", "params_hash": "f54c298d5168eac5", "metrics": {"cagr": "-0.27"}},
+        ]
+        res = ReproducibilityGate().evaluate({"run_records": recs})
+        assert res.status == GateStatus.INCONCLUSIVE
+        assert res.status != GateStatus.PASS
+        assert "LEGACY_UNVERIFIED" in res.message
+
+    def test_repo_legacy_artifacts_report_legacy_unverified(self):
+        """对真实仓库现状（4 份 legacy 产物，无 repro_fingerprint）⇒ LEGACY_UNVERIFIED。"""
+        from scripts.gates.gate_repro import ReproducibilityGate
+
+        res = ReproducibilityGate().evaluate({})
+        assert res.status == GateStatus.INCONCLUSIVE
+        assert "LEGACY_UNVERIFIED" in res.message
+
+
+# =====================================================================
+# 9. 任务 4：gate-doc-void 作废文档标记机制
+# =====================================================================
+
+class TestGateDocVoid:
+    """``<!-- gate-doc-void: date=YYYY-MM-DD; reason=<非空> -->`` 豁免；非法标记不生效。"""
+
+    def test_valid_marker_skips_doc_and_counts(self, tmp_path: Path):
+        md = tmp_path / "void_ok.md"
+        md.write_text(
+            "<!-- gate-doc-void: date=2026-09-10; reason=数字已失实，待 M4' 重写 -->\n\n"
+            "最大回撤 MDD 15.23%\n",
+            encoding="utf-8",
+        )
+        res = DocMetricConsistencyGate().evaluate(
+            {"doc_paths": [str(md)], "truth_run_path": str(_AUTHORITATIVE_RUN)}
+        )
+        assert res.status == GateStatus.PASS            # 该行本应违规，但被 void 豁免
+        assert res.metrics["void_docs"] == 1
+        assert "void_docs: 1" in res.message
+
+    def test_invalid_marker_missing_date_still_validated(self, tmp_path: Path):
+        md = tmp_path / "void_bad_date.md"
+        md.write_text(
+            "<!-- gate-doc-void: reason=缺了 date -->\n\n最大回撤 MDD 15.23%\n",
+            encoding="utf-8",
+        )
+        res = DocMetricConsistencyGate().evaluate(
+            {"doc_paths": [str(md)], "truth_run_path": str(_AUTHORITATIVE_RUN)}
+        )
+        assert res.status == GateStatus.FAIL            # 标记不合法 ⇒ 照常校验 ⇒ 违规
+        assert res.metrics["void_docs"] == 0
+
+    def test_invalid_marker_empty_reason_still_validated(self, tmp_path: Path):
+        md = tmp_path / "void_bad_reason.md"
+        md.write_text(
+            "<!-- gate-doc-void: date=2026-09-10; reason= -->\n\n最大回撤 MDD 15.23%\n",
+            encoding="utf-8",
+        )
+        res = DocMetricConsistencyGate().evaluate(
+            {"doc_paths": [str(md)], "truth_run_path": str(_AUTHORITATIVE_RUN)}
+        )
+        assert res.status == GateStatus.FAIL
+        assert res.metrics["void_docs"] == 0
+
+    def test_is_void_doc_helper_contract(self):
+        from scripts.gates.gate_consistency import is_void_doc
+
+        assert is_void_doc("<!-- gate-doc-void: date=2026-09-10; reason=作废 -->") is True
+        assert is_void_doc("<!-- gate-doc-void: reason=无日期 -->") is False
+        assert is_void_doc("<!-- gate-doc-void: date=2026-09-10; reason=   -->") is False
+        assert is_void_doc("普通文档，无标记") is False
+
+    def test_ref_gate_void_skips_phantom_path_and_counts(self, tmp_path: Path):
+        md = tmp_path / "ref_void.md"
+        md.write_text(
+            "<!-- gate-doc-void: date=2026-09-10; reason=路径已迁移 -->\n见 `data/stress_test/`\n",
+            encoding="utf-8",
+        )
+        res = DocPathReferenceGate().evaluate({"doc_paths": [str(md)]})
+        assert res.status == GateStatus.PASS
+        assert res.metrics["void_docs"] == 1
+        assert "void_docs: 1" in res.message
+
+    def test_ref_gate_invalid_marker_still_validated(self, tmp_path: Path):
+        md = tmp_path / "ref_bad.md"
+        md.write_text(
+            "<!-- gate-doc-void: date=2026-09-10; reason= -->\n见 `data/stress_test/`\n",
+            encoding="utf-8",
+        )
+        res = DocPathReferenceGate().evaluate({"doc_paths": [str(md)]})
+        assert res.status == GateStatus.FAIL
+        assert res.metrics["void_docs"] == 0
+
+
+# =====================================================================
+# 10. 任务 1：晋升/准入层（G-MDD-1 的 BLOCKER 归属地）
+# =====================================================================
+
+class TestAcceptanceGate:
+    """准入入口：对 43.08% 回撤产物判 FAIL 且 exit≠0；健康产物 PASS。"""
+
+    def test_acceptance_fails_on_authoritative_artifact(self):
+        from scripts.gates.acceptance import evaluate_acceptance, main as acc_main
+
+        ok, criteria, _ = evaluate_acceptance(_AUTHORITATIVE_RUN)
+        assert ok is False
+        mdd_crit = next(c for c in criteria if c["id"] == "G-MDD-1")
+        assert mdd_crit["passed"] is False
+        assert acc_main(["--artifact", str(_AUTHORITATIVE_RUN)]) == 1    # exit≠0
+
+    def test_acceptance_passes_on_healthy_artifact(self, tmp_path: Path):
+        from scripts.gates.acceptance import evaluate_acceptance, main as acc_main
+
+        art = tmp_path / "healthy.json"
+        art.write_text(json.dumps({
+            "run_id": "healthy", "status": "FINISHED",
+            "metrics": {"max_drawdown": "0.12", "win_rate": "0.55",
+                        "annual_turnover": "2.0", "round_trips": 40},
+        }), encoding="utf-8")
+        ok, _, _ = evaluate_acceptance(art)
+        assert ok is True
+        assert acc_main(["--artifact", str(art)]) == 0
+
+    def test_master_audit_acceptance_flag_exits_nonzero(self, monkeypatch):
+        import scripts.gates.gate_master_audit as gma
+
+        monkeypatch.setattr(sys, "argv",
+                            ["gate_master_audit", "--acceptance", str(_AUTHORITATIVE_RUN)])
+        with pytest.raises(SystemExit) as ei:
+            gma.main()
+        assert ei.value.code == 1
+
+
+# =====================================================================
+# 11. 任务 1 三层分层：推送期 WARN（G-MDD-1 展示但不阻断）
+# =====================================================================
+
+class TestThreeLayerMddPushWarn:
+    """推送期 G-MDD-1 命中 43.08% 也不得阻断推送，但必须明确打印 ``[WARN]``。"""
+
+    def test_push_guard_does_not_block_on_mdd_fail(self, monkeypatch, capsys):
+        import scripts.hooks.pre_push as pp
+        from scripts.gates.base import GateResult as _GR
+
+        def _mdd_fail() -> _GR:
+            return _GR(
+                gate_id="G-MDD-1", name="最大回撤上限门禁", category=GateCategory.G_GATE,
+                status=GateStatus.FAIL, severity=GateSeverity.BLOCKER,
+                message="检出 1 份产物最大回撤超限：x MDD=0.4308 > 0.35 （43.08%，往返 78 笔）",
+            )
+
+        class _FakeMaster:
+            def __init__(self, *a, **k):  # noqa: ANN002, ANN003
+                pass
+
+            @staticmethod
+            def get_push_time_gates():
+                return []
+
+            def audit(self, context=None, strict=False):  # noqa: ANN001
+                return [_mdd_fail()]
+
+        monkeypatch.setattr(pp, "GateMasterAudit", _FakeMaster)
+        ok, msg = pp.run_master_gate_guard()
+        out = capsys.readouterr().out
+        assert ok is True, "推送期 G-MDD-1 属 WARN，不得阻断推送"
+        assert "[WARN] G-MDD-1" in out
+        assert "MDD=0.4308 > 0.35" in out
 
 
 if __name__ == "__main__":

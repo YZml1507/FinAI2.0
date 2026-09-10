@@ -44,6 +44,15 @@ from .gate_consistency import (
     DocPathReferenceGate,
     MaxDrawdownCeilingGate,
     StressValidityGate,
+    is_void_doc,
+)
+from .gate_repro import ReproducibilityGate
+from .context_builder import (
+    RUN_EVIDENCE_GATE_IDS,
+    STATIC_GATE_IDS,
+    WARN_GATE_IDS,
+    build_repo_context,
+    ci_policy,
 )
 from .gate_l_liveness import (
     AllocationFidelityGate,
@@ -118,6 +127,15 @@ __all__ = [
     "DocMetricConsistencyGate",
     "StressValidityGate",
     "DocPathReferenceGate",
+    "is_void_doc",
+    # 复现一致性门禁（M2/PM-1）
+    "ReproducibilityGate",
+    # 门禁分类（推送期 / CI 期）
+    "STATIC_GATE_IDS",
+    "RUN_EVIDENCE_GATE_IDS",
+    "WARN_GATE_IDS",
+    "build_repo_context",
+    "ci_policy",
     # Tamper Guard utils
     "compute_run_signature",
     "sign_run_record",

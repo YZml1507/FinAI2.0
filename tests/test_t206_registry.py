@@ -251,3 +251,64 @@ class TestSameParamRerunConsistency:
         # ISO 8601 带偏移可解析（FR-REP-2 时间戳口径）
         from datetime import datetime as _dt
         assert _dt.fromisoformat(a["timestamp"]).tzinfo is not None
+
+
+# ======================================================================
+# M2/PM-1：内容寻址出处（repro_fingerprint）不变量
+# ======================================================================
+
+class TestProvenanceFingerprint:
+    """缺内容哈希 ⇒ 显式 ``None``（⛔ 不静默兜底）；输入变 ⇒ ``repro_fingerprint`` 变。"""
+
+    def test_data_hash_change_breaks_repro_fingerprint(self, tmp_path: Path) -> None:
+        """报告 §6.2(T1)：数据内容变化必须改变 repro_fingerprint。"""
+        from reporting.provenance import hash_path_manifest, repro_fingerprint
+
+        data = tmp_path / "data"
+        data.mkdir()
+        (data / "a.parquet").write_bytes(b"v1")
+        ph = "f54c298d5168eac5"
+        fp1 = repro_fingerprint(params_hash=ph, code_hash="c1",
+                                data_hash=hash_path_manifest(data),
+                                calendar_hash="cal", universe_hash="u", seed=None)
+        (data / "a.parquet").write_bytes(b"v2")          # 输入内容变了
+        fp2 = repro_fingerprint(params_hash=ph, code_hash="c1",
+                                data_hash=hash_path_manifest(data),
+                                calendar_hash="cal", universe_hash="u", seed=None)
+        assert fp1 != fp2, "数据内容变化必须改变 repro_fingerprint（否则复现性不成立）"
+
+    def test_fingerprint_none_without_content_hashes(self, tmp_path: Path) -> None:
+        """缺 code_hash/data_hash ⇒ repro_fingerprint 显式 None（⛔ 不静默兜底）。"""
+        reg = _reg(tmp_path)                                 # _reg 未注入内容哈希
+        rid = reg.record_run({"a": 1}, _report(), seed=7)
+        data = json.loads((tmp_path / "exp" / "runs" / f"{rid}.json").read_text("utf-8"))
+        assert data["schema_version"] == 2
+        assert data["repro_fingerprint"] is None
+        assert data["code_hash"] is None and data["data_hash"] is None
+
+    def test_fingerprint_present_and_gate_statuses_roundtrip(self, tmp_path: Path) -> None:
+        reg = ExperimentRegistry(
+            tmp_path / "exp", code_version="abc1234", data_version="sha256:abc",
+            code_hash="c0ffee+dirty", data_hash="d4t4", calendar_hash="cal123",
+            universe_hash="uni456", clock=_clock(),
+        )
+        rid = reg.record_run(
+            {"a": 1}, _report(), seed=7,
+            gate_statuses={"G-MDD-1": {"status": "FAIL", "severity": "BLOCKER", "message": "x"}},
+        )
+        data = json.loads((tmp_path / "exp" / "runs" / f"{rid}.json").read_text("utf-8"))
+        assert data["repro_fingerprint"]
+        assert data["code_hash"] == "c0ffee+dirty" and data["data_hash"] == "d4t4"
+        assert data["calendar_hash"] == "cal123" and data["universe_hash"] == "uni456"
+        assert data["gate_statuses"]["G-MDD-1"]["status"] == "FAIL"
+
+    def test_missing_content_hash_not_silently_backfilled(self, tmp_path: Path) -> None:
+        """空串内容哈希视同缺失 ⇒ 显式 None（⛔ 不得用常量/空串兜底）。"""
+        reg = ExperimentRegistry(
+            tmp_path / "exp", code_version="abc1234", data_version="sha256:abc",
+            code_hash="   ", data_hash="", clock=_clock(),
+        )
+        rid = reg.record_run({"a": 1}, _report())
+        data = json.loads((tmp_path / "exp" / "runs" / f"{rid}.json").read_text("utf-8"))
+        assert data["repro_fingerprint"] is None
+        assert data["code_hash"] is None and data["data_hash"] is None

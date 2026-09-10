@@ -17,6 +17,15 @@
 | 时间戳 | 本地时区 ISO 8601 含偏移（``datetime.now().astimezone()``，时钟可注入） |
 | 种子 ``seed`` | NFR-5/13 号：钉到 run_id 里，重跑同参同种子 ⇒ 同 run_id ⇒ **拒重**（幂等） |
 
+M2/PM-1 修复补充（内容寻址出处）：
+
+| 字段 | 口径 |
+|---|---|
+| ``schema_version`` | 现行 = 2；缺该字段的历史产物 = legacy(1)，⛔ 不得当作"检查通过" |
+| ``code_hash`` / ``data_hash`` / ``calendar_hash`` / ``universe_hash`` | 注入式**内容哈希**；缺内容哈希时**显式 ``None``**，⛔ 不静默兜底 |
+| ``repro_fingerprint`` | ``repro_fingerprint(params_hash, code_hash, data_hash, calendar_hash, universe_hash, seed)``；四要素（code+data）齐备才生成，否则 ``None`` |
+| ``gate_statuses`` | 本次回测各门禁 status 快照（报告用；⛔ 不入 params/metrics/hash，避免扰动复现比对） |
+
 落盘纪律：**原子写**（``.<run_id>.tmp`` → ``os.replace``），同 ``run_id`` 重复登记
 ``RegistryError``（⛔ 不覆盖历史）；``runs/index.jsonl`` 是可选汇总索引（每次登记
 追加一行，行键 = run_id）。
@@ -32,12 +41,17 @@ from pathlib import Path
 from typing import Any, Callable, Mapping
 
 from backtest.ledger import _canonicalize
+from reporting.provenance import repro_fingerprint
 
 __all__ = [
     "RegistryError",
     "RunRecord",
     "ExperimentRegistry",
 ]
+
+#: 现行产物 schema：2 = 携带内容寻址出处（code_hash/data_hash/.../repro_fingerprint）。
+#: 缺该字段的历史产物一律视为 legacy（schema_version=1），⛔ 不得当作"检查通过"。
+SCHEMA_VERSION = 2
 
 #: 合法终态（运行只接受这三种；落盘即终态，运行中不落盘 —— 挂在内存里）。
 _RUN_STATUSES = ("FINISHED", "FAILED", "KILLED")
@@ -61,6 +75,14 @@ class RunRecord:
     params: dict
     metrics: dict              # 指标摘要（Decimal→str 后形态）
     error: str | None = None   # FAILED/KILLED 时的原因
+    # --- 内容寻址出处（M2/PM-1 修复）：向后兼容，默认 None ---
+    schema_version: int = SCHEMA_VERSION
+    code_hash: str | None = None        # git HEAD(+dirty) 内容指纹
+    data_hash: str | None = None        # data/ 清单内容指纹
+    calendar_hash: str | None = None    # 实际消费的交易日历指纹
+    universe_hash: str | None = None    # 候选池时点快照指纹
+    repro_fingerprint: str | None = None  # 上述 + params_hash + seed 的聚合键
+    gate_statuses: dict | None = None    # 本次回测各门禁 status 快照（报告，不阻断）
 
 
 def _params_hash(params: Mapping[str, Any]) -> str:
@@ -96,6 +118,10 @@ class ExperimentRegistry:
         *,
         code_version: str,
         data_version: str,
+        code_hash: str | None = None,
+        data_hash: str | None = None,
+        calendar_hash: str | None = None,
+        universe_hash: str | None = None,
         clock: Callable[[], _dt] | None = None,
         dirty: bool = False,
     ) -> None:
@@ -106,10 +132,23 @@ class ExperimentRegistry:
         self.root = Path(root)
         self.code_version = str(code_version)
         self.data_version = str(data_version)
+        # 内容寻址出处（M2/PM-1）：缺内容哈希时**显式 None**，⛔ 不静默用常量兜底。
+        self._code_hash = self._norm_hash(code_hash)
+        self._data_hash = self._norm_hash(data_hash)
+        self._calendar_hash = self._norm_hash(calendar_hash)
+        self._universe_hash = self._norm_hash(universe_hash)
         self.dirty = bool(dirty)
         self._clock = clock or (lambda: _dt.now().astimezone())
         self.root.mkdir(parents=True, exist_ok=True)
         (self.root / "runs").mkdir(exist_ok=True)
+
+    @staticmethod
+    def _norm_hash(value: str | None) -> str | None:
+        """归一内容哈希：空串/空白 ⇒ ``None``（显式缺失，⛔ 不静默兜底）。"""
+        if value is None:
+            return None
+        text = str(value).strip()
+        return text or None
 
     # -------------------------------------------------------------- 公开 API
 
@@ -121,6 +160,7 @@ class ExperimentRegistry:
         seed: int | None = None,
         status: str = "FINISHED",
         error: str | None = None,
+        gate_statuses: dict[str, Any] | None = None,
     ) -> str:
         """登记一次实验。返回 ``run_id``。
 
@@ -131,6 +171,7 @@ class ExperimentRegistry:
             seed: 随机种子（可空；进入 run_id）。
             status: ``FINISHED`` / ``FAILED`` / ``KILLED``。
             error: 非 FINISHED 时的原因（FINISHED 时必须为 None）。
+            gate_statuses: 本次回测各门禁 status 快照（报告用，⛔ 不入 metrics/params/hash）。
 
         Raises:
             RegistryError: 同 ``run_id`` 已登记（幂等拒重）/ 状态非法 /
@@ -154,6 +195,20 @@ class ExperimentRegistry:
         if target.exists():
             raise RegistryError(f"run_id {run_id} 已登记（同参同种子同秒 ⇒ 幂等拒重）")
 
+        params_hash = _params_hash(params)
+        # 完整出处键：四要素齐备才生成；否则**显式 None**（报告 §6.1(B)，⛔ 不静默兜底）。
+        if self._code_hash and self._data_hash:
+            fingerprint = repro_fingerprint(
+                params_hash=params_hash,
+                code_hash=self._code_hash,
+                data_hash=self._data_hash,
+                calendar_hash=self._calendar_hash or "na",
+                universe_hash=self._universe_hash or "na",
+                seed=seed,
+            )
+        else:
+            fingerprint = None
+
         record = RunRecord(
             run_id=run_id,
             status=status,
@@ -161,10 +216,17 @@ class ExperimentRegistry:
             code_version=self.code_version + ("+dirty" if self.dirty else ""),
             data_version=self.data_version,
             seed=seed,
-            params_hash=_params_hash(params),
+            params_hash=params_hash,
             params=dict(params),
             metrics=_metrics_summary(report) if report is not None else {},
             error=error,
+            schema_version=SCHEMA_VERSION,
+            code_hash=self._code_hash,
+            data_hash=self._data_hash,
+            calendar_hash=self._calendar_hash,
+            universe_hash=self._universe_hash,
+            repro_fingerprint=fingerprint,
+            gate_statuses=dict(gate_statuses) if gate_statuses else None,
         )
         payload = json.dumps(
             _canonicalize({
@@ -173,6 +235,11 @@ class ExperimentRegistry:
                 "data_version": record.data_version, "seed": record.seed,
                 "params_hash": record.params_hash, "params": record.params,
                 "metrics": record.metrics, "error": record.error,
+                "schema_version": record.schema_version,
+                "code_hash": record.code_hash, "data_hash": record.data_hash,
+                "calendar_hash": record.calendar_hash, "universe_hash": record.universe_hash,
+                "repro_fingerprint": record.repro_fingerprint,
+                "gate_statuses": record.gate_statuses,
             }),
             ensure_ascii=False, indent=2, sort_keys=True,
         )
@@ -185,6 +252,8 @@ class ExperimentRegistry:
                 "run_id": run_id, "status": record.status, "timestamp": ts,
                 "code_version": record.code_version, "seed": seed,
                 "params_hash": record.params_hash,
+                "repro_fingerprint": record.repro_fingerprint,
+                "schema_version": record.schema_version,
             }, ensure_ascii=False) + "\n")
         return run_id
 

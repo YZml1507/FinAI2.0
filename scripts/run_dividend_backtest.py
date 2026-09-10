@@ -37,6 +37,7 @@ from backtest.matching import MatchEngine
 from backtest.metrics import compute_metrics
 from backtest.settle import ExdivEvent
 from reporting.registry import ExperimentRegistry
+from reporting.provenance import hash_path_manifest, hash_sequence
 from strategy.candidates import DividendConfig, DividendStrategy
 from strategy.portfolio import PortfolioConfig
 from data.universe import load_stock_basic, alive_universe
@@ -263,6 +264,80 @@ def _git_head() -> str:
     return "b57feae79ac66a3f1907f572a42d4aece29cf047"
 
 
+def _git_code_hash() -> str | None:
+    """代码内容指纹：``git rev-parse --short HEAD`` + 工作树脏则 ``+dirty``（M2/PM-1）。
+
+    ⛔ 取代常量 ``"t312-dividend-v1"``：只要代码内容（含未提交工作树）变化，指纹即变化。
+    离线/无 git 时返回 ``None``（显式缺失，⛔ 不静默兜底——registry 会据此将
+    ``repro_fingerprint`` 标为不可复现）。
+    """
+    import subprocess
+    try:
+        head = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            capture_output=True, text=True, cwd=str(_root),
+        ).stdout.strip()
+        if not head:
+            return None
+        dirty = subprocess.run(
+            ["git", "status", "--porcelain"],
+            capture_output=True, text=True, cwd=str(_root),
+        ).stdout.strip() != ""
+        return head + ("+dirty" if dirty else "")
+    except Exception:                       # noqa: BLE001
+        return None
+
+
+def _universe_snapshot(
+    universe_provider: Any, cal_days: list[_date], tables: dict[str, Any]
+) -> list[str]:
+    """候选池（historical alive universe）时点快照。
+
+    ``load_stock_basic`` 类在线快照是 PM-1 中"0 成交"的首要嫌疑（报告 §3.3）——
+    故把当日候选码表落为**确定性序列**并入内容寻址出处（``universe_hash``）。
+    取回测首日 provider 输出；不可得时退回数据目录 symbol 集合（可复现的保守快照）。
+    """
+    if cal_days and callable(universe_provider):
+        try:
+            codes = sorted({str(c) for c in universe_provider(cal_days[0])})
+            if codes:
+                return codes
+        except Exception as exc:            # noqa: BLE001
+            logger.warning(f"候选池快照失败: {exc} ⇒ 退回数据目录 symbol 集合")
+    return sorted(tables.keys())
+
+
+def _gate_status_map(results: Any) -> dict[str, Any]:
+    """门禁结果列表 → 落盘用 {gate_id: {status, severity, message}}（报告，⛔ 不阻断）。"""
+    out: dict[str, Any] = {}
+    for r in results or []:
+        out[getattr(r, "gate_id", "?")] = {
+            "status": getattr(getattr(r, "status", None), "value", str(getattr(r, "status", ""))),
+            "severity": getattr(getattr(r, "severity", None), "value", str(getattr(r, "severity", ""))),
+            "message": str(getattr(r, "message", ""))[:300],
+        }
+    return out
+
+
+def _snapshot_universe_sidecar(registry_root: Path | None, codes: list[str]) -> None:
+    """候选池快照落盘（报告 §6.1(C)：在线"快照"须冻结成文件才可审计）。best-effort，⛔ 不影响回测。"""
+    import json as _json
+
+    if not codes:
+        return
+    root = Path(registry_root) if registry_root is not None else (_root / "experiments")
+    try:
+        out_dir = root / "universe"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        stamp = _datetime.now(_timezone.utc).strftime("%Y%m%d-%H%M%S")
+        (out_dir / f"{stamp}-universe.json").write_text(
+            _json.dumps({"as_of": stamp, "count": len(codes), "codes": codes}, ensure_ascii=False),
+            encoding="utf-8",
+        )
+    except Exception as exc:                # noqa: BLE001
+        logger.warning(f"候选池快照落盘失败（不影响回测）: {exc}")
+
+
 def _make_universe_provider(logger: logging.Logger, data_path: Path) -> Any:
     """历史存活股票池（T108）：``alive_universe`` 纯函数，在线拉一次 stock_basic。
 
@@ -302,8 +377,16 @@ def run_dividend_backtest_2015_2024(
     end_date: _date | None = None,
     registry_root: Path | None = None,
     universe_provider: Any = None,
+    gate_strict: bool = False,
 ) -> dict:
-    """红利策略 2015-2024 全周期回测（离线：数据全预载，不打网）。"""
+    """红利策略 2015-2024 全周期回测（离线：数据全预载，不打网）。
+
+    Args:
+        gate_strict: 门禁阻断模式（任务 1 三层分层）。默认 ``False`` = **回测/测量期
+            report-only**：各门禁 status 记入产物 ``gate_statuses``，**不因测出差结果而停机**
+            （测量仪器不得因测出坏结果而停摆）。置 ``True`` 则恢复 fail-closed 阻断
+            （数据完整性场景/测试用）。
+    """
     start = start_date or START
     end = end_date or END
 
@@ -391,16 +474,20 @@ def run_dividend_backtest_2015_2024(
     engine.exdiv_provider = lambda day: exdiv_by_date.get(day)
 
     # ⑥.1 前置门禁 (Pre-run Gates: D-1~D-5, L-1, L-3)
+    # 三层分层（任务 1）：回测/测量期 report-only（gate_strict=False）——
+    # 门禁 status 记入产物 gate_statuses，⛔ 不 raise（测量仪器不因测出差结果而停机）。
+    gate_statuses: dict[str, Any] = {}
     if enable_gates:
         logger.info("执行回测前置门禁审计 (Pre-run Gates: D-1~D-5, L-1, L-3)...")
-        run_pre_run_gates(
+        pre_results = run_pre_run_gates(
             # 真实声明本轮回测启用特性（Broker 确以 enable_dividend_tax=True 构造）
             context={"active_features": ["DIVIDEND_TAX"]},
             tables=tables,
             exdiv_events=exdiv_events,
             strategy_config=strategy_config,
-            strict=True,
+            strict=gate_strict,
         )
+        gate_statuses.update(_gate_status_map(pre_results))
     else:
         logger.warning("--no-gates 生效：跳过前置门禁审计")
 
@@ -413,6 +500,8 @@ def run_dividend_backtest_2015_2024(
     report = compute_metrics(result, risk_free_annual=risk_free_annual)
 
     # ⑧.1 后置门禁 (Post-run Gates: E-1~E-3, A-1~A-4, S-1~S-5, G-1~G-4, G-MDD-1)
+    # 三层分层（任务 1）：report-only（strict=gate_strict，默认 False）——
+    # ⛔ 回测路径不得因门禁 raise（否则连跑回测都会被拦，无法迭代策略）。
     if enable_gates:
         logger.info("执行回测后置门禁审计 (Post-run Gates: E/A/S/G + G-MDD-1)...")
         # ⛔ 关键修复：传入真实回测 ctx，使 S/G 维门禁在真实路径下真正执行，
@@ -425,22 +514,29 @@ def run_dividend_backtest_2015_2024(
             index_frame=index_frame,
             cal_days=cal_days,
         )
-        run_post_run_gates(
+        post_results = run_post_run_gates(
             context=gate_ctx,
             result=result,
             report=report,
             strategy_config=strategy_config,
-            strict=True,
+            strict=gate_strict,
         )
+        gate_statuses.update(_gate_status_map(post_results))
     else:
         logger.warning("--no-gates 生效：跳过后置门禁审计")
 
-    # ⑨ registry (Fail-Closed: 仅在所有门禁通过后登记落盘)
+    # ⑨ registry（内容寻址出处 + 门禁 status 落盘；回测期 report-only，⛔ 不因门禁 raise）
     logger.info("注册实验记录...")
+    universe_codes = _universe_snapshot(universe_provider, cal_days, tables)
+    _snapshot_universe_sidecar(registry_root, universe_codes)
     registry = ExperimentRegistry(
         root=registry_root or (_root / "experiments"),
-        code_version="t312-dividend-v1",
+        code_version="t312-dividend-v1",                       # 人类可读标签（仅供参考）
         data_version="dividend-stocks-2015-2024",
+        code_hash=_git_code_hash(),                            # ★ 内容寻址（M2/PM-1）
+        data_hash=hash_path_manifest(data_path),               # ★ 数据清单内容哈希
+        calendar_hash=hash_sequence(cal_days, label="cal"),    # ★ 实际交易日历
+        universe_hash=hash_sequence(universe_codes, label="universe"),  # ★ 候选池时点快照
     )
     from dataclasses import asdict as _asdict
     run_id = registry.record_run(
@@ -448,6 +544,7 @@ def run_dividend_backtest_2015_2024(
         report=report,
         seed=None,
         status="FINISHED",
+        gate_statuses=gate_statuses or None,
     )
 
     # ⑩ 摘要

@@ -9,6 +9,10 @@
 * ``G-STRESS-1`` 压测有效性门禁      —— 压测区间 ``round_trips == 0`` 判 INCONCLUSIVE（不得 PASS）。
 * ``G-REF-1``    引用路径存在性门禁  —— 抽取 md 中的仓内路径并断言 ``exists()``。
 
+作废文档豁免（``gate-doc-void``）：``G-DOC-1`` / ``G-REF-1`` 跳过含标记
+``<!-- gate-doc-void: date=YYYY-MM-DD; reason=<非空说明> -->`` 的文档，但**单独计数并打印**
+``void_docs: N``（豁免必须可见，防"把一切标 void 消掉门禁"）；标记格式不合法时不生效。
+
 设计原则（Fail-Closed）：
 
 1. **无证据 = INCONCLUSIVE，绝不等于 PASS**；
@@ -422,6 +426,31 @@ def _doc_files(context: Any) -> list[Path]:
     return files
 
 
+# ---------------------------------------------------------------------------
+# gate-doc-void 标记机制（任务 4）：作废文档豁免
+# ---------------------------------------------------------------------------
+
+#: 作废文档标记（任意一行出现即视为"已作废文档"）：
+#: ``<!-- gate-doc-void: date=YYYY-MM-DD; reason=<非空说明> -->``
+#: 契约精确：``date`` 必须为 ``YYYY-MM-DD``；``reason`` 必须**非空**，否则标记**不生效**。
+_VOID_MARKER_RE = re.compile(
+    r"<!--\s*gate-doc-void\s*:\s*date=(\d{4}-\d{2}-\d{2})\s*;\s*reason=(.+?)\s*-->"
+)
+
+
+def is_void_doc(text: str) -> bool:
+    """文档是否被 ``<!-- gate-doc-void: date=...; reason=... -->`` 标记为**已作废**。
+
+    ⛔ 标记格式不合法（缺 ``date=`` 或 ``reason=`` 为空）时**不生效**（返回 ``False``），
+    该文档仍照常被 G-DOC-1 / G-REF-1 校验——防止"随手写个残缺标记消掉门禁"。
+    """
+    for line in text.splitlines():
+        m = _VOID_MARKER_RE.search(line)
+        if m and m.group(2).strip():
+            return True
+    return False
+
+
 #: 关键词前若出现这些词，说明该数字是"约束口径"而非实测值。
 _THRESHOLD_WORDS = ("超过", "低于", "高于", "不到", "至少", "至多", "约")
 
@@ -511,10 +540,14 @@ class DocMetricConsistencyGate(BaseGate):
         unresolved: list[dict[str, Any]] = []
         stats: dict[str, int] = {}
         files = _doc_files(context)
+        void_docs = 0                            # 作废文档（gate-doc-void 标记）⛔ 必须可见计数
         for path in files:
             try:
                 text = path.read_text(encoding="utf-8")
             except Exception:                # noqa: BLE001
+                continue
+            if is_void_doc(text):            # 已作废文档：跳过数字比对（但计数可见）
+                void_docs += 1
                 continue
             lines = text.splitlines()
             other_strategy = _doc_references_other_strategy(path, text)
@@ -564,6 +597,7 @@ class DocMetricConsistencyGate(BaseGate):
 
         excluded = stats.get("excluded", 0)
         head = (
+            f"void_docs: {void_docs}（gate-doc-void 豁免，必须可见）；"
             f"① 真实违规 {len(violations)} 处（M4/M5 待重写）；"
             f"② 所引产物不存在 {len(unresolved)} 处；③ 非实测值（阈值/区间）排除 {excluded} 处"
         )
@@ -578,6 +612,7 @@ class DocMetricConsistencyGate(BaseGate):
                     f"文档={first['doc_value']} ≠ 产物={first['expected']}"
                 ),
                 metrics={
+                    "void_docs": void_docs,
                     "violations_total": len(violations),
                     "unresolved_artifacts_total": len(unresolved),
                     "excluded_nonmeasure_total": excluded,
@@ -597,6 +632,7 @@ class DocMetricConsistencyGate(BaseGate):
                     f"{first['doc_value']}（{first.get('referenced_artifact')}）"
                 ),
                 metrics={
+                    "void_docs": void_docs,
                     "violations_total": 0,
                     "unresolved_artifacts_total": len(unresolved),
                     "excluded_nonmeasure_total": excluded,
@@ -609,6 +645,7 @@ class DocMetricConsistencyGate(BaseGate):
             GateStatus.PASS,
             f"已扫描 {len(files)} 份文档，关键指标与权威产物 {Path(truth_path).name} 全部一致（{head}）",
             metrics={
+                "void_docs": void_docs,
                 "scanned_files": len(files),
                 "excluded_nonmeasure_total": excluded,
                 "truth_run": Path(truth_path).name,
@@ -688,13 +725,18 @@ class DocPathReferenceGate(BaseGate):
         repo_root = _REPO_ROOT
         violations: list[dict[str, Any]] = []
         whitelisted_hits = 0
+        void_docs = 0                            # 作废文档（gate-doc-void 标记）⛔ 必须可见计数
         files = _doc_files(context)
 
         for path in files:
             try:
-                lines = path.read_text(encoding="utf-8").splitlines()
+                text = path.read_text(encoding="utf-8")
             except Exception:                # noqa: BLE001
                 continue
+            if is_void_doc(text):            # 已作废文档：跳过路径存在性比对（但计数可见）
+                void_docs += 1
+                continue
+            lines = text.splitlines()
             for lineno, line in enumerate(lines, start=1):
                 if "gate-doc-ignore" in line:
                     continue
@@ -743,12 +785,14 @@ class DocPathReferenceGate(BaseGate):
                 GateStatus.FAIL,
                 (
                     f"检出 {len(unique)} 处文档引用了不存在的仓内路径 —— "
+                    f"void_docs: {void_docs}（gate-doc-void 豁免，必须可见）；"
                     f"档A 幽灵证据引用(高危) {len(elevated)} 处；"
                     f"档B 文档-实现路径不一致(低危) {len(low_risk)} 处；"
                     f"档C 运行期产物(白名单) {whitelisted_hits} 处已豁免。"
                     f"首例：{unique[0]['reference']}（{unique[0]['tier']}）"
                 ),
                 metrics={
+                    "void_docs": void_docs,
                     "violations_total": len(unique),
                     "elevated_total": len(elevated),
                     "low_risk_total": len(low_risk),
@@ -761,8 +805,13 @@ class DocPathReferenceGate(BaseGate):
             )
         return self._make(
             GateStatus.PASS,
-            f"已扫描 {len(files)} 份文档，引用路径全部存在（白名单豁免 {whitelisted_hits} 处）",
-            metrics={"scanned_files": len(files), "whitelisted_skipped_total": whitelisted_hits},
+            f"已扫描 {len(files)} 份文档，引用路径全部存在"
+            f"（白名单豁免 {whitelisted_hits} 处；void_docs: {void_docs}（gate-doc-void 豁免，必须可见））",
+            metrics={
+                "void_docs": void_docs,
+                "scanned_files": len(files),
+                "whitelisted_skipped_total": whitelisted_hits,
+            },
         )
 
     def _make(self, status: GateStatus, message: str, metrics: dict[str, Any] | None = None) -> GateResult:

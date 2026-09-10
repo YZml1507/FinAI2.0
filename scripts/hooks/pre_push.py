@@ -94,23 +94,43 @@ def _build_pre_push_context() -> tuple[dict, str]:
 
 
 def run_master_gate_guard() -> tuple[bool, str]:
-    """运行六维门禁体系总检（以仓库现状构造的真实 ctx），确保无阻断违规。"""
+    """运行六维门禁体系总检（以仓库现状构造的真实 ctx），确保无阻断违规。
+
+    三层分层（M3 任务 1）：:data:`WARN_GATE_IDS`（如 ``G-MDD-1``）**展示但不阻断**——
+    推送代码不产生回撤，G-MDD-1 属研究质量门禁，其 BLOCKER 能力保留在准入层
+    （``scripts/gates/acceptance.py``）。其余门禁 ``FAIL``/``INCONCLUSIVE`` 照常阻断。
+    """
     print("[PRE-PUSH] 2. 正在运行六维防伪门禁体系全量自检 (Gate Master Audit)...")
     ctx, source = _build_pre_push_context()
     print(f"[PRE-PUSH]    门禁取证来源: {source}（ctx 键 {len(ctx)} 个）")
-    # ㉓ 归属：推送期只跑"能真取证"的门禁子集；其余归回测后 + 定时全量 CI
+    # ㉓ 归属：推送期只跑"能真取证"的门禁子集（静态 + WARN）；其余归回测后 + 定时全量 CI
     master = GateMasterAudit(gates=GateMasterAudit.get_push_time_gates())
     results = master.audit(context=ctx, strict=False)
 
-    # ⛔ INCONCLUSIVE（门禁适用但证据不足）与 FAIL 同为"未通过"，必须阻断（⑦：退出码不得与展示背离）
-    blockers = [r for r in results if is_blocking_result(r)]
+    from scripts.gates.context_builder import WARN_GATE_IDS
+
+    # ⛔ INCONCLUSIVE（门禁适用但证据不足）与 FAIL 同为"未通过"，必须阻断（⑦：退出码不得与展示背离）；
+    #    但 WARN 门禁（G-MDD-1）降级为展示——不阻断推送。
+    warn_results = [
+        r for r in results
+        if r.gate_id in WARN_GATE_IDS and r.status in (GateStatus.FAIL, GateStatus.INCONCLUSIVE, GateStatus.WARNING)
+    ]
+    blockers = [
+        r for r in results
+        if is_blocking_result(r) and r.gate_id not in WARN_GATE_IDS
+    ]
+
+    # WARN 必须**明确打印**，让人一直看得见（不得隐藏）。
+    for w in warn_results:
+        print(f"[WARN] {w.gate_id} {w.message}")
 
     if blockers:
         msgs = [f"[{b.gate_id}/{b.status.value}] {b.name}: {b.message}" for b in blockers]
         return False, f"检出 {len(blockers)} 项阻断性门禁未通过（FAIL/INCONCLUSIVE）:\n    " + "\n    ".join(msgs)
 
     pass_cnt = sum(1 for r in results if r.status == GateStatus.PASS)
-    return True, f"六维门禁总检通过 (共注册 {len(results)} 道门禁，PASS: {pass_cnt})"
+    warn_note = f"，WARN {len(warn_results)} 项（展示不阻断）" if warn_results else ""
+    return True, f"六维门禁总检通过 (共注册 {len(results)} 道门禁，PASS: {pass_cnt}{warn_note})"
 
 
 def _write_bypass_audit() -> dict:

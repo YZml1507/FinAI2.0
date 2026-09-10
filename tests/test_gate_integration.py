@@ -153,7 +153,11 @@ class TestGateIntegration:
         assert any(runs_dir.iterdir()), "门禁全通后应在 experiments/runs 下留下成功记录"
 
     def test_d1_raw_price_jump_blocks_pre_run(self, tmp_path: Path):
-        """2. 注入异常价格（跳变 > 30%）触发 D-1 GateBlockerError 并阻断落盘 (Fail-Closed)"""
+        """2. 注入异常价格（跳变 > 30%）触发 D-1 GateBlockerError 并阻断落盘 (Fail-Closed)
+
+        ⚠ 三层分层（任务 1）：回测默认 report-only（``gate_strict=False``，门禁不阻断回测）；
+        本用例以 ``gate_strict=True`` 显式打开 fail-closed，证明数据完整性阻断能力仍在。
+        """
         data_dir, dates = _setup_synthetic_environment(tmp_path, dirty_jump=True)
         exp_root = tmp_path / "experiments"
 
@@ -162,6 +166,7 @@ class TestGateIntegration:
                 data_path=data_dir,
                 initial_capital=Decimal("150000"),
                 enable_gates=True,
+                gate_strict=True,
                 start_date=dates[0],
                 end_date=dates[-1],
                 registry_root=exp_root,

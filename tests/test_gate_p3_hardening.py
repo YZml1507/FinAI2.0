@@ -11,7 +11,7 @@
 6. tasks.md 两仓镜像一致性校验（完全一致 PASS、哈希偏离 FAIL）；
 7. 母库只读区 370 行守卫检查（实际仓 PASS、模拟篡改行数 FAIL）；
 8. Pre-commit 门禁运行器逻辑核验（合法文件放行、违规件拦截）；
-9. GateMasterAudit 调度器标准门禁包含 G-1 ~ G-4 治理门禁与 P0 一致性四道门禁（共 28 道门禁）。
+9. GateMasterAudit 调度器标准门禁包含 G-1 ~ G-4 治理门禁与 P0 一致性四道门禁 + G-REPRO-1（共 29 道门禁）。
 """
 
 from __future__ import annotations
@@ -296,9 +296,9 @@ def test_run_pre_commit_catches_tampered_run(tmp_path, sample_run_record):
 # =====================================================================
 
 def test_master_audit_contains_g4_and_all_standard_gates():
-    """六维门禁总调度器涵盖 28 项全量门禁，且包含 G-1~G-4 与 P0 一致性四道门禁"""
+    """六维门禁总调度器涵盖 29 项全量门禁，且包含 G-1~G-4 与 P0 一致性四道 + G-REPRO-1"""
     master = GateMasterAudit()
     gate_ids = [g.gate_id for g in master.gates]
-    assert len(gate_ids) == 28
-    for gid in ("G-1", "G-2", "G-3", "G-4", "G-MDD-1", "G-DOC-1", "G-STRESS-1", "G-REF-1"):
+    assert len(gate_ids) == 29
+    for gid in ("G-1", "G-2", "G-3", "G-4", "G-MDD-1", "G-DOC-1", "G-STRESS-1", "G-REF-1", "G-REPRO-1"):
         assert gid in gate_ids
