@@ -1148,20 +1148,33 @@ class TestGateDocIgnoreScope:
         assert res.metrics["ignored_lines"] == 0
 
     def test_repo_ignore_usage_is_only_the_historical_snapshot_line(self):
-        """全仓 ignore 使用清单守卫：当前仅 1 处（阶段一历史快照行），⛔ 防滥用扩散。"""
+        """全仓 ignore 使用清单守卫：当前仅 1 处（阶段一历史快照行），⛔ 防滥用扩散。
+
+        ⚠️ 断言语义而非绝对行号：早期实现硬编码 `line == 117`，任何文档结构性
+        重排（如新增章节）都会让守卫误红——守卫应锁"**谁、几处、什么理由**"，
+        ⛔ 不锁行号（行号是编辑的副产物，不是被守护的属性）。
+        """
         from scripts.gates.gate_consistency import line_ignore_reason
 
         root = Path(__file__).resolve().parents[1]
-        hits: list[tuple[str, int]] = []
+        hits: list[tuple[str, int, str]] = []
         for p in list(root.glob("docs/**/*.md")) + [root / "README.md", root / "CLAUDE.md"]:
             if not p.is_file():
                 continue
             for i, line in enumerate(p.read_text(encoding="utf-8").splitlines(), start=1):
-                if line_ignore_reason(line) is not None:
-                    hits.append((str(p.relative_to(root)).replace("\\", "/"), i))
-        assert hits == [("docs/project_status_flowchart.md", 117)], (
-            f"行内 ignore 使用清单发生变化（新增豁免须复核是否为真历史快照）：{hits}"
+                reason = line_ignore_reason(line)
+                if reason is not None:
+                    hits.append((str(p.relative_to(root)).replace("\\", "/"), i, reason))
+
+        # ① 全仓仅允许 1 处行内豁免
+        assert len(hits) == 1, (
+            f"行内 ignore 使用处数发生变化（新增豁免须复核是否为真历史快照）："
+            f"{[(h[0], h[1]) for h in hits]}"
         )
+        # ② 必须落在流程图、且理由须自证是"阶段一历史快照"
+        rel, _lineno, reason = hits[0]
+        assert rel == "docs/project_status_flowchart.md", f"豁免落在非预期文件：{rel}"
+        assert "阶段一历史快照" in reason, f"豁免理由未自证为历史快照：{reason!r}"
 
 
 # =====================================================================
