@@ -302,6 +302,17 @@ def main() -> int:
     args = parser.parse_args()
     out_path = Path(args.runs_dir) if args.runs_dir else None
 
+    # ㉟ 准入前置：启动模拟盘属"解锁 Phase 4"路径之一，必须先查采纳登记并要求 acceptance=PASS
+    #     （见 ``scripts/gates/adoption.py`` 纪律；空登记 ⇒ 无操作放行，⛔ 不阻断日常运行）。
+    from scripts.gates.adoption import run_adoption_gate
+
+    adopt_ok, adopt_msg, _adopt_meta = run_adoption_gate()
+    if not adopt_ok:
+        print(f"[准入拦截] {adopt_msg}")
+        print("  ⛔ 已采纳登记的产物未通过准入 ⇒ 拒绝启动模拟盘（晋升必须留证且达标）。")
+        return 1
+    print(f"[准入] {adopt_msg}")
+
     success, record = run_daily_pipeline(
         run_date=args.date,
         capital=Decimal(args.capital),

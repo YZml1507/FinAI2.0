@@ -245,6 +245,37 @@ class TestAdoptionScopedToRegisteredArtifact:
 
 
 # =====================================================================
+# 5b. ㉜ 接线后的 pre-push 行为（⛔ 空登记绝不阻断；登记在册不合格必阻断）
+# =====================================================================
+
+class TestPrePushAdoptionWiring:
+    """`pre_push.run_adoption_guard` 已接线：空登记 ⇒ 不阻断；不合格采纳 ⇒ 阻断。"""
+
+    def test_pre_push_adoption_step_does_not_block_when_empty(self, tmp_path: Path):
+        """**最关键**：采纳目录为空时 pre-push 采纳步必须放行——
+        ⛔ 否则每次推送都会因"尚未采纳"永久红（把门禁逼成摆设）。"""
+        from scripts.hooks.pre_push import run_adoption_guard
+
+        ok, msg = run_adoption_guard(tmp_path)
+        assert ok is True, f"空采纳登记不得阻断 pre-push：{msg}"
+        assert "无操作" in msg
+
+    def test_pre_push_adoption_step_blocks_on_registered_unhealthy(self, tmp_path: Path):
+        """㉜ 的核心价值：已采纳登记的不合格产物 ⇒ pre-push 阻断（"MDD 超限不得晋升"可强制）。"""
+        from scripts.hooks.pre_push import run_adoption_guard
+
+        # 以 require_acceptance_pass=False 登记不合格产物（模拟迁移/变质场景），
+        # 指针合法 ⇒ 门禁**重跑**判定 ⇒ 必须阻断（不信任指针状态字段）。
+        art = _unhealthy_artifact(tmp_path / "registered_bad.json")
+        adopt(art, require_acceptance_pass=False, base_dir=tmp_path)
+
+        ok, msg = run_adoption_guard(tmp_path)
+        assert ok is False, "登记在册的不合格产物必须阻断 pre-push"
+        assert "FAIL" in msg
+        assert "G-MDD-1" in msg, f"应点名超限判据：{msg}"
+
+
+# =====================================================================
 # 6. 默认目录契约 + 仓库现状（不得意外创建）
 # =====================================================================
 

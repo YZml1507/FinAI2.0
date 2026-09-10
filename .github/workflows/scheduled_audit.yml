@@ -54,10 +54,19 @@ jobs:
           name: backtest-run-artifacts
           path: experiments/runs
 
-      - name: "Scheduled Gate Audit: full 28 gates with real repo ctx"
+      - name: "Scheduled Gate Audit: full 29 gates with real repo ctx (--scheduled：run 证据缺失也阻断)"
         run: |
           set -euo pipefail
-          python -m scripts.gates.gate_master_audit --ci
+          # ㊳：`--ci` 会把「需 run 产物门禁的 INCONCLUSIVE」降级为 warn-only ⇒ 本 workflow 永不变红、
+          #      等于没在判。定时场景本就该拿到 run 产物，故改用 `--scheduled`（该情形亦阻断）。
+          python -m scripts.gates.gate_master_audit --scheduled
+
+      - name: "Scheduled Adoption Gate: 已采纳产物必须通过准入（♻ 回测产物下载后复检）"
+        run: |
+          set -euo pipefail
+          # ㉜ 接线：定时全量审计亦复检采纳登记（产物从 artifact 下载后重新验签+准入）。
+          # 空登记 ⇒ 无操作放行。
+          python -m scripts.gates.adoption
 
       - name: Alert on failure (feishu link is a STUB — not actually sent)
         if: failure()

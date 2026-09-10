@@ -16,6 +16,8 @@
 * ``SCHEMA``     ② ``schema_version`` **存在且为现行值**（legacy ⇒ FAIL，不得 PASS）；
 * ``STATUS``     ③ ``status == "FINISHED"``；``NO-ERROR`` 终态无 ``error``；
 * ``MDD-SANITY`` ④ ``0 <= max_drawdown <= 1``（**负值 / 超 1 / null / bool / 字符串一律 FAIL**，堵 ``mdd=-0.30``）；
+* ``WIN-SANITY`` / ``TURNOVER-SANITY`` ④'（㉞）``win_rate ∈ [0,1]``、``annual_turnover >= 0``
+  ——与 MDD-SANITY 对称；否则 ``win_rate=9.9`` / ``annual_turnover=-3.0`` 能"满足阈值"而洗白；
 * ``G-MDD-1`` / ``ACCEPT-WIN`` / ``S-1`` / ``ACCEPT-RT`` ⑤ 策略阈值与有效成交守卫。
 
 命令行：
@@ -135,23 +137,34 @@ def evaluate_acceptance(
          f"max_drawdown={mdd_raw!r} 非法或越界（回撤无负值/不得 >1）" if not mdd_sane
          else f"max_drawdown={mdd:.4f} ∈ [0,1]")
 
-    # ⑤ 策略阈值
+    # ⑤ 策略阈值（㉞：与 MDD-SANITY 对称——阈值判据必须**同时**校验值域上下界，
+    #    否则 win_rate=9.9 / annual_turnover=-3.0 这类越界值能"满足阈值"而洗白通过）
     _add("G-MDD-1", "最大回撤上限", None if mdd is None else str(mdd), "max_drawdown <= 0.35",
          mdd_sane and mdd <= MDD_MAX,
-         (f"MDD={mdd:.4f} {'<=' if (mdd is not None and mdd <= MDD_MAX) else '>'} 0.35"
+         (f"MDD={mdd:.4f} {'<=' if (mdd_sane and mdd <= MDD_MAX) else '>'} 0.35"
           if mdd_sane else "回撤数值不健全，无法判定（无证据 ≠ 通过）"))
 
     win_rate = _to_decimal(metrics.get("win_rate"))
-    _add("ACCEPT-WIN", "胜率下限", None if win_rate is None else str(win_rate), "win_rate >= 0.35",
-         win_rate is not None and win_rate >= WIN_RATE_MIN,
-         f"win_rate={win_rate} {'>=' if (win_rate is not None and win_rate >= WIN_RATE_MIN) else '<'} 0.35"
-         if win_rate is not None else "产物缺少 win_rate，无法判定（无证据 ≠ 通过）")
+    win_sane = win_rate is not None and Decimal("0") <= win_rate <= Decimal("1")
+    _add("WIN-SANITY", "胜率数值健全", None if win_rate is None else str(win_rate),
+         "0 <= win_rate <= 1（数值，非 null/bool/字符串）", win_sane,
+         f"win_rate={metrics.get('win_rate')!r} 非法或越界（胜率属比例，必在 [0,1]）" if not win_sane
+         else f"win_rate={win_rate:.4f} ∈ [0,1]")
+    _add("ACCEPT-WIN", "胜率下限", None if win_rate is None else str(win_rate), "0.35 <= win_rate <= 1",
+         win_sane and win_rate >= WIN_RATE_MIN,
+         (f"win_rate={win_rate} {'>=' if (win_sane and win_rate >= WIN_RATE_MIN) else '<'} 0.35"
+          if win_sane else "胜率数值不健全，无法判定（无证据 ≠ 通过）"))
 
     turnover = _to_decimal(metrics.get("annual_turnover"))
-    _add("S-1", "年化换手硬顶", None if turnover is None else str(turnover), "annual_turnover <= 4.0",
-         turnover is not None and turnover <= TURNOVER_MAX,
-         f"annual_turnover={turnover} {'<=' if (turnover is not None and turnover <= TURNOVER_MAX) else '>'} 4.0"
-         if turnover is not None else "产物缺少 annual_turnover，无法判定（无证据 ≠ 通过）")
+    turnover_sane = turnover is not None and turnover >= Decimal("0")
+    _add("TURNOVER-SANITY", "换手数值健全", None if turnover is None else str(turnover),
+         "annual_turnover >= 0（数值，非 null/bool/字符串）", turnover_sane,
+         f"annual_turnover={metrics.get('annual_turnover')!r} 非法或为负（换手率无负值）" if not turnover_sane
+         else f"annual_turnover={turnover:.4f} >= 0")
+    _add("S-1", "年化换手硬顶", None if turnover is None else str(turnover), "0 <= annual_turnover <= 4.0",
+         turnover_sane and turnover <= TURNOVER_MAX,
+         (f"annual_turnover={turnover} {'<=' if (turnover_sane and turnover <= TURNOVER_MAX) else '>'} 4.0"
+          if turnover_sane else "换手数值不健全，无法判定（无证据 ≠ 通过）"))
 
     round_trips_raw = metrics.get("round_trips")
     round_trips: int | None

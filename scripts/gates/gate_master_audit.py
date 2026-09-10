@@ -238,23 +238,32 @@ def main() -> None:
     parser.add_argument("--mdd", type=str, default="", help="仅对指定回测产物运行 G-MDD-1 回撤上限门禁")
     parser.add_argument("--acceptance", type=str, default="",
                         help="晋升/准入层判定（任务 1）：读产物 metrics，MDD>0.35/胜率<0.35/换手>4.0 判 FAIL（exit≠0）")
+    parser.add_argument("--adopt", action="store_true",
+                        help="配合 --acceptance：评估通过后调 adopt() 登记『已采纳产物』（晋升留证；⛔ 未通过则拒绝登记）")
     parser.add_argument("--ci", action="store_true",
                         help="CI 模式（㉖）：以仓库现状真实 ctx 运行全部 29 道门禁；"
                              "FAIL 或(静态门禁)INCONCLUSIVE 阻断；WARN 门禁与需 run 产物的 INCONCLUSIVE 只告警")
+    parser.add_argument("--scheduled", action="store_true",
+                        help="㊳ 定时全量审计模式：同 --ci，但**需 run 产物的 INCONCLUSIVE 也阻断**"
+                             "（定时场景本就该拿到 run 产物；只告警会让 workflow 永不变红、等于没在判）")
     args = parser.parse_args()
 
     # 晋升/准入层（任务 1）：G-MDD-1 的 BLOCKER 能力归属地（推送/回测期均不阻断）。
     if args.acceptance:
         from .acceptance import main as _acceptance_main
-        sys.exit(_acceptance_main(["--artifact", args.acceptance]))
+        argv = ["--artifact", args.acceptance, "--adopt"] if args.adopt else ["--artifact", args.acceptance]
+        sys.exit(_acceptance_main(argv))
 
     # CI 模式：真实 ctx（复用 context_builder，与 pre_push 同源），避免空 ctx 永久红
-    if args.ci:
+    if args.ci or args.scheduled:
         ctx, source = build_repo_context()
         print(f"[CI] 门禁取证来源: {source}（ctx 键 {len(ctx)} 个）")
+        mode = "scheduled" if args.scheduled else "ci"
+        print(f"[CI] 策略: {'--scheduled（需 run 产物的 INCONCLUSIVE 也阻断）' if args.scheduled else '--ci'}")
         results = GateMasterAudit().audit(context=ctx, strict=False)
         GateMasterAudit().print_summary(results)
-        blocking, blockers, warnings = ci_policy(results)
+        # ㊳ 定时全量审计：run-evidence 的 INCONCLUSIVE 亦阻断（否则该 workflow 永不变红）。
+        blocking, blockers, warnings = ci_policy(results, run_evidence_blocks=args.scheduled)
         # 三层分层（任务 1）：WARN 门禁（如 G-MDD-1）**显式打印但不阻断**。
         warn_gates = [w for w in warnings if w.gate_id in WARN_GATE_IDS]
         for w in warn_gates:
@@ -262,16 +271,20 @@ def main() -> None:
         other_warns = [w for w in warnings if w.gate_id not in WARN_GATE_IDS]
         if other_warns:
             print("=" * 80)
-            print(f"[CI][告警] {len(other_warns)} 道需 run 产物的门禁因无证据判 INCONCLUSIVE（只告警不阻断）：")
+            if args.scheduled:
+                # 定时场景不该有"只告警"的 run-evidence INCONCLUSIVE（run_evidence_blocks=True ⇒ 它们已成 blocker）。
+                print(f"[CI][告警] {len(other_warns)} 道门禁未判 PASS（明细见上）：")
+            else:
+                print(f"[CI][告警] {len(other_warns)} 道需 run 产物的门禁因无证据判 INCONCLUSIVE（只告警不阻断）：")
             for w in other_warns:
                 print(f"    [{w.gate_id}] {w.name}: {w.message[:90]}")
         print("=" * 80)
         if blockers:
-            print(f"[CI][BLOCKED] 检出 {len(blockers)} 项阻断（FAIL 或静态门禁 INCONCLUSIVE）：")
+            print(f"[CI][BLOCKED] 检出 {len(blockers)} 项阻断（{mode} 策略）：")
             for b in blockers:
                 print(f"    [{b.gate_id}/{b.status.value}] {b.name}: {b.message[:90]}")
             sys.exit(1)
-        print("[CI][PASS] 无阻断项（真实 ctx 下判定）。")
+        print(f"[CI][PASS] 无阻断项（{mode} 策略，真实 ctx 下判定）。")
         return
 
     # G-MDD-1 单点复跑模式（验收可一条命令复现）

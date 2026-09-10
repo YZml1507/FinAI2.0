@@ -30,8 +30,14 @@ from tests.test_t313_stress import (
 )
 
 
-def main() -> None:
-    """运行红利策略压力测试 + 对比报告。"""
+def main() -> int:
+    """运行红利策略压力测试 + 对比报告。
+
+    Returns:
+        进程退出码：``0`` 必须项全满足 / ``1`` 否则（⛔ 不得"无论结果恒 exit 0"）。
+        ⛔ 退出码 ``0`` **不等于**"可进入 Phase 4"：晋升须经准入层（``acceptance`` /
+        ``adoption`` 登记）判定，本脚本仅在**合成**压测数据上陈述判据达成情况。
+    """
     print("=" * 70)
     print("T313 红利策略压力测试（vs 动量策略）")
     print("=" * 70)
@@ -159,11 +165,15 @@ def main() -> None:
 
     print("=" * 70)
     if all_must_pass and any_bonus:
-        print("✅ G4.5 门禁通过！红利策略显著优于动量策略，可进入 Phase 4 模拟盘。")
+        print("✅ G4.5 验收判据满足（本报告仅陈述合成压测结果）。")
+        # ⛔ 本脚本**无权**宣告晋升：其结果基于 T304 内联合成数据，仓内**无对应机读产物**，
+        #    故不得作为"可进入 Phase 4"的依据。晋升必须走准入层（acceptance / adoption 登记）。
+        print("⚠️  晋升须经准入层判定：`py -3.11 -m scripts.gates.acceptance --artifact <产物>`"
+              " 并 `--adopt` 登记；本脚本不构成 Phase 4 解锁依据。")
     elif all_must_pass:
-        print("⚠️  G4.5 门禁部分通过（必须项全满足，但缺少加分项）。")
+        print("⚠️  G4.5 验收判据部分满足（必须项全满足，但缺少加分项）。")
     else:
-        print("❌ G4.5 门禁不通过，需返回 Phase 3.5 调整参数或换策略。")
+        print("❌ G4.5 验收判据不满足，需返回 Phase 3.5 调整参数或换策略。")
     print("=" * 70)
     print()
 
@@ -175,6 +185,8 @@ def main() -> None:
     print(f"4. 风险收益比：夏普比率改善 {sharpe_improve_crash:.1f} / {sharpe_improve_bear:.1f} 点")
     print()
 
+    return 0 if all_must_pass else 1
+
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

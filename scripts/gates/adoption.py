@@ -18,8 +18,10 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Sequence
@@ -31,6 +33,7 @@ __all__ = [
     "load_adopted",
     "adopt",
     "run_adoption_gate",
+    "main",
 ]
 
 #: 采纳登记目录（相对仓根）。
@@ -141,3 +144,35 @@ def run_adoption_gate(base_dir: Path | str | None = None) -> tuple[bool, str, di
     if ok:
         return True, f"已采纳产物 {adopted.get('run_id')} 准入 PASS", {"adopted": adopted}
     return False, f"已采纳产物 {adopted.get('run_id')} 准入 FAIL：{failed}", {"adopted": adopted}
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    """准入步 CLI（CI / pre-push 接线用）：
+
+    ``py -3.11 -m scripts.gates.adoption`` ⇒ 跑采纳门禁；``exit=0`` 放行 / ``exit=1`` 阻断。
+
+    采纳目录为空 ⇒ **无操作放行**（⛔ 不阻断，否则 CI 会因"尚未采纳"永久红）。
+    """
+    parser = argparse.ArgumentParser(
+        description="采纳登记准入步：仅对已被采纳登记的产物跑 acceptance（空登记=无操作放行）",
+    )
+    parser.add_argument("--base-dir", type=str, default="",
+                        help="仓根覆盖（默认真实仓根；测试/隔离用）")
+    args = parser.parse_args(argv)
+
+    base = args.base_dir or None
+    ok, msg, meta = run_adoption_gate(base)
+    adopted = meta.get("adopted")
+    print("=" * 78)
+    print("[采纳准入步] Adoption Gate")
+    print(f"  采纳登记: {adoption_dir(base) / ADOPTED_FILENAME}")
+    if adopted:
+        print(f"  当前采纳: {adopted.get('run_id')} ← {adopted.get('artifact')}")
+    print("-" * 78)
+    print(f"  [{'PASS' if ok else 'FAIL'}] {msg}")
+    print("=" * 78)
+    return 0 if ok else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

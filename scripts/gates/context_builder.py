@@ -32,8 +32,14 @@ from .base import GateResult, GateStatus
 #: ⚠ M3 门禁改造（任务 1 三层分层）：``G-MDD-1`` **移出**本集合——推送代码不产生回撤，
 #: 它是**研究质量**门禁而非**工程诚实性**门禁；其 BLOCKER 能力下移到准入层
 #: （``scripts/gates/acceptance.py``）。（``G-REPRO-1`` 消费 run 产物，归 RUN_EVIDENCE。）
+#: ⚠ ㊱：``S-1``（换手硬顶）**移出**本集合至 RUN_EVIDENCE——其判据 ``annualized_turnover``
+#: **只由 run 产物提供**（``ctx["annualized_turnover"]`` 来自产物 metrics），与 G-MDD-1
+#: 被移出的理由同构；留在 STATIC 会让 ``experiments/runs/`` 一空就 INCONCLUSIVE ⇒ CI 永久红。
+#: 注：``L-3`` **保留**在 RUN_EVIDENCE——其 ``FAIL``（静态 AST 缺关键调用）在 ci_policy 里
+#: **本就阻断**（FAIL 不受分类影响），只有"静态可达但无 ``executed_calls``"这一**确需运行期
+#: 追踪**的情形为 INCONCLUSIVE；改判 STATIC 会让该情形永久红，属误伤。
 STATIC_GATE_IDS: frozenset[str] = frozenset({
-    "D-1", "D-2", "D-3", "D-4", "E-1", "E-2", "S-1",
+    "D-1", "D-2", "D-3", "D-4", "E-1", "E-2",
     "G-1", "G-2", "G-3", "G-4", "G-DOC-1", "G-REF-1",
 })
 
@@ -42,7 +48,7 @@ STATIC_GATE_IDS: frozenset[str] = frozenset({
 #: ``G-MDD-1`` 在此归类（其判定依赖 run 产物 metrics，且见 :data:`WARN_GATE_IDS` 降级）。
 RUN_EVIDENCE_GATE_IDS: frozenset[str] = frozenset({
     "D-5", "L-1", "L-2", "L-3", "E-3", "A-1", "A-2", "A-3", "A-4",
-    "S-2", "S-3", "S-4", "S-5", "G-STRESS-1", "G-MDD-1", "G-REPRO-1",
+    "S-1", "S-2", "S-3", "S-4", "S-5", "G-STRESS-1", "G-MDD-1", "G-REPRO-1",
 })
 
 #: 三层分层（M3 任务 1）：**推送 / CI 期 WARN（展示但不阻断）**的门禁。
@@ -228,17 +234,37 @@ def _sample_data_evidence(ctx: dict[str, Any], repo_root: Path) -> None:
                 return
 
 
-def ci_policy(results: list[GateResult]) -> tuple[bool, list[GateResult], list[GateResult]]:
+def ci_policy(
+    results: list[GateResult],
+    *,
+    run_evidence_blocks: bool = False,
+) -> tuple[bool, list[GateResult], list[GateResult]]:
     """CI 阻断策略（㉖）：返回 ``(blocking, blockers, warnings)``。
 
+    * 门禁在 ``metrics["ci_blocking"]`` 显式声明 ``True`` ⇒ **该非 PASS 结果一律阻断**
+      （㉝：让"门禁自己知道这条证据不足不得放过"的声明真正生效——如
+      ``G-REPRO-1`` 的 ``ADOPTED_LEGACY_UNVERIFIED``，被采纳产物落 legacy ⇒ BLOCKER）。
+      ⛔ 该声明**优先于** ``WARN_GATE_IDS`` 降级与 STATIC/RUN_EVIDENCE 分类，
+      否则字段就是"看起来生效、实际不生效"的死字段；
     * :data:`WARN_GATE_IDS`（如 ``G-MDD-1``）⇒ **只告警不阻断**（三层分层的推送/CI 期，任务 1）；
     * 其余 ``FAIL``（任意级别）⇒ 阻断；
     * ``INCONCLUSIVE`` 且属 :data:`STATIC_GATE_IDS` ⇒ 阻断（静态可判却证据不足）；
-    * ``INCONCLUSIVE`` 且属 :data:`RUN_EVIDENCE_GATE_IDS` ⇒ **只告警不阻断**（CI 无 run 产物）。
+    * ``INCONCLUSIVE`` 且属 :data:`RUN_EVIDENCE_GATE_IDS` ⇒ 默认**只告警不阻断**
+      （CI 无 run 产物；push 期本就取不到这些证据）。
+
+    Args:
+        run_evidence_blocks: ㊳ **定时全量审计**（``--scheduled``）用。置 ``True`` 时
+            「需 run 产物门禁的 INCONCLUSIVE」**也阻断**——定时场景本就该拿到 run 产物，
+            再拿不到就说明证据链断了，继续只告警会让该 workflow **永不变红、等于没在判**
+            （⛔ WARN 降级仍优先：G-MDD-1 属研究质量门禁，不在定时场景升格为阻断）。
     """
     blockers: list[GateResult] = []
     warnings: list[GateResult] = []
     for r in results:
+        # ㉝ 显式升级：门禁自报 ci_blocking ⇒ 非 PASS 即阻断（不得被分类/降级静默吞掉）。
+        if r.status != GateStatus.PASS and bool((r.metrics or {}).get("ci_blocking")):
+            blockers.append(r)
+            continue
         if r.gate_id in WARN_GATE_IDS:
             if r.status in (GateStatus.FAIL, GateStatus.INCONCLUSIVE, GateStatus.WARNING):
                 warnings.append(r)
@@ -246,5 +272,8 @@ def ci_policy(results: list[GateResult]) -> tuple[bool, list[GateResult], list[G
         if r.status == GateStatus.FAIL:
             blockers.append(r)
         elif r.status == GateStatus.INCONCLUSIVE:
-            (blockers if r.gate_id in STATIC_GATE_IDS else warnings).append(r)
+            if r.gate_id in STATIC_GATE_IDS or run_evidence_blocks:
+                blockers.append(r)
+            else:
+                warnings.append(r)
     return (len(blockers) > 0, blockers, warnings)

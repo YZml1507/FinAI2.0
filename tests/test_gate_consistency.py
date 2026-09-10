@@ -29,6 +29,7 @@ from scripts.gates import (
     sign_run_record,
 )
 from scripts.gates.base import GateCategory, GateResult, GateSeverity
+from scripts.gates.base import is_blocking_result
 from scripts.gates.gate_consistency import (
     DocMetricConsistencyGate,
     DocPathReferenceGate,
@@ -297,6 +298,29 @@ class _InconclusiveGate(BaseGate):
 
 class TestInconclusiveBlocksEverywhere:
     """⑦：展示与退出码必须一致——INCONCLUSIVE 同为阻断。"""
+
+    def test_gate_exception_is_fail_not_pass(self):
+        """㊵：「检查器坏了」**绝不能**变成「检查通过」——门禁自身抛异常 ⇒ 判 FAIL（fail-closed）。"""
+        class _ExplodingGate(BaseGate):
+            gate_id = "X-BOOM"
+            name = "explode"
+            category = GateCategory.G_GATE
+            severity = GateSeverity.CRITICAL
+
+            def evaluate(self, context: Any = None) -> GateResult:  # noqa: ANN401
+                raise RuntimeError("检查器内部炸了")
+
+        master = GateMasterAudit(gates=[_ExplodingGate()])
+        results = master.audit(context={}, strict=False)
+        assert len(results) == 1
+        res = results[0]
+        assert res.status == GateStatus.FAIL, f"异常必须判 FAIL，实际 {res.status.value}"
+        assert res.status != GateStatus.PASS
+        assert "异常" in res.message
+        # 并须真正阻断（而非仅展示）。
+        assert is_blocking_result(res) is True
+        with pytest.raises(GateBlockerError):
+            master.audit(context={}, strict=True)
 
     def test_strict_audit_raises_on_inconclusive(self):
         master = GateMasterAudit(gates=[_InconclusiveGate()])
@@ -632,6 +656,60 @@ class TestGateClassificationCompleteness:
                 if (r in blockers) == (r in warnings):
                     offenders.append(f"{gid}/{status.value}")
         assert not offenders, f"被 ci_policy 静默忽略的门禁结果: {offenders}"
+
+
+class TestCiBlockingEscalation:
+    """㉝：门禁自报 ``metrics["ci_blocking"]=True`` 必须**真正生效**（⛔ 不得是死字段）。
+
+    否则 ``G-REPRO-1`` 的 ``ADOPTED_LEGACY_UNVERIFIED``（被采纳产物落 legacy ⇒ BLOCKER）
+    会被 RUN_EVIDENCE 分类静默降级为 WARN——"看起来生效、实际不生效"。
+    """
+
+    @staticmethod
+    def _res(gid: str, status: GateStatus, ci_blocking: bool | None = None) -> GateResult:
+        metrics: dict = {} if ci_blocking is None else {"ci_blocking": ci_blocking}
+        return GateResult(gate_id=gid, name=gid, category=GateCategory.G_GATE,
+                          status=status, severity=GateSeverity.BLOCKER, message="x", metrics=metrics)
+
+    def test_ci_blocking_escalates_inconclusive_run_evidence_gate(self):
+        """RUN_EVIDENCE 门禁的 INCONCLUSIVE 本只告警；显式 ci_blocking ⇒ 升级为阻断。"""
+        from scripts.gates.context_builder import RUN_EVIDENCE_GATE_IDS, ci_policy
+
+        assert "G-REPRO-1" in RUN_EVIDENCE_GATE_IDS, "前置：G-REPRO-1 属需产物门禁"
+        blocking, blockers, warnings = ci_policy(
+            [self._res("G-REPRO-1", GateStatus.INCONCLUSIVE, ci_blocking=True)]
+        )
+        assert blocking is True and len(blockers) == 1 and not warnings, (
+            "ci_blocking=True 的 INCONCLUSIVE 必须阻断（否则该字段是死字段）"
+        )
+
+    def test_ci_blocking_overrides_warn_gate_downgrade(self):
+        """⛔ 显式 ci_blocking 优先于 WARN 降级——否则"自报必须阻断"仍会被静默吞掉。"""
+        from scripts.gates.context_builder import ci_policy
+
+        blocking, blockers, _warnings = ci_policy(
+            [self._res("G-MDD-1", GateStatus.INCONCLUSIVE, ci_blocking=True)]
+        )
+        assert blocking is True and len(blockers) == 1
+
+    def test_ci_blocking_absent_or_false_keeps_default_policy(self):
+        """⛔ 不得一刀切阻断：无该字段 / False 时，RUN_EVIDENCE INCONCLUSIVE 仍只告警。"""
+        from scripts.gates.context_builder import ci_policy
+
+        for ci_blocking in (None, False):
+            blocking, blockers, warnings = ci_policy(
+                [self._res("G-REPRO-1", GateStatus.INCONCLUSIVE, ci_blocking=ci_blocking)]
+            )
+            assert blocking is False and not blockers and len(warnings) == 1, (
+                f"ci_blocking={ci_blocking} 不应阻断（默认策略必须保留）"
+            )
+
+    def test_ci_blocking_does_not_affect_pass(self):
+        """PASS 结果即便带 ci_blocking 也不阻断（字段语义 = "非 PASS 须阻断"）。"""
+        from scripts.gates.context_builder import ci_policy
+
+        blocking, blockers, _warnings = ci_policy([self._res("G-REPRO-1", GateStatus.PASS, ci_blocking=True)])
+        assert blocking is False and not blockers
 
 
 # =====================================================================
@@ -1087,8 +1165,83 @@ class TestGateDocIgnoreScope:
 
 
 # =====================================================================
-# 10. 任务 1：晋升/准入层（G-MDD-1 的 BLOCKER 归属地）
+# 9e. ㊲ 豁免通道守卫（防"新增一个后缀/目录即整片逃逸"）
 # =====================================================================
+
+class TestExemptionGuards:
+    """四条豁免通道必须被测试**锁定**（QA ㊲：三条曾"无任何测试会红"）。"""
+
+    def test_excluded_doc_dirs_is_locked(self):
+        """`_EXCLUDED_DOC_DIRS` 必须恰为 `("docs/audit",)`——
+        ⛔ 旧注释声称"有守卫测试锁定"但实测零命中，现补上（防加目录扩大逃逸面）。"""
+        from scripts.gates.gate_consistency import _EXCLUDED_DOC_DIRS
+
+        assert _EXCLUDED_DOC_DIRS == ("docs/audit",), (
+            f"排除目录白名单被改动（新增即扩大整片逃逸面，须复核理由）：{_EXCLUDED_DOC_DIRS}"
+        )
+
+    def test_historical_snapshot_keys_are_locked(self):
+        """历史快照白名单键**逐个锁定**（防"加一个后缀即豁免任意文档"）。"""
+        from scripts.gates.gate_consistency import _HISTORICAL_SNAPSHOT_DOCS
+
+        assert set(_HISTORICAL_SNAPSHOT_DOCS) == {
+            "docs/delivery/GATE_PHASE1_COMPLETION_SUMMARY.md",
+            "docs/delivery/GATE_PHASE2_COMPLETION_SUMMARY.md",
+            "docs/delivery/GATE_PHASE3_COMPLETION_SUMMARY.md",
+            "CLAUDE.md",
+        }, f"历史快照白名单被改动：{sorted(_HISTORICAL_SNAPSHOT_DOCS)}"
+        for key, reason in _HISTORICAL_SNAPSHOT_DOCS.items():
+            assert reason.strip(), f"白名单 {key} 缺少理由"
+
+    def test_historical_snapshot_is_exact_path_not_suffix(self):
+        """⛔ `endswith` 过宽修复：`docs/anything/CLAUDE.md` **不得**被当作仓根 `CLAUDE.md` 豁免。"""
+        from scripts.gates.gate_consistency import _is_historical_snapshot
+
+        repo = Path(__file__).resolve().parents[1]
+        assert _is_historical_snapshot(repo / "CLAUDE.md") is True
+        assert _is_historical_snapshot(repo / "docs" / "anything" / "CLAUDE.md") is False
+        assert _is_historical_snapshot(
+            repo / "docs" / "delivery" / "GATE_PHASE3_COMPLETION_SUMMARY.md"
+        ) is True
+        assert _is_historical_snapshot(repo / "docs" / "GATE_PHASE3_COMPLETION_SUMMARY.md") is False
+
+    def test_void_docs_list_is_locked_and_within_cap(self):
+        """`gate-doc-void` 是**最强**通道（整篇跳过 G-DOC-1 + G-REF-1）⇒ 清单与上限均锁定。"""
+        from scripts.gates.gate_consistency import MAX_VOID_DOCS, _doc_files, is_void_doc
+
+        void_files = sorted(
+            str(p.relative_to(Path(__file__).resolve().parents[1])).replace("\\", "/")
+            for p in _doc_files({})
+            if is_void_doc(p.read_text(encoding="utf-8"))
+        )
+        assert void_files == [
+            "docs/momentum_backtest_summary.md",
+            "docs/phase35_recommendation.md",
+            "docs/t304_stress_report.md",
+            "docs/t305_technical_review.md",
+            "docs/task_completion_summary.md",
+        ], f"作废文档清单被改动（须复核是否真为『无产物引用』）：{void_files}"
+        assert MAX_VOID_DOCS == 8 and len(void_files) <= MAX_VOID_DOCS
+
+    def test_excluded_dir_files_are_counted_visibly(self):
+        """排除面必须**可见计数**（QA ㊲：曾是唯一"静默豁免"通道，无计数无清单）。"""
+        from scripts.gates.gate_consistency import _excluded_doc_files
+
+        assert len(_excluded_doc_files()) > 0, "前置：docs/audit 下应有被排除的文档"
+        res = DocMetricConsistencyGate().evaluate({})
+        assert "excluded_dir_files" in res.metrics
+        assert "excluded_dir_files" in res.message
+
+    def test_workflow_yml_is_in_scan_scope(self):
+        """㊲：`.github/workflows/*.yml` 必须纳入扫描——否则其中的陈旧基线/门禁数
+        （如 `>=758 passed` / `full 28 gates`）**永远不会被 G-DOC-1 发现**。"""
+        from scripts.gates.gate_consistency import _doc_files
+
+        names = {str(p).replace("\\", "/") for p in _doc_files({})}
+        assert any(".github/workflows/ci.yml" in n for n in names), "ci.yml 未纳入文档扫描"
+        assert any("scheduled_audit.yml" in n for n in names), "scheduled_audit.yml 未纳入文档扫描"
+
+
 
 class TestAcceptanceGate:
     """准入入口：对 43.08% 回撤产物判 FAIL 且 exit≠0；健康产物 PASS。"""

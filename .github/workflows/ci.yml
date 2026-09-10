@@ -64,7 +64,14 @@ jobs:
           #   「需 run 产物门禁的 INCONCLUSIVE」⇒ 仅告警、不阻断。
           python -m scripts.gates.gate_master_audit --ci
 
-      - name: "Gate Check 5: Offline Pytest Regression Suite (>=758 passed)"
+      - name: "Gate Check 5: Adoption Gate (晋升留证 — 已采纳产物必须通过准入)"
+        run: |
+          set -euo pipefail
+          # ㉜ 接线：仅对**已登记采纳**的产物强制准入（G-MDD-1 的 BLOCKER 归属地）。
+          # experiments/acceptance/ 为空 ⇒ 无操作放行（⛔ 不阻断，否则 CI 因"尚未采纳"永久红）。
+          python -m scripts.gates.adoption
+
+      - name: "Gate Check 6: Offline Pytest Regression Suite (baseline = scripts/gates/constants.py)"
         run: |
           set -euo pipefail
           python -m pytest tests/ -q -p no:cacheprovider

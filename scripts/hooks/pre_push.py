@@ -148,6 +148,23 @@ def run_master_gate_guard() -> tuple[bool, str]:
     )
 
 
+def run_adoption_guard(base_dir: "os.PathLike[str] | str | None" = None) -> tuple[bool, str]:
+    """㉜ 采纳准入步（晋升留证）：仅对**已登记采纳**的产物强制准入，FAIL 即阻断。
+
+    * 采纳目录为空 ⇒ :func:`adoption.run_adoption_gate` 返回 ``ok=True`` **无操作**
+      （⛔ 不阻断——否则 CI/pre-push 会因"尚未采纳"永久红）；
+    * 已登记产物不达标（含 43.08% 超限 MDD）⇒ 阻断推送，使"MDD 超限不得晋升"**可强制**。
+
+    Args:
+        base_dir: 仓根覆盖（⛔ 仅测试用，隔离真实仓库）。
+    """
+    from scripts.gates.adoption import run_adoption_gate
+
+    print("[PRE-PUSH] 3. 正在运行准入步（Adoption Gate：晋升留证）...")
+    ok, msg, _meta = run_adoption_gate(base_dir)
+    return ok, msg
+
+
 def _write_bypass_audit() -> dict:
     """逃生阀留痕**落盘**（stdout 会丢 ⇒ 必须写 runs/gate_bypass_audit.jsonl）。"""
     import datetime as _dt
@@ -219,6 +236,14 @@ def main() -> None:
             print("=" * 70)
             sys.exit(1)
         print(f"[PASS] {msg_gate}")
+
+    # 3. 准入步（㉜ 接线）：已采纳登记产物必须通过准入，FAIL 即阻断（空登记 ⇒ 无操作放行）。
+    ok_adopt, msg_adopt = run_adoption_guard()
+    if not ok_adopt:
+        print(f"[-] [BLOCKED] {msg_adopt}")
+        print("=" * 70)
+        sys.exit(1)
+    print(f"[PASS] {msg_adopt}")
 
     print("=" * 70)
     print("[ALL PASS] 验证完毕，允许向远端仓库推送！\n")

@@ -42,7 +42,18 @@ _REPO_ROOT = Path(__file__).resolve().parents[2]
 #: 白名单：仅允许「运行期生成物」路径缺失（由运行产生，不在版本库中预置）。
 _REFERENCE_WHITELIST_PREFIXES: tuple[str, ...] = (
     "experiments/runs/",
+    "experiments/acceptance/",
     "runs/paper_trading/",
+)
+
+#: 「否定语境」标记：同一行若明确声明该路径**不存在/未实现**，则属**如实披露缺陷**，
+#: ⛔ 不得判为"幽灵引用"——否则门禁会惩罚"如实登记"这一被鼓励的行为（反激励）。
+#: 例：「飞书链路为 stub（ops/feishu_alert.py 未实现）」。
+#: ⚠️ 标记必须**明确表达"不存在"**：⛔ 不得收 `幽灵`（那是门禁术语，描述问题本身，
+#:    如「新幽灵 xx/」＝**正在报告**该路径有问题）、⛔ 不收 `stub`（单独出现不足以定性）。
+_NEGATED_REFERENCE_MARKERS: tuple[str, ...] = (
+    "未实现", "不存在", "未创建", "尚未", "未落盘", "未搬入", "缺失", "MISSING",
+    "已删除", "曾引用", "原引用",
 )
 
 _FULLWIDTH_MAP = {
@@ -419,22 +430,43 @@ _RUN_ID_RE = re.compile(r"\b(\d{8}-\d{6})\b")
 
 #: 默认排除的**目录**白名单（相对仓根）。`docs/audit/**` 本身就是"引述缺陷证据"的报告，
 #: 默认排除，否则审计文档会被自己的证据触发（自指误报），门禁永远无法转绿。
-#: ⛔ 只允许**这一个**（守卫测试锁定 `_EXCLUDED_DOC_DIRS == ("docs/audit",)`，
-#: 防止将来有人往白名单加目录以扩大逃逸面，QA ㉚）。
+#: ⛔ 只允许**这一个**（守卫测试 `tests/test_gate_consistency.py::TestExemptionGuards
+#: ::test_excluded_doc_dirs_is_locked` 锁定 `_EXCLUDED_DOC_DIRS == ("docs/audit",)`，
+#: 防止将来有人往白名单加目录以扩大逃逸面，QA ㉚/㊲）。
 _EXCLUDED_DOC_DIRS: tuple[str, ...] = ("docs/audit",)
-_AUDIT_DOC_DIR = (_REPO_ROOT / _EXCLUDED_DOC_DIRS[0]).resolve()
+#: 排除面的**可见计数**必须打印（QA ㊲：`_EXCLUDED_DOC_DIRS` 曾是唯一"静默豁免"通道）。
+_EXCLUDED_DOC_DIR_PATHS: tuple[Path, ...] = tuple(
+    (_REPO_ROOT / d).resolve() for d in _EXCLUDED_DOC_DIRS
+)
 
 
 def _is_excluded_doc(path: Path) -> bool:
-    try:
-        path.resolve().relative_to(_AUDIT_DOC_DIR)
-        return True
-    except ValueError:
-        return False
+    for excluded in _EXCLUDED_DOC_DIR_PATHS:
+        try:
+            path.resolve().relative_to(excluded)
+            return True
+        except ValueError:
+            continue
+    return False
+
+
+def _excluded_doc_files() -> list[Path]:
+    """被 `_EXCLUDED_DOC_DIRS` 排除的文档（⛔ 仅用于**可见计数**，不参与校验）。"""
+    docs_dir = _REPO_ROOT / "docs"
+    if not docs_dir.exists():
+        return []
+    return sorted(
+        p for p in docs_dir.glob("**/*.md") if p.is_file() and _is_excluded_doc(p)
+    )
 
 
 #: 仓根级文档（历史"无人管"的漏网之鱼）：纳入 G-DOC-1 扫描（QA ㉘）。
 _ROOT_DOCS: tuple[str, ...] = ("README.md", "CLAUDE.md")
+
+#: CI / 钩子工作流（㊲）：其中的**步骤名**同样载有单测基线与门禁数声明
+#: （如旧文 `Offline Pytest Regression Suite (>=758 passed)` / `full 28 gates`）。
+#: 曾因 `_doc_files` 不扫 `.yml` 而**永远无法被 G-DOC-1 发现**，故纳入扫描。
+_WORKFLOW_DOC_GLOBS: tuple[str, ...] = (".github/workflows/*.yml", ".github/workflows/*.yaml")
 
 
 def _doc_files(context: Any) -> list[Path]:
@@ -455,6 +487,9 @@ def _doc_files(context: Any) -> list[Path]:
         root_doc = repo_root / name
         if root_doc.exists() and root_doc not in files:
             files.append(root_doc)
+    # ㊲ GitHub Actions 工作流（步骤名含单测基线/门禁数声明）——曾因不扫 .yml 而永不曝光。
+    for pattern in _WORKFLOW_DOC_GLOBS:
+        files.extend(sorted(p for p in repo_root.glob(pattern) if p.is_file() and p not in files))
     return files
 
 
@@ -505,14 +540,55 @@ def _strip_md(text: str) -> str:
     return _MD_EMPHASIS_RE.sub("", text)
 
 
+#: 中文数字 → 阿拉伯数字（㊲ 漏判修复：``共二十八道门禁`` 原先完全漏判）。
+#: 仅支持 ``零一二两三四五六七八九十百千`` 的常规组合（≤9999），覆盖"门禁数/基线"量级。
+_CN_DIGITS: dict[str, int] = {
+    "零": 0, "一": 1, "二": 2, "两": 2, "三": 3, "四": 4,
+    "五": 5, "六": 6, "七": 7, "八": 8, "九": 9,
+}
+_CN_UNITS: dict[str, int] = {"十": 10, "百": 100, "千": 1000}
+_CN_NUMERAL_RUN_RE = re.compile(r"[零一二两三四五六七八九十百千]+")
+
+
+def _cn_to_int(token: str) -> int | None:
+    """中文数字串 → int；含未知字符/空串 ⇒ ``None``。"""
+    if not token:
+        return None
+    total = 0
+    section = 0
+    number = 0
+    for ch in token:
+        if ch in _CN_DIGITS:
+            number = _CN_DIGITS[ch]
+        elif ch in _CN_UNITS:
+            unit = _CN_UNITS[ch]
+            section += (number or 1) * unit
+            number = 0
+        else:
+            return None
+    return total + section + number
+
+
+def _normalize_cn_numerals(text: str) -> str:
+    """把中文数字串转成阿拉伯数字（仅用于"门禁数/基线"声明匹配，⛔ 不改原行）。"""
+    def _sub(m: re.Match[str]) -> str:
+        value = _cn_to_int(m.group(0))
+        return str(value) if value is not None else m.group(0)
+
+    return _CN_NUMERAL_RUN_RE.sub(_sub, text)
+
+
 #: 门禁数量声明的**结构式**模式（⛔ 不再"同行含关键词即命中"——那会命中
 #: 「G4.5 门禁 3 条必达指标」「52 个单测」「≥6 个月」等"量词修饰他物"的散文）。
 #:
 #: * **模式 A（数字在前、直接修饰门禁/闸门）**：``N 道/项/个 [机读|六维|…] 门禁``；
-#: * **模式 B（门禁/闸门在前、数量在后且以「道」计）**：``门禁[≤24 非句读字符]N 道``
+#: * **模式 B1（门禁在前、计数名词连词）**：``门禁数量/总数/数目/个数/数 [:：=] N``；
+#: * **模式 B2（门禁在前、动词连词 + 量词）**：``门禁[≤8 字]共/总计/重做为…[≤12 字]N 道/项/个``
 #:   ——覆盖「门禁包已重做为 28 道」这类数字与"门禁"不相邻的当前时态结论。
+#:   ⛔ 连接词**必需**：否则「门禁，3 道必达指标」「门禁 2 道失败」会把**子集计数**
+#:   误当总数（QA ㊲ 误报修复）。
 #:
-#: 两条模式均**不跨行/不跨句**（``[^\r\n。；]``）：旧实现 ``\s*`` 可吞换行，
+#: 三条模式均**不跨行/不跨句**（``[^\r\n。；]``）：旧实现 ``\s*`` 可吞换行，
 #: 曾把「…回撤上限门禁\n3 项…」误连成 ``门禁\n3``，造成跨行误报。
 _GATE_COUNT_RES: tuple[re.Pattern[str], ...] = (
     # 模式 A：数字直接修饰门禁/闸门（量词 道/项/个 + 可选限定词）。
@@ -521,21 +597,55 @@ _GATE_COUNT_RES: tuple[re.Pattern[str], ...] = (
         r"(?:机读|自动|六维|防伪|质量|防御|一致|P0)*\s*"
         r"(?:门禁|闸门)"
     ),
-    # 模式 B：门禁/闸门在前、数量在后且以「道」计（数字可距"门禁"至多 24 字）。
-    re.compile(r"(?:门禁|闸门)[^\r\n。；]{0,24}?(\d+)\s*道"),
+    # 模式 B1：门禁 + 计数名词（数量/总数/数目/个数/数）+ 可选 [为|是|：|:|=] + N（量词可省）。
+    re.compile(r"(?:门禁|闸门)\s*(?:数量|总数|数目|个数|数)\s*(?:为|是|：|:|=)?\s*(\d+)\s*[道项个]?"),
+    # 模式 B2：门禁 + [≤8 字] + **动词连词** + [≤12 字] + N + 量词（量词必需）。
+    re.compile(
+        r"(?:门禁|闸门)[^\r\n。；]{0,8}?"
+        r"(?:共计|总计|共|已达|达|为|有|是|重做为|重做|改为|调整为)"
+        r"[^\r\n。；]{0,12}?(\d+)\s*[道项个]"
+    ),
+)
+
+#: **子集/非总数**尾标记：紧跟"门禁/闸门"出现即说明该数字是"通过/未通过"的**子集计数**，
+#: 不是门禁总数 ⇒ 跳过（QA ㊲ 误报修复：「本次共 4 道门禁未通过」不得报 4）。
+_GATE_COUNT_SUBSET_TAIL_RE = re.compile(r"^\s*(?:未通过|不通过|失败|通过|必达|其中)")
+
+#: **带日期的任务/修订日志行**：`tasks.md` 与纪事类文件按约定是 **append-only 的日期化
+#: 提交日志**，其门禁数/基线是**当时快照**（如 2026-09-07 记「总门禁达 24 项」）。
+#: 两种形态：
+#:
+#: * 复选框条目：``- [x] [T-GATE-P3] … — 2026-09-07 ✅ …``
+#: * 修订登记表行：``| TK-27 | 2026-09-07 | …``
+#:
+#: 此类行豁免当前时态声明校验，但**单独计数可见**（``dated_task_log_lines``，⛔ 不得静默）。
+#: ⛔ 匹配刻意收窄到"带日期的日志形态"：散文式当前时态声明（如
+#: 「本仓共 24 道门禁（2026-09-10 实测）」）**不带复选框/修订表结构**，
+#: 普通数据表行（如 ``| 门禁总数 | 29 |`` 无日期）也**不匹配**，因而照常校验。
+_DATED_TASK_LOG_RE = re.compile(
+    r"^\s*(?:"
+    r"-\s*\[[ xX]\][^\r\n]*?—\s*\d{4}-\d{2}-\d{2}"              # - [x] … — YYYY-MM-DD
+    r"|\|\s*[A-Za-z][\w\-]*\s*\|\s*\d{4}-\d{2}-\d{2}\s*\|"       # | TK-27 | 2026-09-07 | …
+    r")"
 )
 
 #: 「N passed」/「基线 N」中的**基线声明**——必须"基线"与"passed"语义成对且**同行**，
 #: 以免把历史进度计数（如流程图里 19/162/…/681 的单测演进、子集运行 "18 passed"）
 #: 误判为"当前基线声明"（该门禁刻意收紧，⛔ 不允许误报泛滥；历史快照走行内豁免）。
+#: ㊲ 补：「基线：N」（无 passed）、「passed=N（基线）」、「共 N 项测试通过」三种等价措辞。
 _TEST_BASELINE_RES: tuple[re.Pattern[str], ...] = (
     re.compile(r"基线[^\r\n]{0,20}?(\d+)\s*passed"),
     re.compile(r"(\d+)\s*passed[^\r\n]{0,10}?基线"),
+    re.compile(r"基线[^\r\n]{0,6}?[:：=]\s*(\d+)"),            # 基线：838
+    re.compile(r"passed\s*[=＝:：]\s*(\d+)[^\r\n]{0,10}?基线"),  # passed=838（基线）
+    re.compile(r"共\s*(\d+)\s*项测试通过"),                     # 共 838 项测试通过
 )
 
 #: 历史归档快照白名单（带理由、可审查）：其门禁数量/基线是**历史阶段快照**，
 #: 不随门禁演进同步；⛔ 不允许"顺手把历史数字改成现值"（等于改史）。
 #: 如需豁免其它历史件，请用 ``gate-doc-void`` 标记（契约见 ``is_void_doc``）。
+#: ⚠ 键为**仓根相对路径**（精确匹配）：旧实现用 ``endswith`` ⇒ ``docs/anything/CLAUDE.md``
+#: 会被误判为仓根 ``CLAUDE.md`` 而整篇豁免（QA ㊲ 白名单过宽）。守卫测试锁定该集合。
 _HISTORICAL_SNAPSHOT_DOCS: dict[str, str] = {
     "docs/delivery/GATE_PHASE1_COMPLETION_SUMMARY.md": "阶段一历史快照（23 道门禁 / 681 passed 等当时值）",
     "docs/delivery/GATE_PHASE2_COMPLETION_SUMMARY.md": "阶段二历史快照（门禁数与单测基线为当时值）",
@@ -544,10 +654,31 @@ _HISTORICAL_SNAPSHOT_DOCS: dict[str, str] = {
 }
 
 
+def _relpath_posix(path: Path | str) -> str:
+    """把**仓内**路径归一为仓根相对 POSIX 路径；仓外路径原样返回（调用方自行处理）。"""
+    try:
+        return Path(path).resolve().relative_to(_REPO_ROOT).as_posix()
+    except (ValueError, OSError):
+        return Path(path).as_posix()
+
+
 def _is_historical_snapshot(path: Path) -> bool:
-    """是否历史归档快照（其门禁数量/单测基线声明豁免同步校验）。"""
-    norm = str(path).replace("\\", "/")
-    return any(norm.endswith(suffix) for suffix in _HISTORICAL_SNAPSHOT_DOCS)
+    """是否历史归档快照（其门禁数量/单测基线声明豁免同步校验）。
+
+    匹配口径（⛔ 收紧，修复 QA ㊲「白名单过宽」）：
+
+    * **仓内路径** ⇒ 必须**精确等于**白名单键：旧实现用 ``endswith`` ⇒
+      ``docs/anything/CLAUDE.md`` 会被误判为仓根 ``CLAUDE.md`` 而整篇豁免；
+    * **仓外路径**（测试隔离目录 / 外部归档）⇒ 允许"路径段对齐的后缀"匹配，
+      便于白名单文件被移出仓后仍可识别（⛔ 无仓内相对路径可言，且不构成逃逸面）。
+    """
+    p = Path(path)
+    try:
+        rel = p.resolve().relative_to(_REPO_ROOT).as_posix()
+    except (ValueError, OSError):
+        posix = p.as_posix()
+        return any(posix == key or posix.endswith("/" + key) for key in _HISTORICAL_SNAPSHOT_DOCS)
+    return rel in _HISTORICAL_SNAPSHOT_DOCS
 
 
 def expected_gate_count(context: Any = None) -> int:
@@ -583,10 +714,13 @@ def _declaration_violations_in_text(
 
     口径：
 
-    * 匹配前剥离 markdown 强调符（``**36** 道`` ⇒ ``36 道``）；
-    * 门禁数量只认**结构化**模式 A/B（见 :data:`_GATE_COUNT_RES`）——⛔ 不再"同行含
+    * 匹配前剥离 markdown 强调符（``**36** 道`` ⇒ ``36 道``）并把**中文数字**归一
+      （``共二十八道门禁`` ⇒ ``共28道门禁``，㊲ 漏判修复；⛔ 不改原行，仅用于匹配）；
+    * 门禁数量只认**结构化**模式 A/B1/B2（见 :data:`_GATE_COUNT_RES`）——⛔ 不再"同行含
       关键词即命中"，故「G4.5 门禁 3 条必达指标」「52 个单测」「≥6 个月」不再误报；
-    * 基线只认**同行**「基线…N passed」成对（见 :data:`_TEST_BASELINE_RES`）——⛔ 不跨行；
+    * 紧跟"门禁/闸门"出现"未通过/失败/通过/必达/其中" ⇒ 该数字是**子集计数**，跳过
+      （㊲：「本次共 4 道门禁未通过」不得报 4）；
+    * 基线只认**同行**语义成对（见 :data:`_TEST_BASELINE_RES`）——⛔ 不跨行；
     * 「本行已含真值 ⇒ 跳过」必须用**数字集合比对**（⛔ 不用子串——``"29" in "129"``
       会让 ``129 道门禁`` 整行被静默放过：这是 QA ㉘ 点名的最坏漏判）；
     * 复用 ``_DOC_LINE_SKIP_PHRASES`` 排除预期/阈值/更正类散文（与指标比对同口径），
@@ -595,9 +729,10 @@ def _declaration_violations_in_text(
       调用方按 ``(文件, 行号)`` 去重，避免同一行被多处扫描重复计数）。
     """
     orig_lines = text.splitlines()
-    norm = _normalize_text(_strip_md(text))
+    norm = _normalize_cn_numerals(_normalize_text(_strip_md(text)))
 
     ignored_lines: set[int] = set()
+    dated_log_lines: set[int] = set()
 
     def _lineno(pos: int) -> int:
         return norm.count("\n", 0, pos) + 1
@@ -614,6 +749,9 @@ def _declaration_violations_in_text(
             return True
         if line_ignore_reason(line) is not None:
             ignored_lines.add(ln)
+            return True
+        if _DATED_TASK_LOG_RE.match(line):      # 日期化提交日志 ⇒ 当时快照（可见计数）
+            dated_log_lines.add(ln)
             return True
         return False
 
@@ -636,6 +774,9 @@ def _declaration_violations_in_text(
             ln = _lineno(m.start())
             if _skipped(ln):
                 continue
+            # ㊲：紧跟上文出现"未通过/失败/通过/必达/其中"⇒ 该数字是**子集计数**，非总数。
+            if _GATE_COUNT_SUBSET_TAIL_RE.match(norm[m.end():m.end() + 4]):
+                continue
             val = int(m.group(1))
             if val == expected_gate_count or Decimal(expected_gate_count) in _line_nums(ln):
                 continue
@@ -654,6 +795,7 @@ def _declaration_violations_in_text(
 
     if stats is not None:
         stats.setdefault("ignored_linenos", set()).update(ignored_lines)   # type: ignore[union-attr]
+        stats.setdefault("dated_log_linenos", set()).update(dated_log_lines)   # type: ignore[union-attr]
 
     out.sort(key=lambda e: (e["lineno"], e["metric"], e["doc_value"]))
     return out
@@ -758,6 +900,7 @@ class DocMetricConsistencyGate(BaseGate):
         void_docs = 0                            # 作废文档（gate-doc-void 标记）⛔ 必须可见计数
         historical_docs = 0                      # 历史归档快照（显式白名单）⛔ 必须可见计数
         ignored_keys: set[tuple[str, int]] = set()   # 行内 ignore 豁免（(文件,行号) 去重，必须可见）
+        dated_log_keys: set[tuple[str, int]] = set()  # 带日期的任务日志行（当时快照，(文件,行号) 去重）
         exp_gate_count = expected_gate_count(context)        # 动态：GateMasterAudit 实际长度
         exp_baseline = expected_test_baseline(context)       # 单一事实源常量
         for path in files:
@@ -780,6 +923,8 @@ class DocMetricConsistencyGate(BaseGate):
                     declarations.append({"file": str(path), **decl})
                 for ln in decl_stats.get("ignored_linenos", set()):
                     ignored_keys.add((str(path), int(ln)))
+                for ln in decl_stats.get("dated_log_linenos", set()):
+                    dated_log_keys.add((str(path), int(ln)))
             lines = text.splitlines()
             other_strategy = _doc_references_other_strategy(path, text)
             truth_id = _RUN_ID_RE.search(Path(truth_path).name)
@@ -842,10 +987,16 @@ class DocMetricConsistencyGate(BaseGate):
             unique_decl.append(d)
         declarations = unique_decl
 
+        dated_log_lines = len(dated_log_keys)     # 带日期的任务日志行（当时快照，可见计数）
+        # ㊲ 排除面**可见计数**：`_EXCLUDED_DOC_DIRS` 曾是唯一"静默豁免"通道（无计数、无清单）。
+        excluded_dir_files = len(_excluded_doc_files())
+
         head = (
             f"void_docs: {void_docs}（gate-doc-void 豁免，必须可见）；"
             f"historical_snapshot_docs: {historical_docs}（历史归档快照白名单，必须可见）；"
             f"ignored_lines: {ignored_lines}（行内 gate-doc-ignore 豁免，必须可见）；"
+            f"dated_task_log_lines: {dated_log_lines}（带日期的提交日志行＝当时快照，必须可见）；"
+            f"excluded_dir_files: {excluded_dir_files}（目录白名单 {_EXCLUDED_DOC_DIRS} 整片免检，必须可见）；"
             f"④ 门禁数量/单测基线声明漂移 {len(declarations)} 处"
             f"（期望 门禁数={exp_gate_count}、基线={exp_baseline}）"
             f"；① 真实违规 {len(violations)} 处（M4/M5 待重写）；"
@@ -862,6 +1013,8 @@ class DocMetricConsistencyGate(BaseGate):
                     "max_void_docs": MAX_VOID_DOCS,
                     "historical_snapshot_docs": historical_docs,
                     "ignored_lines": ignored_lines,
+                    "dated_task_log_lines": dated_log_lines,
+                    "excluded_dir_files": excluded_dir_files,
                     "truth_run": Path(truth_path).name,
                 },
             )
@@ -880,8 +1033,10 @@ class DocMetricConsistencyGate(BaseGate):
                     "void_docs": void_docs,
                     "historical_snapshot_docs": historical_docs,
                     "ignored_lines": ignored_lines,
+                    "dated_task_log_lines": dated_log_lines,
                     "expected_gate_count": exp_gate_count,
                     "expected_test_baseline": exp_baseline,
+                    "excluded_dir_files": excluded_dir_files,
                     "violations_total": len(violations),
                     "declaration_violations_total": len(declarations),
                     "unresolved_artifacts_total": len(unresolved),
@@ -906,8 +1061,10 @@ class DocMetricConsistencyGate(BaseGate):
                     "void_docs": void_docs,
                     "historical_snapshot_docs": historical_docs,
                     "ignored_lines": ignored_lines,
+                    "dated_task_log_lines": dated_log_lines,
                     "expected_gate_count": exp_gate_count,
                     "expected_test_baseline": exp_baseline,
+                    "excluded_dir_files": excluded_dir_files,
                     "violations_total": 0,
                     "declaration_violations_total": 0,
                     "unresolved_artifacts_total": len(unresolved),
@@ -924,8 +1081,10 @@ class DocMetricConsistencyGate(BaseGate):
                 "void_docs": void_docs,
                 "historical_snapshot_docs": historical_docs,
                 "ignored_lines": ignored_lines,
+                "dated_task_log_lines": dated_log_lines,
                 "expected_gate_count": exp_gate_count,
                 "expected_test_baseline": exp_baseline,
+                "excluded_dir_files": excluded_dir_files,
                 "scanned_files": len(files),
                 "excluded_nonmeasure_total": excluded,
                 "truth_run": Path(truth_path).name,
@@ -1005,6 +1164,7 @@ class DocPathReferenceGate(BaseGate):
         repo_root = _REPO_ROOT
         violations: list[dict[str, Any]] = []
         whitelisted_hits = 0
+        negated_hits = 0                         # 否定语境豁免行数（如实披露"某路径不存在"，⛔ 必须可见）
         void_docs = 0                            # 作废文档（gate-doc-void 标记）⛔ 必须可见计数
         ignored_lines = 0                        # 行内 ignore 豁免行数（⛔ 必须可见，不得静默隐藏）
         files = _doc_files(context)
@@ -1038,6 +1198,10 @@ class DocPathReferenceGate(BaseGate):
                         continue
                     if _is_whitelisted(ref):
                         whitelisted_hits += 1       # 档 C：运行期产物（白名单）
+                        continue
+                    # 否定语境：同行明确声明该路径不存在/未实现 ⇒ 属如实披露，⛔ 不算幽灵引用。
+                    if any(marker in line for marker in _NEGATED_REFERENCE_MARKERS):
+                        negated_hits += 1
                         continue
                     target = repo_root / ref
                     if not target.exists():
@@ -1089,7 +1253,8 @@ class DocPathReferenceGate(BaseGate):
                     f"ignored_lines: {ignored_lines}（行内 gate-doc-ignore 豁免，必须可见）；"
                     f"档A 幽灵证据引用(高危) {len(elevated)} 处；"
                     f"档B 文档-实现路径不一致(低危) {len(low_risk)} 处；"
-                    f"档C 运行期产物(白名单) {whitelisted_hits} 处已豁免。"
+                    f"档C 运行期产物(白名单) {whitelisted_hits} 处已豁免；"
+                    f"档D 否定语境(如实披露该路径不存在) {negated_hits} 处已豁免（必须可见）。"
                     f"首例：{unique[0]['reference']}（{unique[0]['tier']}）"
                 ),
                 metrics={
@@ -1099,6 +1264,7 @@ class DocPathReferenceGate(BaseGate):
                     "elevated_total": len(elevated),
                     "low_risk_total": len(low_risk),
                     "whitelisted_skipped_total": whitelisted_hits,
+                    "negated_skipped_total": negated_hits,
                     "violations": unique[:50],
                     "elevated": elevated[:50],
                     "low_risk": low_risk[:50],
@@ -1108,13 +1274,15 @@ class DocPathReferenceGate(BaseGate):
         return self._make(
             GateStatus.PASS,
             f"已扫描 {len(files)} 份文档，引用路径全部存在"
-            f"（白名单豁免 {whitelisted_hits} 处；void_docs: {void_docs}（gate-doc-void 豁免，必须可见）；"
+            f"（白名单豁免 {whitelisted_hits} 处；否定语境豁免 {negated_hits} 处；"
+            f"void_docs: {void_docs}（gate-doc-void 豁免，必须可见）；"
             f"ignored_lines: {ignored_lines}（行内 gate-doc-ignore 豁免，必须可见））",
             metrics={
                 "void_docs": void_docs,
                 "ignored_lines": ignored_lines,
                 "scanned_files": len(files),
                 "whitelisted_skipped_total": whitelisted_hits,
+                "negated_skipped_total": negated_hits,
             },
         )
 
