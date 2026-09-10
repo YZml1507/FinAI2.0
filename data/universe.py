@@ -213,10 +213,12 @@ def alive_universe(stock_basic: pd.DataFrame, as_of: str) -> UniverseSnapshot:
     candidates = stocks.loc[known_idx][listed_mask]
 
     # 第二道前瞻防线：退市日 > as_of（退市日当天起不可用，字典 §3.2:203）
+    # ⚠ pandas Arrow/新版本会把 map 出来的 None 变成 float nan：`v is not None`
+    #   对 nan 为 True，随后 `nan <= day` 在 CI 上炸 TypeError。统一走 `_missing`。
     out = candidates["outDate"].map(lambda v: None if _missing(v) else canon_date(v))
-    delisted_mask = out.map(lambda v: v is not None and v <= day)
-    n_delisted = int(delisted_mask.sum())
-    alive = candidates[~delisted_mask]
+    delisted_mask = out.map(lambda v: (not _missing(v)) and (str(v) <= day))
+    n_delisted = int(delisted_mask.fillna(False).sum())
+    alive = candidates[~delisted_mask.fillna(False)]
 
     codes = tuple(sorted(alive["code"].astype(str).str.strip()))
     meta: dict[str, Any] = {
