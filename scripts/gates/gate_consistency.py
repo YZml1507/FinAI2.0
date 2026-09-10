@@ -31,6 +31,7 @@ from pathlib import Path
 from typing import Any, Iterable, Sequence
 
 from .base import BaseGate, GateCategory, GateResult, GateSeverity, GateStatus
+from .constants import TEST_BASELINE_PASSED
 
 # ---------------------------------------------------------------------------
 # 仓库根定位与通用读取工具
@@ -451,6 +452,102 @@ def is_void_doc(text: str) -> bool:
     return False
 
 
+# ---------------------------------------------------------------------------
+# 门禁数量 / 单测基线声明一致性（任务 3 补充）：动态核 doc 声称数 vs 单一事实源
+# ---------------------------------------------------------------------------
+
+#: 「N 道门禁 / N 道机读门禁 / N 道自动闸门 / N 道六维(防伪)门禁」——门禁数量声明。
+_GATE_COUNT_RE = re.compile(
+    r"(\d+)\s*道(?:六维|机读|自动|防伪|质量|一致|P0)*(?:门禁|闸门)"
+)
+
+#: 「N passed」/「基线 N」中的**基线声明**——必须紧邻"基线"字样，
+#: 以免把历史进度计数（如流程图里 19/162/.../742 的单测演进、子集运行 "18 passed"）
+#: 误判为"当前基线声明"（该门禁刻意收紧，⛔ 不允许误报泛滥）。
+_TEST_BASELINE_RES: tuple[re.Pattern[str], ...] = (
+    re.compile(r"基线[^\n]{0,20}?(\d+)\s*passed"),
+    re.compile(r"(\d+)\s*passed[^\n]{0,10}?基线"),
+)
+
+#: 历史归档快照白名单（带理由、可审查）：其门禁数量/基线是**历史阶段快照**，
+#: 不随门禁演进同步；⛔ 不允许"顺手把历史数字改成现值"（等于改史）。
+#: 如需豁免其它历史件，请用 ``gate-doc-void`` 标记（契约见 ``is_void_doc``）。
+_HISTORICAL_SNAPSHOT_DOCS: dict[str, str] = {
+    "docs/delivery/GATE_PHASE1_COMPLETION_SUMMARY.md": "阶段一历史快照（23 道门禁 / 681 passed 等当时值）",
+    "docs/delivery/GATE_PHASE2_COMPLETION_SUMMARY.md": "阶段二历史快照（门禁数与单测基线为当时值）",
+    "docs/delivery/GATE_PHASE3_COMPLETION_SUMMARY.md": "阶段三历史快照（24 道机读门禁 / 717 passed 等当时值）",
+}
+
+
+def _is_historical_snapshot(path: Path) -> bool:
+    """是否历史归档快照（其门禁数量/单测基线声明豁免同步校验）。"""
+    norm = str(path).replace("\\", "/")
+    return any(norm.endswith(suffix) for suffix in _HISTORICAL_SNAPSHOT_DOCS)
+
+
+def expected_gate_count(context: Any = None) -> int:
+    """门禁数量期望值：**动态**取 ``GateMasterAudit.get_standard_gates()`` 长度（⛔ 不写死）。
+
+    允许 ctx 注入 ``expected_gate_count``（测试用）。
+    """
+    ctx: dict[str, Any] = context if isinstance(context, dict) else {}
+    injected = ctx.get("expected_gate_count")
+    if isinstance(injected, int):
+        return injected
+    from .gate_master_audit import GateMasterAudit    # 延迟导入：避免与总调度器循环依赖
+
+    return len(GateMasterAudit.get_standard_gates())
+
+
+def expected_test_baseline(context: Any = None) -> int:
+    """单测基线期望值：单一事实源 ``constants.TEST_BASELINE_PASSED``（允许 ctx 注入，测试用）。"""
+    ctx: dict[str, Any] = context if isinstance(context, dict) else {}
+    injected = ctx.get("expected_test_baseline")
+    if isinstance(injected, int):
+        return injected
+    return TEST_BASELINE_PASSED
+
+
+def _declaration_violations(
+    line: str,
+    expected_gate_count: int,
+    expected_baseline: int,
+) -> list[dict[str, Any]]:
+    """单行内「门禁数量 / 单测基线」声明与单一事实源不符的项（机读、可定位）。
+
+    * 复用 ``_DOC_LINE_SKIP_PHRASES``（排除预期/阈值/更正类散文，与指标比对同口径）；
+    * 行内若已出现真值（如"28 道 → 29 道"更正标注），整行跳过（避免把"更正"当"漂移"）。
+    """
+    out: list[dict[str, Any]] = []
+    if any(phrase in line for phrase in _DOC_LINE_SKIP_PHRASES):
+        return out
+    norm = _normalize_text(line)
+
+    if str(expected_gate_count) not in norm:
+        for m in _GATE_COUNT_RE.finditer(norm):
+            val = int(m.group(1))
+            if val != expected_gate_count:
+                out.append({
+                    "metric": "门禁数量",
+                    "doc_value": str(val),
+                    "expected": str(expected_gate_count),
+                    "line": line.strip()[:120],
+                })
+
+    if str(expected_baseline) not in norm:
+        for pat in _TEST_BASELINE_RES:
+            for m in pat.finditer(norm):
+                val = int(m.group(1))
+                if val != expected_baseline:
+                    out.append({
+                        "metric": "单测基线",
+                        "doc_value": str(val),
+                        "expected": str(expected_baseline),
+                        "line": line.strip()[:120],
+                    })
+    return out
+
+
 #: 关键词前若出现这些词，说明该数字是"约束口径"而非实测值。
 _THRESHOLD_WORDS = ("超过", "低于", "高于", "不到", "至少", "至多", "约")
 
@@ -519,6 +616,11 @@ class DocMetricConsistencyGate(BaseGate):
     ``年化换手率 92.51%`` / ``最大回撤 MDD 15.23%`` 的关键指标，
     与 ``experiments/runs/*.json``（权威产物）真值比对；不一致即 FAIL，
     并指向**具体文件与行号**。行尾 ``<!-- gate-doc-ignore -->`` 可显式豁免。
+
+    此外（任务 3 补充）核验**文档声称的门禁数量 / 单测基线**：
+    ``N 道门禁``（含机读/自动闸门/六维等变体）必须等于
+    ``GateMasterAudit.get_standard_gates()`` 的**动态长度**；``N passed`` / ``基线 N``
+    必须等于单一事实源 ``constants.TEST_BASELINE_PASSED``。历史归档快照走白名单并可见计数。
     """
 
     gate_id = "G-DOC-1"
@@ -538,9 +640,13 @@ class DocMetricConsistencyGate(BaseGate):
         # 三类：① 与所引（存在的）产物不符 = 真实违规；② 所引产物不存在；③ 非实测值（阈值/区间）排除。
         violations: list[dict[str, Any]] = []
         unresolved: list[dict[str, Any]] = []
+        declarations: list[dict[str, Any]] = []   # ④ 门禁数量/单测基线声明漂移（任务 3 补充）
         stats: dict[str, int] = {}
         files = _doc_files(context)
         void_docs = 0                            # 作废文档（gate-doc-void 标记）⛔ 必须可见计数
+        historical_docs = 0                      # 历史归档快照（显式白名单）⛔ 必须可见计数
+        exp_gate_count = expected_gate_count(context)        # 动态：GateMasterAudit 实际长度
+        exp_baseline = expected_test_baseline(context)       # 单一事实源常量
         for path in files:
             try:
                 text = path.read_text(encoding="utf-8")
@@ -549,11 +655,18 @@ class DocMetricConsistencyGate(BaseGate):
             if is_void_doc(text):            # 已作废文档：跳过数字比对（但计数可见）
                 void_docs += 1
                 continue
+            is_hist = _is_historical_snapshot(path)
+            if is_hist:
+                historical_docs += 1
             lines = text.splitlines()
             other_strategy = _doc_references_other_strategy(path, text)
             truth_id = _RUN_ID_RE.search(Path(truth_path).name)
             truth_id_token = truth_id.group(1) if truth_id else None
             for lineno, line in enumerate(lines, start=1):
+                # ④ 门禁数量 / 单测基线声明：历史归档快照豁免（沿用 skip-phrase 口径）。
+                if not is_hist:
+                    for decl in _declaration_violations(line, exp_gate_count, exp_baseline):
+                        declarations.append({"file": str(path), "lineno": lineno, **decl})
                 if any(phrase in line for phrase in _DOC_LINE_SKIP_PHRASES):
                     continue
                 # 行内若引用别的 run 标识（描述的是另一份产物），跳过避免误报。
@@ -596,27 +709,47 @@ class DocMetricConsistencyGate(BaseGate):
                             violations.append(entry)
 
         excluded = stats.get("excluded", 0)
+        # 去重（同文同值的门禁数量/基线声明只保留首处行号）。
+        seen_decl: set[tuple[str, str, str]] = set()
+        unique_decl: list[dict[str, Any]] = []
+        for d in declarations:
+            key = (d["file"], d["metric"], d["doc_value"])
+            if key in seen_decl:
+                continue
+            seen_decl.add(key)
+            unique_decl.append(d)
+        declarations = unique_decl
+
         head = (
             f"void_docs: {void_docs}（gate-doc-void 豁免，必须可见）；"
-            f"① 真实违规 {len(violations)} 处（M4/M5 待重写）；"
+            f"historical_snapshot_docs: {historical_docs}（历史归档快照白名单，必须可见）；"
+            f"④ 门禁数量/单测基线声明漂移 {len(declarations)} 处"
+            f"（期望 门禁数={exp_gate_count}、基线={exp_baseline}）"
+            f"；① 真实违规 {len(violations)} 处（M4/M5 待重写）；"
             f"② 所引产物不存在 {len(unresolved)} 处；③ 非实测值（阈值/区间）排除 {excluded} 处"
         )
 
-        if violations:
-            first = violations[0]
+        if violations or declarations:
+            first = violations[0] if violations else declarations[0]
+            kind = "① 指标" if violations else "④ 声明"
             return self._make(
                 GateStatus.FAIL,
                 (
-                    f"检出文档指标与权威产物 {Path(truth_path).name} 不符 —— {head}。"
-                    f"① 首例：{Path(first['file']).name}:{first['lineno']} {first['metric']} "
-                    f"文档={first['doc_value']} ≠ 产物={first['expected']}"
+                    f"检出文档与权威产物 {Path(truth_path).name} / 单一事实源不符 —— {head}。"
+                    f"{kind} 首例：{Path(first['file']).name}:{first['lineno']} {first['metric']} "
+                    f"文档={first['doc_value']} ≠ 期望={first['expected']}"
                 ),
                 metrics={
                     "void_docs": void_docs,
+                    "historical_snapshot_docs": historical_docs,
+                    "expected_gate_count": exp_gate_count,
+                    "expected_test_baseline": exp_baseline,
                     "violations_total": len(violations),
+                    "declaration_violations_total": len(declarations),
                     "unresolved_artifacts_total": len(unresolved),
                     "excluded_nonmeasure_total": excluded,
                     "violations": violations[:50],
+                    "declaration_violations": declarations[:50],
                     "unresolved_artifacts": unresolved[:50],
                     "truth_run": Path(truth_path).name,
                 },
@@ -633,7 +766,11 @@ class DocMetricConsistencyGate(BaseGate):
                 ),
                 metrics={
                     "void_docs": void_docs,
+                    "historical_snapshot_docs": historical_docs,
+                    "expected_gate_count": exp_gate_count,
+                    "expected_test_baseline": exp_baseline,
                     "violations_total": 0,
+                    "declaration_violations_total": 0,
                     "unresolved_artifacts_total": len(unresolved),
                     "excluded_nonmeasure_total": excluded,
                     "unresolved_artifacts": unresolved[:50],
@@ -646,6 +783,9 @@ class DocMetricConsistencyGate(BaseGate):
             f"已扫描 {len(files)} 份文档，关键指标与权威产物 {Path(truth_path).name} 全部一致（{head}）",
             metrics={
                 "void_docs": void_docs,
+                "historical_snapshot_docs": historical_docs,
+                "expected_gate_count": exp_gate_count,
+                "expected_test_baseline": exp_baseline,
                 "scanned_files": len(files),
                 "excluded_nonmeasure_total": excluded,
                 "truth_run": Path(truth_path).name,

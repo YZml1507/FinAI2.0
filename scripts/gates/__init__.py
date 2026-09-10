@@ -44,8 +44,11 @@ from .gate_consistency import (
     DocPathReferenceGate,
     MaxDrawdownCeilingGate,
     StressValidityGate,
+    expected_gate_count,
+    expected_test_baseline,
     is_void_doc,
 )
+from .constants import TEST_BASELINE_PASSED
 from .gate_repro import ReproducibilityGate
 from .context_builder import (
     RUN_EVIDENCE_GATE_IDS,
@@ -128,6 +131,10 @@ __all__ = [
     "StressValidityGate",
     "DocPathReferenceGate",
     "is_void_doc",
+    "expected_gate_count",
+    "expected_test_baseline",
+    # 单一事实源常量
+    "TEST_BASELINE_PASSED",
     # 复现一致性门禁（M2/PM-1）
     "ReproducibilityGate",
     # 门禁分类（推送期 / CI 期）

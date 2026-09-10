@@ -763,6 +763,80 @@ class TestGateDocVoid:
 
 
 # =====================================================================
+# 9b. 任务 3 补充：门禁数量 / 单测基线声明一致性（动态核，⛔ 不写死）
+# =====================================================================
+
+class TestGateCountBaselineConsistency:
+    """G-DOC-1 必须核验"文档声称的门禁数量 / 单测基线"。"""
+
+    @staticmethod
+    def _write_truth_doc(tmp_path: Path, name: str, extra_line: str) -> Path:
+        truth = json.loads(_AUTHORITATIVE_RUN.read_text(encoding="utf-8"))["metrics"]
+        md = tmp_path / name
+        md.write_text(
+            f"# t\n\n最大回撤 {float(truth['max_drawdown']) * 100:.2f}%\n{extra_line}\n",
+            encoding="utf-8",
+        )
+        return md
+
+    def _eval(self, md: Path):
+        return DocMetricConsistencyGate().evaluate(
+            {"doc_paths": [str(md)], "truth_run_path": str(_AUTHORITATIVE_RUN)}
+        )
+
+    def test_wrong_gate_count_fails(self, tmp_path: Path):
+        n = len(GateMasterAudit.get_standard_gates())       # 动态：⛔ 不写死 29
+        md = self._write_truth_doc(tmp_path, "wrong_count.md", f"本仓共 {n + 7} 道门禁。")
+        res = self._eval(md)
+        assert res.status == GateStatus.FAIL
+        assert res.metrics["declaration_violations"][0]["metric"] == "门禁数量"
+        assert res.metrics["declaration_violations"][0]["expected"] == str(n)
+
+    def test_correct_gate_count_passes(self, tmp_path: Path):
+        n = len(GateMasterAudit.get_standard_gates())
+        md = self._write_truth_doc(tmp_path, "ok_count.md", f"本仓共 {n} 道机读门禁。")
+        assert self._eval(md).status == GateStatus.PASS
+
+    def test_wrong_baseline_fails(self, tmp_path: Path):
+        from scripts.gates.constants import TEST_BASELINE_PASSED
+
+        md = self._write_truth_doc(tmp_path, "wrong_baseline.md",
+                                   f"当前基线 {TEST_BASELINE_PASSED + 5} passed。")
+        res = self._eval(md)
+        assert res.status == GateStatus.FAIL
+        assert any(d["metric"] == "单测基线" for d in res.metrics["declaration_violations"])
+
+    def test_correct_baseline_passes(self, tmp_path: Path):
+        from scripts.gates.constants import TEST_BASELINE_PASSED
+
+        md = self._write_truth_doc(tmp_path, "ok_baseline.md",
+                                   f"当前基线 {TEST_BASELINE_PASSED} passed。")
+        assert self._eval(md).status == GateStatus.PASS
+
+    def test_historical_snapshot_doc_exempt_and_counted(self, tmp_path: Path):
+        """历史归档快照（GATE_PHASE*）的门禁数/基线**豁免**，但必须可见计数。"""
+        d = tmp_path / "docs" / "delivery"
+        d.mkdir(parents=True)
+        md = d / "GATE_PHASE3_COMPLETION_SUMMARY.md"
+        md.write_text(
+            "# t\n\n最大回撤 43.08%\n24 道机读门禁 / 717 passed\n", encoding="utf-8",
+        )
+        res = self._eval(md)
+        assert res.status == GateStatus.PASS
+        assert res.metrics["historical_snapshot_docs"] == 1
+
+    def test_expected_values_are_dynamic(self):
+        from scripts.gates.constants import TEST_BASELINE_PASSED
+        from scripts.gates.gate_consistency import expected_gate_count, expected_test_baseline
+
+        assert expected_gate_count({}) == len(GateMasterAudit.get_standard_gates())
+        assert expected_test_baseline({}) == TEST_BASELINE_PASSED
+        # ctx 注入可覆盖（测试/复跑用）
+        assert expected_gate_count({"expected_gate_count": 7}) == 7
+        assert expected_test_baseline({"expected_test_baseline": 123}) == 123
+
+
+# =====================================================================
 # 10. 任务 1：晋升/准入层（G-MDD-1 的 BLOCKER 归属地）
 # =====================================================================
 

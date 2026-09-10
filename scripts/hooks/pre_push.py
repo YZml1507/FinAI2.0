@@ -3,7 +3,8 @@
 """Pre-push Hook: 推送前防倒退与六维门禁总检拦截（FinAI2.0 防伪硬化）
 
 在 git push 时自动触发，执行以下刚性检查：
-1. 离线回归单测套件全量执行，要求 100% PASS（0 failed）且通过数不得低于基线 (当前基线 760 passed)；
+1. 离线回归单测套件全量执行，要求 100% PASS（0 failed）且通过数不得低于基线
+   （``scripts.gates.constants.TEST_BASELINE_PASSED``，单一事实源）；
 2. 六维门禁总调度器 (GateMasterAudit) 以**仓库现状真实 ctx** 运行推送期门禁，FAIL 或 INCONCLUSIVE 均阻断；
 3. 任一条件不满足坚决拒绝向远端仓库推送。
 """
@@ -31,9 +32,11 @@ from scripts.gates.gate_master_audit import GateMasterAudit
 from scripts.gates.base import GateStatus, GateSeverity, is_blocking_result
 
 
-#: 历史核准的单测最低通过基线（任何时候不得低于此数值）
-#: 760 = P0 门禁 + ⑦/⑧⑨/⑩/⑪/⑫/⑲/⑳/㉑/㉒ + ㉕/㉖（CI 真实 ctx + 定时审计）后的收集数。
-MIN_TEST_BASELINE = 760
+#: 历史核准的单测最低通过基线（任何时候不得低于此数值）。
+#: ⛔ 单一事实源 = ``scripts/gates/constants.TEST_BASELINE_PASSED``（全仓只此一处定义）。
+from scripts.gates.constants import TEST_BASELINE_PASSED
+
+MIN_TEST_BASELINE = TEST_BASELINE_PASSED
 
 
 def run_pytest_guard(baseline: int = MIN_TEST_BASELINE) -> tuple[bool, str]:
