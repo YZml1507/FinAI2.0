@@ -1,13 +1,41 @@
 # 交接说明 · 交给新窗口续做（M6 归因实验第 1 步）
 
-> 生成日期：2026-09-10 22:50 ｜ 生成者：主理人齐活林（交付总监）
+> 生成日期：2026-09-10 23:50 ｜ 生成者：主理人齐活林（交付总监）
 > 用途：**整段复制给新会话**，使其在无上下文情况下可直接接手
 
 ---
 
-## 交接正文（可整段复制）
+## 一、当前情况总结（给人读，30 秒版）
 
-接手 FinAI2.0（`D:\Projects\FinAI2.0`）的 **M6 策略归因实验第 1 步（路径 A 影子复算）**。这是一个 A 股长仓日线量化系统（本金 10~15 万、持仓目标 3~8 只、5 元佣金地板），刚完成治理层重做（M1 止血 / M2 复现性 / M3 门禁 P0 / M4′ 口径统一），**唯一事实源是 `experiments/runs/*.json`（带 `anti_tamper_signature`），仓内任何 md 的结论性数字一律不可引用**；当前 HEAD `55e7266`，**本地领先 origin 14 个提交且未 push**，单测基线 **876**（真值只认 `scripts/gates/constants.py::TEST_BASELINE_PASSED`，⛔ 文档不硬编码），门禁 **29 道**（真实 ctx：PASS 14 / FAIL 1 / INCONCLUSIVE 14 / SKIP 0；唯一 FAIL = `G-MDD-1` MDD 43.08% > 35%，属真实策略缺陷），四层行为 = pre-push OK=True、`--ci` exit=0、`--acceptance` exit=1、`--scheduled` exit=1。**你的任务**：按 `docs/audit/m6_attribution_design.md`（1354 行）§3.1.1 路径 A，用 `strategy/portfolio.py::plan_positions` 做**零成本函数级复算**（⛔ 不改代码、不跑回测、不动参数），验证四条假设——**H5**（市值加权 × 单票 2 万下限 × 丢弃后不再分配 ⇒ 断崖式丢弃，选 5 只只建 1–3 只）、**H5b**（默认配置下死价位带 `[151,199]`，占 20–300 区间 17.4%，且 `max_price=300` 恰好没覆盖它想防的整手失真）、**H5c**（死带随 NAV 退化的正反馈螺旋：越亏 ⇒ `base` 越小 ⇒ 死带越宽 ⇒ 越建不满，15 万本金等效触发线 `NAV < 100,000`）、**㊶**（`default_positions` 与 `target_count` 构成隐性双口径，实际 `N = min(len(signals), target_count)` 且全仓无跨配置校验）；做法是同一批候选分别传 `weights=scores` 与 `weights=None`（市值加权 vs 等权）做对照，并叠加"逐日 `(base_i, close_i)` 配对"算死带占比与价位带敏感性。**硬纪律**：⛔ 不改策略参数或代码（先归因、后改参数）、⛔ 不碰 `finai/sources/`（母库 370 行 `FINDING-` 守卫）、⛔ 不改 `experiments/runs/*.json` 历史产物、权威仓 `research-finai` 只能 **append-only 追加**后再同步镜像（`tamper_guard --verify-mirror` 须 PASS）；**路径 A 的结论强度低于路径 B（真实回测），只证"计划层会切断"，⛔ 不得据此宣称"收益会改善"**。**环境坑（必读）**：沙箱内 `pyarrow` 不可见 ⇒ 会**假报 35 个失败**（非回归），跑测试/门禁必须用**非沙箱环境**（`py -3.11`）；`--ci` 同样依赖 `pyarrow` 做 D 维取样，缺它会把 D-1~D-4 从 PASS 误降为 INCONCLUSIVE。**判据纪律**：任何结论必须能由**一条命令复现**；参数生效性用「合法域取值看输出是否变化」判定；正则用「正例全中 + 反例全排」双向锁定；常量用「== 实际收集数」。**参考文档**：`docs/audit/governance_closure_report.md`（治理层收口总报告）、`docs/audit/m6_attribution_design.md`（M6 设计）、`docs/project_status_flowchart.md`（当前状态流程图）、`docs/audit/roadmap_decision.md`（路线决策 C→A→B）。
+**项目在哪**：A 股长仓日线量化系统，实盘规模 10~15 万、持仓目标 3~8 只。**Phase 4 模拟盘已暂停**，等策略 v2。
+
+**本轮做完了什么**：一次由审计引发的治理层重做，四个里程碑全部闭环——
+
+| 里程碑 | 结果 |
+|---|---|
+| **M1 止血** | 6 份失实材料加「作废·待重写」横幅（原文一字未删）；权威仓 append-only 追加 TK-30/31/32 |
+| **M2 复现性** | 根因是 `params_hash` 只哈希参数、`code_version` 是**手写常量** ⇒ 4 份产物同哈希却 3 种结果。已引入内容寻址 `repro_fingerprint`，缺失输入**显式 None/抛错**（⛔ 不静默兜底） |
+| **M3 门禁 P0** | 门禁从「**空转装饰**」（实测 23 SKIP 仍打印「全绿」）变成**真拦**：29 道、真实 ctx 下 SKIP=0、清除 15 处「无证据即通过」兜底、门禁异常判 FAIL |
+| **M4′ 口径统一** | 真实违规 29→0、幽灵引用 11→0、**幽灵风控声明 5 处全清**、2 处虚假方法论按代码改正 |
+
+**最有价值的产出（不是修门禁，是找到了策略病因）**：四条**计划层结构缺陷**，全部**零成本函数级复算**得出，⛔ 不需要跑回测——
+
+- **H5**：市值加权 × 单票 2 万下限 × **丢弃后不再分配** ⇒ 断崖式丢弃（选 5 只只建 1–3 只）
+- **H5b**：默认配置下**死价位带 `[151,199]`** ⇒ 策略**无法持有中等价位标的**（占区间 17.4%）；而 `max_price=300` 恰好**没覆盖它想防的整手失真**
+- **H5c** ⭐：**死带随 NAV 退化的正反馈螺旋**——越亏 ⇒ `base` 越小 ⇒ 死带越宽 ⇒ 越建不满。临界点：15 万本金跌破 **NAV 10 万**即**全价位无法建仓**
+- **㊶**：`default_positions` 与 `target_count` 构成**隐性双口径**且无一致性校验 ⇒ 一个"想多买"的改动会导致"完全买不了"
+
+**卡在哪 / 下一步**：M6 归因实验**设计已完成但尚未执行**。建议**先做零成本影子复算**（本文档第二至四节的证据表可直接作为起点），**拿到硬结论后再决定要不要跑十年回测**。
+
+**⛔ 两条不能破的纪律**：① **先归因、后改参数**（没归因就改参数 = 用新猜测替换旧猜测）；② **路径 A（影子复算）的结论强度低于路径 B（真实回测）**，只证"计划层会切断"，**不得据此宣称"收益会改善"**。
+
+**待用户拍板**：① 是否 push（pre-push 现已 OK=True，可正常推送）；② M6 是否即刻开工。
+
+---
+
+## 二、交接正文（可整段复制给新窗口）
+
+接手 FinAI2.0（`D:\Projects\FinAI2.0`）的 **M6 策略归因实验第 1 步（路径 A 影子复算）**。这是一个 A 股长仓日线量化系统（本金 10~15 万、持仓目标 3~8 只、5 元佣金地板），刚完成治理层重做（M1 止血 / M2 复现性 / M3 门禁 P0 / M4′ 口径统一），**唯一事实源是 `experiments/runs/*.json`（带 `anti_tamper_signature`），仓内任何 md 的结论性数字一律不可引用**；HEAD 以 `git log -1` 为准、领先提交数以 `git rev-list --count origin/master..HEAD` 为准（⛔ 不硬编码——**本地领先 origin 且未 push**），单测基线 **876**（真值只认 `scripts/gates/constants.py::TEST_BASELINE_PASSED`，⛔ 文档不硬编码），门禁 **29 道**（真实 ctx：PASS 14 / FAIL 1 / INCONCLUSIVE 14 / SKIP 0；唯一 FAIL = `G-MDD-1` MDD 43.08% > 35%，属真实策略缺陷），四层行为 = pre-push OK=True、`--ci` exit=0、`--acceptance` exit=1、`--scheduled` exit=1。**你的任务**：按 `docs/audit/m6_attribution_design.md`（1354 行）§3.1.1 路径 A，用 `strategy/portfolio.py::plan_positions` 做**零成本函数级复算**（⛔ 不改代码、不跑回测、不动参数），验证四条假设——**H5**（市值加权 × 单票 2 万下限 × 丢弃后不再分配 ⇒ 断崖式丢弃，选 5 只只建 1–3 只）、**H5b**（默认配置下死价位带 `[151,199]`，占 20–300 区间 17.4%，且 `max_price=300` 恰好没覆盖它想防的整手失真）、**H5c**（死带随 NAV 退化的正反馈螺旋：越亏 ⇒ `base` 越小 ⇒ 死带越宽 ⇒ 越建不满，15 万本金等效触发线 `NAV < 100,000`）、**㊶**（`default_positions` 与 `target_count` 构成隐性双口径，实际 `N = min(len(signals), target_count)` 且全仓无跨配置校验）；做法是同一批候选分别传 `weights=scores` 与 `weights=None`（市值加权 vs 等权）做对照，并叠加"逐日 `(base_i, close_i)` 配对"算死带占比与价位带敏感性。**硬纪律**：⛔ 不改策略参数或代码（先归因、后改参数）、⛔ 不碰 `finai/sources/`（母库 370 行 `FINDING-` 守卫）、⛔ 不改 `experiments/runs/*.json` 历史产物、权威仓 `research-finai` 只能 **append-only 追加**后再同步镜像（`tamper_guard --verify-mirror` 须 PASS）；**路径 A 的结论强度低于路径 B（真实回测），只证"计划层会切断"，⛔ 不得据此宣称"收益会改善"**。**环境坑（必读）**：沙箱内 `pyarrow` 不可见 ⇒ 会**假报 35 个失败**（非回归），跑测试/门禁必须用**非沙箱环境**（`py -3.11`）；`--ci` 同样依赖 `pyarrow` 做 D 维取样，缺它会把 D-1~D-4 从 PASS 误降为 INCONCLUSIVE。**判据纪律**：任何结论必须能由**一条命令复现**；参数生效性用「合法域取值看输出是否变化」判定；正则用「正例全中 + 反例全排」双向锁定；常量用「== 实际收集数」。**参考文档**：`docs/audit/governance_closure_report.md`（治理层收口总报告）、`docs/audit/m6_attribution_design.md`（M6 设计）、`docs/project_status_flowchart.md`（当前状态流程图）、`docs/audit/roadmap_decision.md`（路线决策 C→A→B）。
 
 ---
 
@@ -76,7 +104,9 @@ planned = close * Decimal(shares)
 ## 附：当前门禁与仓库状态（实测快照）
 
 ```
-仓库：HEAD 55e7266 ｜ 领先 origin 14 提交 ｜ ⛔ 未 push ｜ 工作区仅 1.ipynb 未跟踪
+仓库：HEAD 以 `git log -1` 为准 ｜ 领先 origin 提交数以 `git rev-list --count origin/master..HEAD` 为准
+      （⛔ 不硬编码：本文件自身的提交会立即让硬编码值过期——这是"自指悖论"）
+      基准状态：本地领先 origin 且 ⛔ 未 push ｜ 工作区仅 1.ipynb 未跟踪
 计划仓：D:\Projects\research-finai ｜ HEAD fae9c44
 镜像：docs/spec/.../tasks.md SHA-256 c89d07b84514b5a2…（两仓一致）
 

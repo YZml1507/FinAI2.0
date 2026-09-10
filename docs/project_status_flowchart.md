@@ -4,6 +4,7 @@
 > 数据来源：本会话真实命令输出（**非沙箱环境**，`py -3.11`）+ research-finai spec 三件套
 > 交互版见：`docs/project_status_flowchart.html`
 > ⚠️ 口径纪律：**门禁数量与单测基线一律以单一事实源为准**（`scripts/gates/constants.py` + `gate_master_audit.py` 注册表），⛔ 文档不硬编码；历史快照行以 `gate-doc-ignore` 标注
+> ⚠️ 环境坑（会误判）：**沙箱内 `pyarrow` 不可见** ⇒ 全量测试**假报 35 failed**（非回归）、`--ci` 会把 D-1~D-4 从 PASS 误降为 INCONCLUSIVE。跑测试/门禁请用**非沙箱环境**（`py -3.11`）
 
 ---
 
@@ -12,7 +13,7 @@
 ```mermaid
 flowchart TD
   subgraph REPO["双仓（Private）"]
-    F["代码仓 FinAI2.0<br/>HEAD 55e7266 ✅<br/>领先 origin 14 个提交（⛔ 未 push）<br/>origin=github.com/YZml1507/FinAI2.0"]
+    F["代码仓 FinAI2.0<br/>HEAD 以 git log -1 为准（⛔ 不硬编码）<br/>领先 origin 提交数以 git rev-list 为准（⛔ 不硬编码）<br/>⛔ 未 push<br/>origin=github.com/YZml1507/FinAI2.0"]
     R["计划仓 research-finai<br/>HEAD fae9c44 ✅<br/>origin=github.com/YZml1507/research-finai"]
     F -->|镜像逐字节一致| R
     F -->|SHA-256 c89d07b84514b5a2…（两仓相同）| R
@@ -212,7 +213,7 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-  NOW["📍 当前位置（2026-09-10）<br/>治理层 M1–M4′ 全部闭环 ✅<br/>门禁 29 道 · SKIP 0 · 准入层真拦<br/>本地 14 提交领先 origin（⛔ 未 push）"] --> GATE_OK["门禁四层行为 ✅<br/>pre-push OK=True ｜ --ci exit=0<br/>准入(超限) exit=1 ｜ --scheduled exit=1"]
+  NOW["📍 当前位置（2026-09-10）<br/>治理层 M1–M4′ 全部闭环 ✅<br/>门禁 29 道 · SKIP 0 · 准入层真拦<br/>HEAD 与领先提交数以 git 为准（⛔ 不硬编码）"] --> GATE_OK["门禁四层行为 ✅<br/>pre-push OK=True ｜ --ci exit=0<br/>准入(超限) exit=1 ｜ --scheduled exit=1"]
   NOW --> M6_DESIGN["M6 归因设计 ✅ 已完成（只读）<br/>docs/audit/m6_attribution_design.md<br/>13 环节漏斗 + 生效性四分类<br/>C-01 产物 schema 扩展规格"]
   NOW --> PENDING["⏳ 待用户拍板<br/>① 是否接受当前单测基线并 push<br/>② M6 是否即刻开工"]
   M6_DESIGN --> STEP1["M6 第 1 步（建议先做）<br/>路径 A 影子复算 · ⛔ 零成本<br/>等权 vs 市值加权 ｜ 价位带敏感性<br/>死带随 NAV 演化"]
