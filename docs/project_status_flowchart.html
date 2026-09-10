@@ -3,335 +3,603 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>FinAI2.0 项目状态流程图 · 2026-09-10</title>
+<title>FinAI2.0 项目状态看板 · 2026-09-10</title>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 <style>
 :root {
-  --bg: #0f172a;
-  --panel: #1e293b;
+  --bg: #0b1220;
+  --panel: #111827;
+  --card: #1f2937;
   --ink: #f8fafc;
   --muted: #94a3b8;
-  --accent: #38bdf8;
-  --ok: #16a34a;
+  --line: #334155;
+  --ok: #22c55e;
   --warn: #f59e0b;
-  --stop: #dc2626;
-  --info: #2563eb;
+  --stop: #ef4444;
+  --info: #38bdf8;
+  --accent: #60a5fa;
 }
 * { box-sizing: border-box; }
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 32px 24px 64px;
+  margin: 0;
+  padding: 24px 20px 48px;
   background: var(--bg);
   color: var(--ink);
-  line-height: 1.55;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
 }
-header {
-  border-bottom: 1px solid #334155;
-  padding-bottom: 20px;
-  margin-bottom: 28px;
+.wrap { max-width: 1100px; margin: 0 auto; }
+
+/* ========== 顶栏状态 ========== */
+.hero {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 22px 24px;
+  margin-bottom: 20px;
 }
-h1 {
-  margin: 0 0 8px;
-  font-size: 1.75rem;
-  color: var(--accent);
-  font-weight: 650;
+.hero h1 {
+  margin: 0 0 6px;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--info);
 }
-.subtitle {
+.hero .meta {
   color: var(--muted);
   font-size: 0.95rem;
+  margin-bottom: 14px;
 }
-.subtitle code {
+.hero .meta code {
+  background: #0f172a;
   color: #e2e8f0;
-  background: var(--panel);
   padding: 1px 6px;
   border-radius: 4px;
 }
-.badge {
-  display: inline-block;
-  margin-top: 12px;
-  padding: 4px 12px;
-  border-radius: 999px;
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-top: 8px;
+}
+.status-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+.status-card .label {
   font-size: 0.85rem;
-  font-weight: 600;
-  background: #450a0a;
-  color: #fecaca;
-  border: 1px solid #7f1d1d;
-}
-h2 {
-  margin: 36px 0 12px;
-  font-size: 1.2rem;
-  color: #7dd3fc;
-  font-weight: 600;
-}
-h2 .tag {
-  display: inline-block;
-  margin-left: 8px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: #0f172a;
-  background: #e2e8f0;
-  border-radius: 4px;
-  padding: 1px 6px;
-  vertical-align: middle;
-}
-.note {
   color: var(--muted);
+  margin-bottom: 4px;
+}
+.status-card .value {
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+.status-card .sub {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.ok { color: var(--ok); }
+.warn { color: var(--warn); }
+.stop { color: var(--stop); }
+.info { color: var(--info); }
+
+.alert {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #450a0a;
+  border: 1px solid #7f1d1d;
+  color: #fecaca;
+  font-size: 1rem;
+}
+.alert b { color: #fff; }
+
+/* ========== 导航 ========== */
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 18px 0 8px;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: rgba(11,18,32,.92);
+  backdrop-filter: blur(8px);
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+nav button {
+  background: var(--card);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+nav button:hover, nav button.active {
+  background: #1d4ed8;
+  border-color: #3b82f6;
+  color: #fff;
+}
+
+/* ========== 章节 ========== */
+section {
+  display: none;
+  margin-top: 16px;
+}
+section.show { display: block; }
+section h2 {
+  font-size: 1.25rem;
+  margin: 8px 0 6px;
+  color: #7dd3fc;
+}
+section .note {
+  color: var(--muted);
+  font-size: 0.95rem;
+  margin: 0 0 12px;
+}
+
+/* ========== 可缩放图 ========== */
+.zoom-box {
+  background: #fff;
+  color: #0f172a;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+.zoom-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #f1f5f9;
+  border-bottom: 1px solid #e2e8f0;
   font-size: 0.9rem;
-  margin: 0 0 8px;
+  color: #334155;
+}
+.zoom-bar button {
+  min-width: 36px;
+  height: 32px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  color: #0f172a;
+}
+.zoom-bar button:hover { background: #e2e8f0; }
+.zoom-bar .lvl { min-width: 56px; text-align: center; font-weight: 600; }
+.zoom-view {
+  overflow: auto;
+  max-height: 70vh;
+  cursor: grab;
+}
+.zoom-view:active { cursor: grabbing; }
+.zoom-inner {
+  transform-origin: 0 0;
+  padding: 16px;
+  width: max-content;
+  min-width: 100%;
 }
 .mermaid {
-  background: #ffffff;
-  color: #0f172a;
-  padding: 18px 16px;
-  border-radius: 10px;
-  margin: 0 0 8px;
-  overflow-x: auto;
-  border: 1px solid #e2e8f0;
+  font-size: 16px !important;
 }
-.callout {
-  margin: 24px 0;
-  padding: 14px 16px;
-  border-left: 4px solid var(--stop);
-  background: #1c1917;
-  border-radius: 0 8px 8px 0;
+/* mermaid 节点文字加粗一点，方便缩小时仍可读 */
+.mermaid .nodeLabel,
+.mermaid span,
+.mermaid foreignObject div {
+  font-weight: 600 !important;
 }
-.callout strong { color: #fca5a5; }
-.callout p { margin: 6px 0 0; color: #e7e5e4; font-size: 0.95rem; }
-ul.history {
-  margin: 8px 0 0;
-  padding-left: 1.2em;
-  color: var(--muted);
+
+/* ========== 时间线 ========== */
+.timeline {
+  border-left: 3px solid var(--line);
+  margin-left: 10px;
+  padding-left: 18px;
+}
+.timeline li {
+  list-style: none;
+  margin: 0 0 16px;
+  position: relative;
+}
+.timeline li::before {
+  content: "";
+  position: absolute;
+  left: -25px;
+  top: 8px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px #0b1220;
+}
+.timeline .date {
   font-size: 0.9rem;
+  color: var(--muted);
+  font-weight: 600;
 }
-ul.history li { margin: 4px 0; }
-ul.history b { color: #e2e8f0; }
-footer {
-  margin-top: 40px;
-  padding-top: 16px;
-  border-top: 1px solid #334155;
+.timeline .body { margin-top: 2px; }
+
+/* ========== 表格 ========== */
+table.simple {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--card);
+  border-radius: 12px;
+  overflow: hidden;
+  font-size: 0.98rem;
+}
+table.simple th, table.simple td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+table.simple th {
+  background: #0f172a;
+  color: #cbd5e1;
+  font-weight: 600;
+}
+table.simple tr:last-child td { border-bottom: none; }
+
+.footer {
+  margin-top: 28px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
   color: #64748b;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
 }
 </style>
 </head>
 <body>
+<div class="wrap">
 
-<header>
-  <h1>FinAI2.0 · 项目状态流程图</h1>
-  <div class="subtitle">
-    更新：<b>2026-09-10</b> ｜
-    代码仓 <code>FinAI2.0@70ab25e</code> ｜
-    计划仓 <code>research-finai@fae9c44</code> ｜
-    离线基线 <b>725 passed</b> ｜
-    母库 <code>FINDING-</code> <b>370</b>
+<header class="hero">
+  <h1>FinAI2.0 · 项目状态看板</h1>
+  <div class="meta">
+    更新 <b>2026-09-10</b> ｜
+    代码 <code>108c06a</code> ｜
+    计划仓 <code>fae9c44</code> ｜
+    离线测试 <b>725 passed</b> ｜
+    母库 <code>FINDING=370</code> ｜
+    CI Gate5 已修复
   </div>
-  <div class="badge">当前位置：策略 v2 决策点 · Phase 4 模拟盘已暂停</div>
+
+  <div class="status-grid">
+    <div class="status-card">
+      <div class="label">当前位置</div>
+      <div class="value warn">策略 v2 决策点</div>
+      <div class="sub">Phase 4 模拟盘已暂停</div>
+    </div>
+    <div class="status-card">
+      <div class="label">工程 / 门禁</div>
+      <div class="value ok">就绪</div>
+      <div class="sub">引擎 / 725 单测 / 防伪门禁</div>
+    </div>
+    <div class="status-card">
+      <div class="label">策略收益</div>
+      <div class="value stop">CAGR −3.20%</div>
+      <div class="sub">10 年总收益 −27.72%</div>
+    </div>
+    <div class="status-card">
+      <div class="label">诊断 P0</div>
+      <div class="value stop">仓位不足</div>
+      <div class="sub">日均 0.5–1.8 只 / 空仓 54.7%</div>
+    </div>
+    <div class="status-card">
+      <div class="label">云端链路</div>
+      <div class="value ok">已打通</div>
+      <div class="sub">GitHub + Drive + Colab</div>
+    </div>
+    <div class="status-card">
+      <div class="label">下一步</div>
+      <div class="value info">等你拍板</div>
+      <div class="sub">A 修仓位 ｜ B ETF 增强</div>
+    </div>
+  </div>
+
+  <div class="alert">
+    <b>一句话：</b>工程和云端已经能跑；红利策略没满仓、牛市跑输 512890，所以 Phase 4 先停，等你选 A 或 B。
+  </div>
 </header>
 
-<h2>1. 仓库与基建总览</h2>
-<p class="note">双仓分离：代码/引擎在 FinAI2.0，spec 三件套与调研报告在 research-finai。旧仓已删除，不得引用。</p>
-<div class="mermaid">
-flowchart TD
-  subgraph REPO["双仓"]
-    F["代码仓 FinAI2.0<br/>HEAD 70ab25e"]
-    R["计划仓 research-finai<br/>HEAD fae9c44"]
-    F -->|"本地 remote research"| R
-    F -->|"docs/spec 镜像"| R
-  end
-  DEL["旧仓 FinAI<br/>已删除 2026-08-29"]
-  TASK["10 个 FinAI_* 计划任务<br/>已禁用"]
-  DEL -.->|仅抢救 finai/sources| F
-  TASK -.->|不复用旧命名| F
-  style F fill:#dcfce7,stroke:#16a34a,color:#0f172a
-  style R fill:#dcfce7,stroke:#16a34a,color:#0f172a
-  style DEL fill:#fee2e2,stroke:#dc2626,color:#0f172a
-  style TASK fill:#e2e8f0,stroke:#64748b,color:#0f172a
-</div>
+<nav id="nav">
+  <button data-tab="now" class="active">① 现在在哪</button>
+  <button data-tab="path">② 阶段主路径</button>
+  <button data-tab="diag">③ 诊断结论</button>
+  <button data-tab="decision">④ 怎么选 A/B</button>
+  <button data-tab="data">⑤ 数据与云端</button>
+  <button data-tab="history">⑥ 更新记录</button>
+</nav>
 
-<h2>2. 门禁与阶段主路径 <span class="tag">当前</span></h2>
-<p class="note">Phase 0–3.5 与门禁三阶段完成；云端诊断后 Phase 4 暂停，等待策略 v2 用户拍板。</p>
-<div class="mermaid">
-flowchart LR
-  G0["G0 spec 齐备"] --> R15["R1–R5 清零"] --> UT["725 单测全绿"]
-  UT --> P1["Phase 1 数据层<br/>T101–T110"]
-  P1 --> G2["G2 三源验收"]
-  G2 --> P2["Phase 2 回测引擎<br/>T201–T207 + G3"]
-  P2 --> P3["Phase 3 策略<br/>T301–T308"]
-  P3 --> G4["G4 技术评审<br/>动量淘汰 → 红利"]
-  G4 --> P35["Phase 3.5 红利实证<br/>硬伤根治 / 审计 / 10年回测"]
-  P35 --> A1["门禁阶段一<br/>23 道 + 52 单测"]
-  A1 --> A2["门禁阶段二<br/>前后置闸门 + 18 单测"]
-  A2 --> A3["门禁阶段三<br/>Hooks / CI / 验签"]
-  A3 --> CLOUD["Colab 云端链路<br/>clone + Drive + 725 单测 + 回测复现"]
-  CLOUD --> DIAG["T312 全周期诊断<br/>P0 仓位不足"]
-  DIAG --> HOLD["Phase 4 暂停<br/>待 A / B 拍板"]
-  style G0 fill:#dcfce7,stroke:#16a34a
-  style R15 fill:#dcfce7,stroke:#16a34a
-  style UT fill:#dcfce7,stroke:#16a34a
-  style P1 fill:#dcfce7,stroke:#16a34a
-  style G2 fill:#dcfce7,stroke:#16a34a
-  style P2 fill:#dcfce7,stroke:#16a34a
-  style P3 fill:#dcfce7,stroke:#16a34a
-  style G4 fill:#dcfce7,stroke:#16a34a
-  style P35 fill:#dcfce7,stroke:#16a34a
-  style A1 fill:#dcfce7,stroke:#16a34a
-  style A2 fill:#dcfce7,stroke:#16a34a
-  style A3 fill:#dcfce7,stroke:#16a34a
-  style CLOUD fill:#dbeafe,stroke:#2563eb,color:#0f172a
-  style DIAG fill:#fef3c7,stroke:#f59e0b,color:#0f172a
-  style HOLD fill:#fee2e2,stroke:#dc2626,color:#0f172a
-</div>
+<!-- ========== ① 现在在哪 ========== -->
+<section id="tab-now" class="show">
+  <h2>现在处于什么情况</h2>
+  <p class="note">用一句话：代码已经能测、能跑、能上云；赚钱策略还没过关，所以模拟盘暂停。</p>
+  <table class="simple">
+    <tr><th>问题</th><th>结论</th></tr>
+    <tr><td>能不能跑回测？</td><td class="ok">能。本地与 Colab 结果一致。</td></tr>
+    <tr><td>测试有没有挂？</td><td class="ok">没有。725 全绿；CI Gate5 已修。</td></tr>
+    <tr><td>策略赚钱了吗？</td><td class="stop">没有。CAGR −3.20%，10 年 −27.72%。</td></tr>
+    <tr><td>最大问题是什么？</td><td class="stop">仓位长期不足：目标 5 只，实际日均 0.5–1.8 只；54.7% 交易日空仓。</td></tr>
+    <tr><td>和红利 ETF 比？</td><td class="stop">2019/2020/2024 明显跑输 512890。</td></tr>
+    <tr><td>要不要上模拟盘？</td><td class="warn">不要。先修策略，再重启 Phase 4。</td></tr>
+    <tr><td>要不要上神经网络？</td><td class="warn">现阶段不要。样本小、仓位都还没修好。</td></tr>
+  </table>
+</section>
 
-<h2>3. 红利策略链路（Phase 3.5 → 诊断）</h2>
-<div class="mermaid">
-flowchart LR
-  T309["T309 红利税<br/>FIFO 扣税入账"] --> T310["T310 跳空滑点"]
-  T310 --> T311["T311 红利策略<br/>市值加权 + MA200"]
-  T311 --> T313["T313 压力测试<br/>G4.5 防守通过"]
-  T311 --> T312["T312 真实 10 年回测<br/>20260907-150402<br/>CAGR -3.20%"]
-  T312 --> AUDIT["防伪审计 5/5 PASS"]
-  AUDIT --> CLOUD2["云端复现 20260910-034719<br/>指标与本地一致"]
-  CLOUD2 --> DIAG2["全周期诊断<br/>日均持仓 0.5–1.8<br/>空仓 54.7% / 现金 65.4%"]
-  DIAG2 --> DECIDE["待拍板<br/>A 修仓位+降频<br/>B ETF 增强 512890"]
-  style T309 fill:#dcfce7,stroke:#16a34a
-  style T310 fill:#dcfce7,stroke:#16a34a
-  style T311 fill:#dcfce7,stroke:#16a34a
-  style T313 fill:#dcfce7,stroke:#16a34a
-  style T312 fill:#dcfce7,stroke:#16a34a
-  style AUDIT fill:#dcfce7,stroke:#16a34a
-  style CLOUD2 fill:#dbeafe,stroke:#2563eb,color:#0f172a
-  style DIAG2 fill:#fef3c7,stroke:#f59e0b,color:#0f172a
-  style DECIDE fill:#fee2e2,stroke:#dc2626,color:#0f172a
-</div>
-
-<div class="callout">
-  <strong>诊断结论（2026-09-10）</strong>
-  <p>
-    P0 不是「满仓选错票」，而是<b>长期几乎没满仓</b>：目标持仓 5 只，实际日均仅 0.5–1.8 只；
-    零持仓日 54.7%，平均现金 65.4%。2019 / 2020 / 2024 相对沪深300 与红利低波 512890 大幅跑输。
-    红利税占总费用 51.8%（摩擦项，非主因）。完整报告：
-    <code>docs/diagnosis/t312_full_period_diagnosis.md</code>
-  </p>
-</div>
-
-<h2>4. T312 硬伤根治与防伪实证（历史）</h2>
-<div class="mermaid">
+<!-- ========== ② 阶段主路径 ========== -->
+<section id="tab-path">
+  <h2>阶段主路径</h2>
+  <p class="note">左侧可缩放拖动。绿色=已完成，黄色=暂停/待决策，红色=待你拍板。</p>
+  <div class="zoom-box" data-for="m1">
+    <div class="zoom-bar">
+      <button data-zoom="out">−</button>
+      <span class="lvl">100%</span>
+      <button data-zoom="in">+</button>
+      <button data-zoom="reset">复位</button>
+      <span style="margin-left:auto;color:#64748b">滚轮缩放 · 拖动平移</span>
+    </div>
+    <div class="zoom-view"><div class="zoom-inner">
+<pre class="mermaid">
 flowchart TB
-  subgraph FIX["底层硬伤根治 + 审计 5/5 PASS"]
-    direction LR
-    subgraph DATA_FIX["数据层"]
-      D1["后复权脏数据 → 腾讯 RAW"]
-      D2["真实流通市值还原"]
-      D3["PIT 滚动 395 天股息率"]
-      D4["除权 sidecar 补齐"]
-    end
-    subgraph ENGINE_FIX["引擎层"]
-      E1["市值加权真实生效"]
-      E2["红利税真集成 + 拆股容错"]
-    end
-    subgraph AUDIT_GATE["audit_evidence_integrity.py"]
-      A11["红利税调用链 PASS"]
-      A12["市值加权落地 PASS"]
-      A13["费用对账 PASS"]
-      A14["成交额≠市值 PASS"]
-      A15["无前视 PASS"]
-    end
-  end
-  style DATA_FIX fill:#dbeafe,stroke:#2563eb,color:#0f172a
-  style ENGINE_FIX fill:#dcfce7,stroke:#16a34a,color:#0f172a
-  style AUDIT_GATE fill:#dcfce7,stroke:#16a34a,color:#0f172a
-</div>
+  A["Phase 0 环境"] --> B["Phase 1 数据层"]
+  B --> C["Phase 2 回测引擎"]
+  C --> D["Phase 3 策略层 动量淘汰"]
+  D --> E["Phase 3.5 红利策略"]
+  E --> F["六维防伪门禁 三阶段"]
+  F --> G["Colab 云端链路打通"]
+  G --> H["T312 全周期诊断"]
+  H --> I["Phase 4 模拟盘 暂停"]
+  I --> J["待拍板 A 或 B"]
 
-<h2>5. 测试基线演进</h2>
-<div class="mermaid">
+  style A fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style B fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style C fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style D fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style E fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style F fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style G fill:#dbeafe,stroke:#2563eb,color:#0f172a
+  style H fill:#fef3c7,stroke:#f59e0b,color:#0f172a
+  style I fill:#fee2e2,stroke:#dc2626,color:#0f172a
+  style J fill:#fee2e2,stroke:#dc2626,color:#0f172a
+</pre>
+    </div></div>
+  </div>
+
+  <h2>门禁状态</h2>
+  <table class="simple">
+    <tr><th>门禁</th><th>状态</th><th>说明</th></tr>
+    <tr><td>G0–G3</td><td class="ok">通过</td><td>spec / 数据 / 引擎</td></tr>
+    <tr><td>G4</td><td class="ok">通过</td><td>动量淘汰，转红利</td></tr>
+    <tr><td>G4.5 压力</td><td class="ok">通过</td><td>股灾/熊市防守有效</td></tr>
+    <tr><td>全周期实证</td><td class="stop">不通过</td><td>CAGR −3.20%，仓位不足</td></tr>
+    <tr><td>G5 模拟盘</td><td class="warn">暂停</td><td>等策略 v2</td></tr>
+    <tr><td>CI 防伪</td><td class="ok">通过</td><td>Gate5 t108 NaN 已修</td></tr>
+  </table>
+</section>
+
+<!-- ========== ③ 诊断 ========== -->
+<section id="tab-diag">
+  <h2>诊断结论（云端 2026-09-10）</h2>
+  <p class="note">详细表在 <code>docs/diagnosis/t312_full_period_diagnosis.md</code>。这里只放最关键的。</p>
+  <div class="zoom-box" data-for="m2">
+    <div class="zoom-bar">
+      <button data-zoom="out">−</button>
+      <span class="lvl">100%</span>
+      <button data-zoom="in">+</button>
+      <button data-zoom="reset">复位</button>
+      <span style="margin-left:auto;color:#64748b">滚轮缩放 · 拖动平移</span>
+    </div>
+    <div class="zoom-view"><div class="zoom-inner">
+<pre class="mermaid">
 flowchart LR
-  B0["19<br/>Phase 0"] --> B1["162<br/>Phase 1"]
-  B1 --> B2["394<br/>Phase 2"]
-  B2 --> B3["435<br/>Phase 3"]
-  B3 --> B35["524<br/>Phase 3.5"]
-  B35 --> B402["616<br/>T402"]
-  B402 --> B404["619<br/>T401/403"]
-  B404 --> B312["629<br/>T312 修复"]
-  B312 --> G1["681<br/>门禁阶段一"]
-  G1 --> G2b["699<br/>门禁阶段二"]
-  G2b --> G3b["717<br/>门禁阶段三"]
-  G3b --> NOW["725<br/>Phase 4 基建<br/>当前基线"]
-  style B0 fill:#e0e7ff,stroke:#818cf8
-  style B1 fill:#e0e7ff,stroke:#818cf8
-  style B2 fill:#e0e7ff,stroke:#818cf8
-  style B3 fill:#e0e7ff,stroke:#818cf8
-  style B35 fill:#e0e7ff,stroke:#818cf8
-  style B402 fill:#e0e7ff,stroke:#818cf8
-  style B404 fill:#e0e7ff,stroke:#818cf8
-  style B312 fill:#e0e7ff,stroke:#818cf8
-  style G1 fill:#dcfce7,stroke:#16a34a,color:#0f172a
-  style G2b fill:#dcfce7,stroke:#16a34a,color:#0f172a
-  style G3b fill:#dcfce7,stroke:#16a34a,color:#0f172a
-  style NOW fill:#fef3c7,stroke:#f59e0b,color:#0f172a
-</div>
+  P["10年回测<br/>CAGR -3.20%"] --> C1["持仓不足<br/>日均0.5-1.8只"]
+  P --> C2["空仓太久<br/>54.7%交易日"]
+  P --> C3["牛市跑输<br/>512890"]
+  P --> C4["红利税高<br/>占费用51.8%"]
+  C1 --> R["先修仓位"]
+  C2 --> R
+  C3 --> R
+  C4 --> R2["再降频降税"]
 
-<h2>6. 当前决策树</h2>
-<div class="mermaid">
-flowchart TD
-  S["T312 诊断完成<br/>P0 仓位不足 + 全周期负收益"]
-  S --> Q{"用户拍板"}
-  Q --> A["A. 修仓位 + 降频<br/>保留个股选股<br/>查流动性/单票下限/MA200"]
-  Q --> B["B. ETF 增强<br/>以 512890 为底 + MA200<br/>个股仅作卫星"]
-  A --> RE["重跑 10 年 + 2019–2024<br/>对比 512890"]
-  B --> RE2["ETF 基准回测 + 压力测试"]
-  RE --> GATE{"是否接近/超过 512890<br/>且 MDD/换手达标?"}
-  RE2 --> GATE2{"防守与费用是否可接受?"}
-  GATE -->|是| P4OK["重启 Phase 4 模拟盘"]
-  GATE -->|否| SWITCH["切到 B"]
-  GATE2 -->|是| P4OK
-  GATE2 -->|否| HOLD2["继续研究，不模拟盘"]
-  SWITCH --> RE2
+  style P fill:#fee2e2,stroke:#dc2626,color:#0f172a
+  style C1 fill:#fef3c7,stroke:#f59e0b,color:#0f172a
+  style C2 fill:#fef3c7,stroke:#f59e0b,color:#0f172a
+  style C3 fill:#fef3c7,stroke:#f59e0b,color:#0f172a
+  style C4 fill:#e0e7ff,stroke:#818cf8,color:#0f172a
+  style R fill:#dbeafe,stroke:#2563eb,color:#0f172a
+  style R2 fill:#dbeafe,stroke:#2563eb,color:#0f172a
+</pre>
+    </div></div>
+  </div>
+
+  <table class="simple">
+    <tr><th>年份</th><th>策略</th><th>510300</th><th>512890</th><th>日均持仓</th></tr>
+    <tr><td>2016</td><td>−2%</td><td>−11%</td><td>—</td><td>0.32</td></tr>
+    <tr><td>2018</td><td>+2%</td><td>−24%</td><td>—</td><td>0.49</td></tr>
+    <tr><td><b>2019</b></td><td class="stop"><b>−8%</b></td><td>+39%</td><td>+21%</td><td>1.75</td></tr>
+    <tr><td><b>2020</b></td><td class="stop"><b>−12%</b></td><td>+29%</td><td>+9%</td><td>1.34</td></tr>
+    <tr><td>2022</td><td>+5%</td><td>−20%</td><td>+3%</td><td>0.08</td></tr>
+    <tr><td><b>2024</b></td><td class="stop"><b>−17%</b></td><td>+18%</td><td>+23%</td><td>0.75</td></tr>
+  </table>
+  <p class="note" style="margin-top:10px">防御年（2016/2018/2022）有效；牛市年（2019/2020/2024）全面落后。</p>
+</section>
+
+<!-- ========== ④ 决策 ========== -->
+<section id="tab-decision">
+  <h2>A / B 怎么选</h2>
+  <p class="note">不是二选一永远锁死：可以先 A，不行再切 B。</p>
+  <div class="zoom-box" data-for="m3">
+    <div class="zoom-bar">
+      <button data-zoom="out">−</button>
+      <span class="lvl">100%</span>
+      <button data-zoom="in">+</button>
+      <button data-zoom="reset">复位</button>
+      <span style="margin-left:auto;color:#64748b">滚轮缩放 · 拖动平移</span>
+    </div>
+    <div class="zoom-view"><div class="zoom-inner">
+<pre class="mermaid">
+flowchart TB
+  S["诊断完成 P0 仓位不足"] --> Q{"你选哪个"}
+  Q --> A["A 修仓位+降频<br/>保留个股选股"]
+  Q --> B["B ETF增强<br/>512890为主底仓"]
+  A --> A1["查流动性/单票下限/MA200"]
+  A1 --> A2["重跑10年对比512890"]
+  B --> B1["ETF基准+择时回测"]
+  A2 --> J{"接近或超过512890?"}
+  B1 --> J2{"防守与费用可接受?"}
+  J -->|是| OK["重启Phase4"]
+  J -->|否| SW["切到B"]
+  J2 -->|是| OK
+  J2 -->|否| HOLD["继续研究"]
+
   style S fill:#fef3c7,stroke:#f59e0b,color:#0f172a
   style Q fill:#fee2e2,stroke:#dc2626,color:#0f172a
   style A fill:#dbeafe,stroke:#2563eb,color:#0f172a
   style B fill:#dbeafe,stroke:#2563eb,color:#0f172a
-  style P4OK fill:#dcfce7,stroke:#16a34a,color:#0f172a
-  style HOLD2 fill:#e2e8f0,stroke:#64748b,color:#0f172a
-  style SWITCH fill:#e2e8f0,stroke:#64748b,color:#0f172a
-</div>
+  style OK fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style HOLD fill:#e2e8f0,stroke:#64748b,color:#0f172a
+</pre>
+    </div></div>
+  </div>
+  <table class="simple">
+    <tr><th></th><th>A 修仓位+降频</th><th>B ETF 增强</th></tr>
+    <tr><td>适合</td><td>还想自己选红利股</td><td>10–15 万更稳妥、摩擦更低</td></tr>
+    <tr><td>优先改</td><td>流动性下限 / 建仓分批 / 调仓 20→60~120 日 / 质量过滤</td><td>512890 等为底 + MA200；个股只做卫星</td></tr>
+    <tr><td>风险</td><td>修完仍可能跑输 ETF</td><td>选股能力锻炼变少</td></tr>
+    <tr><td>我的建议</td><td colspan="2">先 A 做一轮；若修满仓后仍明显跑输 512890，再切 B。</td></tr>
+  </table>
+</section>
 
-<h2>7. 数据与代码链路（已固化）</h2>
-<div class="mermaid">
+<!-- ========== ⑤ 数据 ========== -->
+<section id="tab-data">
+  <h2>数据与云端怎么跑</h2>
+  <p class="note">代码走 GitHub，数据走 Drive。不要把 parquet 塞进 git。</p>
+  <div class="zoom-box" data-for="m4">
+    <div class="zoom-bar">
+      <button data-zoom="out">−</button>
+      <span class="lvl">100%</span>
+      <button data-zoom="in">+</button>
+      <button data-zoom="reset">复位</button>
+      <span style="margin-left:auto;color:#64748b">滚轮缩放 · 拖动平移</span>
+    </div>
+    <div class="zoom-view"><div class="zoom-inner">
+<pre class="mermaid">
 flowchart LR
-  LOCAL["本机 FinAI2.0<br/>采集 / 研究"] -->|"git push 代码"| GH["GitHub 公开仓"]
-  LOCAL -->|"parquet 打包 zip"| DRIVE["Google Drive<br/>MyDrive/FinAI_Data"]
-  GH -->|"git clone / pull"| COLAB["Colab Linux VM<br/>Tesla T4"]
-  DRIVE -->|"unzip"| COLAB
-  COLAB --> RUN["pytest 725<br/>run_dividend_backtest<br/>diagnose_t312"]
-  style LOCAL fill:#e0e7ff,stroke:#818cf8
+  LOCAL["本机<br/>采集/研究"] -->|git push 代码| GH["GitHub 公开仓"]
+  LOCAL -->|parquet 打包 zip| DRIVE["Google Drive<br/>FinAI_Data"]
+  GH -->|clone / pull| COLAB["Colab Linux<br/>Tesla T4"]
+  DRIVE -->|unzip| COLAB
+  COLAB --> RUN["pytest 725<br/>回测 / 诊断"]
+
+  style LOCAL fill:#e0e7ff,stroke:#818cf8,color:#0f172a
   style GH fill:#dcfce7,stroke:#16a34a,color:#0f172a
   style DRIVE fill:#dbeafe,stroke:#2563eb,color:#0f172a
   style COLAB fill:#fef3c7,stroke:#f59e0b,color:#0f172a
   style RUN fill:#dcfce7,stroke:#16a34a,color:#0f172a
+</pre>
+    </div></div>
+  </div>
+  <table class="simple">
+    <tr><th>步骤</th><th>操作</th></tr>
+    <tr><td>1</td><td>本机改代码 → <code>git push</code></td></tr>
+    <tr><td>2</td><td>本机采数据 → 压成 zip → 上传 Drive</td></tr>
+    <tr><td>3</td><td>Colab：clone/pull 代码 + unzip 数据</td></tr>
+    <tr><td>4</td><td>跑 <code>1.ipynb</code> 第 5–7 步（单测/回测/诊断）</td></tr>
+  </table>
+</section>
+
+<!-- ========== ⑥ 历史 ========== -->
+<section id="tab-history">
+  <h2>更新记录</h2>
+  <ul class="timeline">
+    <li>
+      <div class="date">2026-09-10</div>
+      <div class="body">Colab 云端验收 + T312 全周期诊断（P0 仓位不足）+ Phase 4 暂停；CI Gate5 修复（pandas NaN）；流程图重做成可缩放看板。</div>
+    </li>
+    <li>
+      <div class="date">2026-09-07</div>
+      <div class="body">T312 硬伤根治 + 真实 10 年回测（CAGR −3.20%）+ 防伪审计 5/5 + 门禁三阶段 + Phase 4 准入基建（725 passed）。</div>
+    </li>
+    <li>
+      <div class="date">2026-09-02</div>
+      <div class="body">Phase 3.5 红利切换：红利税/跳空滑点/红利策略/压力测试 G4.5。</div>
+    </li>
+    <li>
+      <div class="date">2026-09-01</div>
+      <div class="body">Phase 2 引擎 + Phase 3 策略；动量策略淘汰。</div>
+    </li>
+  </ul>
+</section>
+
+<div class="footer">
+  真值源：research-finai spec/plan/tasks ｜ 代码仓 FinAI2.0 ｜ 详细诊断 docs/diagnosis/t312_full_period_diagnosis.md
 </div>
-
-<h2>8. 更新历史</h2>
-<ul class="history">
-  <li><b>2026-08-31</b>　Phase 0–1 完成标记</li>
-  <li><b>2026-09-01</b>　Phase 2–3 完成 + G3/G4 通过</li>
-  <li><b>2026-09-02</b>　Phase 3.5 红利切换 + G4.5；T402/T401/T403 基线 619</li>
-  <li><b>2026-09-07</b>　T312 硬伤根治 + 审计 5/5 + 真实 10 年回测（Run 20260907-150402，CAGR −3.20%）；门禁三阶段闭环；Phase 4 准入与 T405；基线 725</li>
-  <li><b>2026-09-10</b>　<b>Colab 云端链路验收</b>（公开 clone + Drive + 725 单测 + 回测与本地一致）+ <b>T312 全周期诊断</b>（P0：日均持仓 0.5–1.8 / 空仓 54.7%；红利税占费用 51.8%）+ <b>Phase 4 暂停</b>待策略 v2 拍板；commit FinAI2.0 <code>70ab25e</code> / research-finai <code>fae9c44</code></li>
-</ul>
-
-<footer>
-  真值源：spec/plan/tasks（research-finai）· 母库红线 FINDING=370 · 离线单测 725 passed<br/>
-  交互源码：docs/project_status_flowchart.html · Markdown 镜像：docs/project_status_flowchart.md
-</footer>
+</div>
 
 <script>
 mermaid.initialize({
   startOnLoad: true,
   theme: "default",
-  flowchart: { htmlLabels: true, curve: "basis" },
+  flowchart: { htmlLabels: true, curve: "basis", useMaxWidth: false },
   securityLevel: "loose"
+});
+
+// Tab switch
+document.querySelectorAll("#nav button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("#nav button").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    document.querySelectorAll("section").forEach(s => s.classList.remove("show"));
+    document.getElementById("tab-" + btn.dataset.tab).classList.add("show");
+  });
+});
+
+// Zoom / pan for each diagram
+document.querySelectorAll(".zoom-box").forEach(box => {
+  const view = box.querySelector(".zoom-view");
+  const inner = box.querySelector(".zoom-inner");
+  const lvl = box.querySelector(".lvl");
+  let scale = 1;
+  let x = 0, y = 0;
+  let dragging = false, sx = 0, sy = 0;
+
+  function apply() {
+    inner.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
+    lvl.textContent = Math.round(scale * 100) + "%";
+  }
+  box.querySelectorAll("[data-zoom]").forEach(b => {
+    b.addEventListener("click", () => {
+      const a = b.dataset.zoom;
+      if (a === "in") scale = Math.min(2.5, scale + 0.15);
+      if (a === "out") scale = Math.max(0.4, scale - 0.15);
+      if (a === "reset") { scale = 1; x = 0; y = 0; }
+      apply();
+    });
+  });
+  view.addEventListener("wheel", e => {
+    if (!e.ctrlKey && Math.abs(e.deltaY) < 4) return;
+    e.preventDefault();
+    scale = Math.min(2.5, Math.max(0.4, scale + (e.deltaY < 0 ? 0.1 : -0.1)));
+    apply();
+  }, { passive: false });
+  view.addEventListener("mousedown", e => {
+    dragging = true; sx = e.clientX - x; sy = e.clientY - y;
+    view.setPointerCapture?.(e.pointerId);
+  });
+  window.addEventListener("mouseup", () => dragging = false);
+  window.addEventListener("mousemove", e => {
+    if (!dragging) return;
+    x = e.clientX - sx; y = e.clientY - sy; apply();
+  });
+  apply();
 });
 </script>
 </body>
