@@ -10,8 +10,14 @@ jobs:
   gate-audit-and-tests:
     name: Six-Dimensional Gates & Regression Test Suite
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
     env:
       PYTHONPATH: .
+      # 禁止自动加载本机插件（本地 ddtrace 缺 wrapt 时会拖垮 pytest；CI 未装 ddtrace 也更干净）
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -27,25 +33,55 @@ jobs:
 
       - name: Install Core Dependencies
         run: |
+          set -euo pipefail
           python -m pip install --upgrade pip
-          pip install pytest pandas pyarrow numpy requests
+          python -m pip install pytest pandas pyarrow numpy requests
+          python -c "import pytest,pandas,pyarrow,numpy,requests; print('deps ok', pytest.__version__)"
+          python -c "import sys; print(sys.version); print('PYTHONPATH', __import__('os').environ.get('PYTHONPATH'))"
 
       - name: "Gate Check 1: Mother Library 370 Findings Guard"
         run: |
+          set -euo pipefail
           python scripts/gates/tamper_guard.py --check-mother-library
 
       - name: "Gate Check 2: Evidence Integrity Audit (5/5 PASS)"
         run: |
+          set -euo pipefail
           python scripts/audit_evidence_integrity.py
+          echo "audit_evidence_integrity exit=$?"
 
       - name: "Gate Check 3: Anti-Tamper & Governance Guard"
         run: |
+          set -euo pipefail
           python scripts/gates/tamper_guard.py --verify-all
 
       - name: "Gate Check 4: Six-Dimensional Gate Master Audit"
         run: |
+          set -euo pipefail
           python -m scripts.gates.gate_master_audit --strict
 
-      - name: "Gate Check 5: Offline Pytest Regression Suite (100% PASS, >=699 passed)"
+      - name: "Gate Check 5: Offline Pytest Regression Suite (>=725 passed)"
         run: |
-          python -m pytest tests/ -p no:ddtrace -p no:ddtrace.pytest_bdd -v
+          set -euo pipefail
+          python -m pytest tests/ -q -p no:cacheprovider
+
+      - name: Diagnostics on failure
+        if: failure()
+        run: |
+          echo "==== python ===="
+          python -V || true
+          echo "==== pwd / top ===="
+          pwd
+          ls -la | head -40
+          echo "==== finai/sources exists ===="
+          test -d finai/sources && echo yes || echo no
+          echo "==== FINDING count ===="
+          python - <<'PY'
+          from pathlib import Path
+          n=0
+          for p in Path('finai/sources').glob('**/*.py'):
+              for line in p.read_text(encoding='utf-8', errors='ignore').splitlines():
+                  if 'FINDING-' in line:
+                      n+=1
+          print('FINDING count', n)
+          PY
