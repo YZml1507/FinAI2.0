@@ -1,35 +1,163 @@
-# FinAI2.0 当前状态（2026-09-10）
+# FinAI2.0 · 项目状态流程图（2026-09-10 更新）
 
-> 打开 **`docs/project_status_flowchart.html`**（纯 HTML 大字号，无需缩放控件）  
-> 基线：离线 **725 passed** · CI 已修
+> 渲染器：支持 mermaid 的 Markdown 查看器（VS Code / Obsidian / GitHub）
+> 数据来源：本会话真实命令输出 + research-finai spec 三件套
+> 交互版见：`docs/project_status_flowchart.html`
 
-## 一句话
+## 仓库 / 基建总览
 
-工程/云端就绪；策略仓位不足且负收益；**Phase 4 暂停**，等拍板 **A / B**。
+```mermaid
+flowchart TD
+  subgraph REPO["双仓（Private）"]
+    F["代码仓 FinAI2.0<br/>HEAD 4d93246 ✅<br/>origin=github.com/YZml1507/FinAI2.0"] 
+    R["计划仓 research-finai<br/>HEAD 71e69a1 ✅<br/>origin=github.com/YZml1507/research-finai"]
+    F -->|git fetch research 本地路径| R
+    F -->|docs/spec 快照 逐字节一致| R
+  end
+  DEL["旧仓 FinAI<br/>已删除 2026-08-29"]
+  TASK["10 个 FinAI_* 计划任务<br/>已禁用 ✅"]
+  DEL -.->|仅抢救 finai/sources 860 接口| F
+  TASK -.->|不复用旧命名| F
+  style F fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style R fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style DEL fill:#fee2e2,stroke:#dc2626,color:#0f172a
+  style TASK fill:#dcfce7,stroke:#16a34a,color:#0f172a
+```
 
-## 现在在哪
+## 门禁与当前阶段
 
-| 项 | 状态 |
+```mermaid
+flowchart LR
+  G0["G0 spec 三件套齐备 ✅"] --> R15["R1–R5 清零 ✅ af20d85"] --> UT["717 离线单测全绿 ✅ 2026-09-07"]
+  UT --> P1["Phase 1 数据层 ✅<br/>T101–T110"]
+  P1 --> G2["G2 三源验收 ✅"]
+  G2 --> P2["Phase 2 回测引擎 ✅<br/>T201–T207 + G3"]
+  P2 --> P3["Phase 3 策略 ✅<br/>T301–T308"]
+  P3 --> G4["G4 技术评审 ✅<br/>动量淘汰 转向红利"]
+  G4 --> P35["Phase 3.5 红利策略实证 ✅<br/>硬伤根治 / 审计全过 / 真实10年回测"]
+  P35 --> G_AUDIT1["阶段一：六维门禁工具包 ✅<br/>scripts/gates/ 23道门禁 + 52单测全绿"]
+  G_AUDIT1 --> G_AUDIT2["阶段二：执行流前置/后置闸门植入 ✅<br/>runner.py + 回测主流程阻断 + 18集成单测"]
+  G_AUDIT2 --> G_AUDIT3["阶段三：CI / Git Hooks 防伪硬化 ✅<br/>tamper_guard 验签 + pre-commit/pre-push 硬拦截 + CI 全绿 ⏵当前"]
+  G_AUDIT3 --> P4["Phase 4 模拟盘<br/>T401–T404 基建全绿 / 门禁三阶段全闭环 待准入评审"]
+  style G0 fill:#dcfce7,stroke:#16a34a
+  style R15 fill:#dcfce7,stroke:#16a34a
+  style UT fill:#dcfce7,stroke:#16a34a
+  style P1 fill:#dcfce7,stroke:#16a34a
+  style G2 fill:#dcfce7,stroke:#16a34a
+  style P2 fill:#dcfce7,stroke:#16a34a
+  style P3 fill:#dcfce7,stroke:#16a34a
+  style G4 fill:#dcfce7,stroke:#16a34a
+  style P35 fill:#dcfce7,stroke:#16a34a
+  style G_AUDIT1 fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style G_AUDIT2 fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style G_AUDIT3 fill:#fef3c7,stroke:#f59e0b,color:#0f172a
+  style P4 fill:#f1f5f9,stroke:#94a3b8,color:#64748b
+```
+
+## Phase 3.5 红利策略执行现状（2026-09-07）
+
+```mermaid
+flowchart LR
+  T309["T309 红利税真集成 ✅<br/>FIFO扣税+拆股因子适配+流水入账"] --> T310["T310 跳空缺口滑点 ✅<br/>26 单测全绿"]
+  T310 --> T311["T311 红利策略实现 ✅<br/>市值加权生效+MA200择时"]
+  T311 --> T313["T313 压力测试 ✅<br/>4 单测全绿 G4.5 防守通过"]
+  T311 --> T312["T312 真实10年全周期回测 ✅<br/>Run 20260907-150402<br/>CAGR -3.20% / 红利税 5043元"]
+  T312 --> AUDIT["防伪审计工具 ✅<br/>audit_evidence_integrity.py<br/>5/5 项严审全通过"]
+  AUDIT --> G45["G4.5 决策状态<br/>底层硬伤全根治 / 防伪全通过<br/>等待用户拍板后续路线"]
+  style T309 fill:#dcfce7,stroke:#16a34a
+  style T310 fill:#dcfce7,stroke:#16a34a
+  style T311 fill:#dcfce7,stroke:#16a34a
+  style T313 fill:#dcfce7,stroke:#16a34a
+  style T312 fill:#dcfce7,stroke:#16a34a
+  style AUDIT fill:#dcfce7,stroke:#16a34a
+  style G45 fill:#dbeafe,stroke:#2563eb,color:#0f172a
+```
+
+## T312 审计防伪与硬伤修复全景
+
+```mermaid
+flowchart TB
+  subgraph FIX_AND_AUDIT["T312 底层硬伤根治与防伪实证 (5/5 PASS)"]
+    direction TB
+    subgraph DATA_FIX["数据层四大硬伤根治（全量 488 标的）"]
+      D1["① 剔除 18 只 Baostock 历史后复权脏数据<br/>全部重拉腾讯 RAW 真实未复权日线"]
+      D2["② 真实流通股本与市值还原<br/>采集 487 只股票真实 float_shares，彻底根治 2 亿成交额冒充市值"]
+      D3["③ Point-in-Time 滚动 395 天除权股息率<br/>随当日收盘价逐日动态计算，彻底根除全年单一均值未来函数泄露"]
+      D4["④ 巨潮无分红异常防御<br/>修复次新股/零分红 Key 异常，补齐 488 只标的除权 sidecar"]
+    end
+    subgraph ENGINE_FIX["回测引擎与策略层修复"]
+      E1["⑤ 组合层市值加权真正生效<br/>portfolio.py 接入 weights 分配资金，消除被 total_nav/N 强制等权"]
+      E2["⑥ 红利税真集成与送转拆股容错<br/>开启 enable_dividend_tax，解决 10送5 后 FIFO 队列缺股崩盘，扣税全额进账"]
+    end
+    subgraph AUDIT_GATE["防伪审计工具硬约束 (scripts/audit_evidence_integrity.py)"]
+      A1["1. 红利税生产调用链验证: PASS"]
+      A2["2. 市值加权代码落地验证: PASS"]
+      A3["3. 落盘 JSON 费用明细对账: PASS (逐笔吻合)"]
+      A4["4. 成交额充当市值检验: PASS (标准差 732 亿)"]
+      A5["5. 未来函数与前视偏差检验: PASS (严格 PIT)"]
+    end
+  end
+  style DATA_FIX fill:#dbeafe,stroke:#2563eb,color:#0f172a
+  style ENGINE_FIX fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style AUDIT_GATE fill:#dcfce7,stroke:#16a34a,color:#0f172a
+```
+
+## 测试基线演进
+
+```mermaid
+flowchart LR
+  B0["Phase 0 起点<br/>19 passed"] --> B1["Phase 1 数据层<br/>162 passed"]
+  B1 --> B2["Phase 2 回测引擎<br/>394 passed"]
+  B2 --> B3["Phase 3 策略层<br/>435 passed"]
+  B3 --> B35["Phase 3.5 红利切换<br/>524 passed"]
+  B35 --> B402["T402 偏差容忍带<br/>616 passed"]
+  B402 --> B404["T401/403/404 修复与台账<br/>619 passed"]
+  B404 --> B312_OLD["T312 离线测试补充<br/>626 passed"]
+  B312_OLD --> B312_NOW["T312 审计与红利税/拆股加权修复<br/>629 passed"]
+  B312_NOW --> GATES1["阶段一：六维防御门禁工具包<br/>23 项门禁 + 52 单测<br/>681 passed"]
+  GATES1 --> GATES2["阶段二：执行流前置/后置闸门植入<br/>runner.py + 18 集成单测<br/>699 passed"]
+  GATES2 --> GATES3["阶段三：CI / Git Hooks 硬化与验签<br/>tamper_guard + 24 门禁 + 18 单测<br/>717 passed"]
+  GATES3 --> PHASE4["Phase 4 模拟盘准入与合规报备 (T405)<br/>run_paper_trading_daily + 8 单测<br/>725 passed ⏵当前基线"]
+  style B0 fill:#e0e7ff,stroke:#818cf8
+  style B1 fill:#e0e7ff,stroke:#818cf8
+  style B2 fill:#e0e7ff,stroke:#818cf8
+  style B3 fill:#e0e7ff,stroke:#818cf8
+  style B35 fill:#e0e7ff,stroke:#818cf8
+  style B402 fill:#e0e7ff,stroke:#818cf8
+  style B404 fill:#e0e7ff,stroke:#818cf8
+  style B312_OLD fill:#e0e7ff,stroke:#818cf8
+  style B312_NOW fill:#e0e7ff,stroke:#818cf8
+  style GATES1 fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style GATES2 fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style GATES3 fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style PHASE4 fill:#dcfce7,stroke:#16a34a,color:#0f172a
+```
+
+## 当前位置与运行状态
+
+```mermaid
+flowchart TD
+  GATE_DONE["六维防伪与质量门禁体系 ✅ 三大阶段完工<br/>24 道门禁 / tamper_guard / CI / 725 passed"]
+  GATE_DONE --> P4_ADMIT["Phase 4 准入基建与 T405 报备 ✅<br/>日终执行器 / 跟踪总账 / 725 单测"]
+  P4_ADMIT --> CLOUD["Colab 云端链路 ✅ 2026-09-10<br/>公开 clone + Drive 数据 + 云端回测与本地一致"]
+  CLOUD --> DIAG["T312 全周期诊断 ✅<br/>P0：日均持仓 0.5–1.8 / 空仓 54.7%<br/>CAGR -3.20%，2019/2020/2024 跑输 512890"]
+  DIAG --> HOLD["Phase 4 模拟盘 ⏸ 暂停<br/>不以当前策略继续 6 个月长跑"]
+  HOLD --> DECIDE["待用户拍板<br/>A 修仓位+降频 ｜ B ETF 增强 512890"]
+  DECIDE --> OK["达标后重启 Phase 4"]
+  style GATE_DONE fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style P4_ADMIT fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style CLOUD fill:#dbeafe,stroke:#2563eb,color:#0f172a
+  style DIAG fill:#fef3c7,stroke:#f59e0b,color:#0f172a
+  style HOLD fill:#fee2e2,stroke:#dc2626,color:#0f172a
+  style DECIDE fill:#fee2e2,stroke:#dc2626,color:#0f172a
+  style OK fill:#f1f5f9,stroke:#94a3b8,color:#64748b
+```
+
+诊断报告：`docs/diagnosis/t312_full_period_diagnosis.md`
+
+## 更新历史
+
+| 日期 | 内容 |
 |---|---|
-| 回测/测试/云端 | 就绪 |
-| 策略 CAGR | **−3.20%**（总收益 −27.72%） |
-| 日均持仓 | **0.5–1.8**（目标 5） |
-| 空仓交易日 | **54.7%** |
-| 2019/2020/2024 vs 512890 | 跑输 |
-| Phase 4 | **暂停** |
-
-## 阶段
-
-已完成：Phase 0–3.5、门禁三阶段、Colab 云端、T312 诊断  
-当前：策略 v2 决策  
-暂停：Phase 4 模拟盘  
-待定：A 修仓位+降频 ｜ B ETF 增强 512890
-
-## 建议
-
-先 A；修满仓后仍跑输 512890 再切 B。
-
-## 证据
-
-- `docs/diagnosis/t312_full_period_diagnosis.md`
-- 云端 `1.ipynb`（本地不入库）
+| 2026-09-07 | T312 硬伤根治 + 审计 5/5 + 10 年回测（CAGR −3.20%）+ 门禁三阶段 + Phase 4 准入基建 + 725 passed |
+| 2026-09-10 | Colab 云端验收 + T312 全周期诊断（P0 仓位不足）+ **Phase 4 暂停**待 A/B；CI Gate5（pandas NaN）修复 |

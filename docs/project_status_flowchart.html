@@ -1,307 +1,174 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>FinAI2.0 当前状态 · 2026-09-10</title>
+<title>FinAI2.0 项目状态流程图</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 <style>
-:root{
-  --bg:#0b1220; --panel:#111827; --card:#1f2937; --line:#334155;
-  --ink:#f8fafc; --muted:#94a3b8; --ok:#22c55e; --warn:#f59e0b;
-  --stop:#ef4444; --info:#38bdf8; --blue:#60a5fa;
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    max-width: 1400px;
+    margin: 40px auto;
+    padding: 0 20px;
+    background: #0f172a;
+    color: #f8fafc;
 }
-*{box-sizing:border-box;margin:0;padding:0}
-body{
-  background:var(--bg); color:var(--ink);
-  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
-  font-size:18px; line-height:1.65;
+h1, h2 { color: #38bdf8; }
+.mermaid {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    margin: 20px 0;
 }
-.page{max-width:980px;margin:0 auto;padding:28px 20px 60px}
-
-/* ---------- HERO ---------- */
-.hero{
-  background:#111827;border:1px solid var(--line);border-radius:18px;
-  padding:28px 28px 22px;margin-bottom:24px;
-}
-.hero h1{font-size:1.9rem;margin-bottom:6px;color:var(--info)}
-.hero .sub{color:var(--muted);font-size:1rem;margin-bottom:18px}
-.hero .sub b{color:#e2e8f0}
-
-.chips{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:18px}
-.chip{
-  background:var(--card);border:1px solid var(--line);border-radius:12px;
-  padding:12px 16px;min-width:140px;
-}
-.chip .k{font-size:.85rem;color:var(--muted)}
-.chip .v{font-size:1.2rem;font-weight:700;margin-top:2px}
-.ok{color:var(--ok)} .warn{color:var(--warn)} .stop{color:var(--stop)} .info{color:var(--info)}
-
-.callout{
-  background:#450a0a;border:1px solid #7f1d1d;border-radius:12px;
-  padding:16px 18px;color:#fecaca;font-size:1.05rem;
-}
-.callout b{color:#fff}
-
-/* ---------- 章节 ---------- */
-h2{
-  font-size:1.35rem;margin:28px 0 12px;color:#7dd3fc;
-}
-.lead{color:var(--muted);margin-bottom:14px;font-size:1rem}
-
-/* ---------- 步骤条（纯 CSS，不依赖 mermaid） ---------- */
-.steps{display:flex;flex-direction:column;gap:10px}
-.step{
-  display:flex;align-items:flex-start;gap:14px;
-  background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;
-}
-.step .num{
-  flex:0 0 36px;height:36px;border-radius:50%;
-  display:flex;align-items:center;justify-content:center;
-  font-weight:700;background:#0f172a;border:2px solid var(--line);
-}
-.step.done .num{background:#14532d;border-color:var(--ok);color:#fff}
-.step.now .num{background:#78350f;border-color:var(--warn);color:#fff}
-.step.hold .num{background:#7f1d1d;border-color:var(--stop);color:#fff}
-.step .t{font-weight:700;font-size:1.05rem}
-.step .d{color:var(--muted);font-size:.95rem;margin-top:2px}
-.step.done{border-color:#166534}
-.step.now{border-color:#b45309;background:#1c1917}
-.step.hold{border-color:#991b1b}
-
-/* ---------- 表格 ---------- */
-table{
-  width:100%;border-collapse:collapse;background:var(--card);
-  border-radius:14px;overflow:hidden;font-size:1rem;
-}
-th,td{padding:12px 14px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
-th{background:#0f172a;color:#cbd5e1;font-weight:700}
-tr:last-child td{border-bottom:none}
-
-/* ---------- A/B 对比 ---------- */
-.ab{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-@media(max-width:720px){.ab{grid-template-columns:1fr}}
-.ab .box{
-  background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;
-}
-.ab .box h3{font-size:1.15rem;margin-bottom:8px}
-.ab .box.a{border-color:#2563eb}
-.ab .box.b{border-color:#7c3aed}
-.ab ul{margin:10px 0 0 1.2em;color:#e2e8f0}
-.ab li{margin:6px 0}
-.tag{
-  display:inline-block;font-size:.85rem;padding:2px 8px;border-radius:999px;
-  background:#0f172a;color:var(--muted);margin-left:6px;
-}
-
-/* ---------- 链路条 ---------- */
-.pipe{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
-.pipe .node{
-  background:#0f172a;border:1px solid var(--line);border-radius:12px;
-  padding:12px 16px;font-weight:700;
-}
-.pipe .arr{color:var(--muted);font-size:1.4rem;padding:0 4px}
-.pipe .local{border-color:#818cf8;color:#c7d2fe}
-.pipe .gh{border-color:#16a34a;color:#86efac}
-.pipe .drive{border-color:#2563eb;color:#93c5fd}
-.pipe .colab{border-color:#f59e0b;color:#fcd34d}
-
-/* ---------- 年度表高亮 ---------- */
-tr.bad td{background:#450a0a}
-tr.good td{background:#052e16}
-
-.footer{
-  margin-top:36px;padding-top:16px;border-top:1px solid var(--line);
-  color:#64748b;font-size:.95rem;
-}
-.footer code{background:#0f172a;color:#e2e8f0;padding:1px 6px;border-radius:4px}
-
-/* 浏览器级缩放提示 */
-.zoomhint{
-  color:#64748b;font-size:.9rem;margin-bottom:8px;
-}
-.zoomhint kbd{
-  background:#0f172a;border:1px solid var(--line);border-radius:4px;
-  padding:1px 6px;font-size:.85rem;color:#cbd5e1;
+pre {
+    background: #1e293b;
+    padding: 15px;
+    border-radius: 8px;
+    overflow-x: auto;
 }
 </style>
 </head>
 <body>
-<div class="page">
+<h1>FinAI2.0 · 项目状态流程图（2026-09-10 更新）<br/><br/>> 渲染器：支持 mermaid 的 Markdown 查看器（VS Code / Obsidian / GitHub）
+> 数据来源：本会话真实命令输出 + research-finai spec 三件套
+> 交互版见：`docs/project_status_flowchart.html`<br/><br/>#<h1>仓库 / 基建总览<br/><br/><div class="mermaid">
+flowchart TD
+  subgraph REPO["双仓（Private）"]
+    F["代码仓 FinAI2.0<br/>HEAD 4d93246 ✅<br/>origin=github.com/YZml1507/FinAI2.0"] 
+    R["计划仓 research-finai<br/>HEAD 71e69a1 ✅<br/>origin=github.com/YZml1507/research-finai"]
+    F -->|git fetch research 本地路径| R
+    F -->|docs/spec 快照 逐字节一致| R
+  end
+  DEL["旧仓 FinAI<br/>已删除 2026-08-29"]
+  TASK["10 个 FinAI_* 计划任务<br/>已禁用 ✅"]
+  DEL -.->|仅抢救 finai/sources 860 接口| F
+  TASK -.->|不复用旧命名| F
+  style F fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style R fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style DEL fill:#fee2e2,stroke:#dc2626,color:#0f172a
+  style TASK fill:#dcfce7,stroke:#16a34a,color:#0f172a
+</div><br/><br/>#<h1>门禁与当前阶段<br/><br/><div class="mermaid">
+flowchart LR
+  G0["G0 spec 三件套齐备 ✅"] --> R15["R1–R5 清零 ✅ af20d85"] --> UT["717 离线单测全绿 ✅ 2026-09-07"]
+  UT --> P1["Phase 1 数据层 ✅<br/>T101–T110"]
+  P1 --> G2["G2 三源验收 ✅"]
+  G2 --> P2["Phase 2 回测引擎 ✅<br/>T201–T207 + G3"]
+  P2 --> P3["Phase 3 策略 ✅<br/>T301–T308"]
+  P3 --> G4["G4 技术评审 ✅<br/>动量淘汰 转向红利"]
+  G4 --> P35["Phase 3.5 红利策略实证 ✅<br/>硬伤根治 / 审计全过 / 真实10年回测"]
+  P35 --> G_AUDIT1["阶段一：六维门禁工具包 ✅<br/>scripts/gates/ 23道门禁 + 52单测全绿"]
+  G_AUDIT1 --> G_AUDIT2["阶段二：执行流前置/后置闸门植入 ✅<br/>runner.py + 回测主流程阻断 + 18集成单测"]
+  G_AUDIT2 --> G_AUDIT3["阶段三：CI / Git Hooks 防伪硬化 ✅<br/>tamper_guard 验签 + pre-commit/pre-push 硬拦截 + CI 全绿 ⏵当前"]
+  G_AUDIT3 --> P4["Phase 4 模拟盘<br/>T401–T404 基建全绿 / 门禁三阶段全闭环 待准入评审"]
+  style G0 fill:#dcfce7,stroke:#16a34a
+  style R15 fill:#dcfce7,stroke:#16a34a
+  style UT fill:#dcfce7,stroke:#16a34a
+  style P1 fill:#dcfce7,stroke:#16a34a
+  style G2 fill:#dcfce7,stroke:#16a34a
+  style P2 fill:#dcfce7,stroke:#16a34a
+  style P3 fill:#dcfce7,stroke:#16a34a
+  style G4 fill:#dcfce7,stroke:#16a34a
+  style P35 fill:#dcfce7,stroke:#16a34a
+  style G_AUDIT1 fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style G_AUDIT2 fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style G_AUDIT3 fill:#fef3c7,stroke:#f59e0b,color:#0f172a
+  style P4 fill:#f1f5f9,stroke:#94a3b8,color:#64748b
+</div><br/><br/>#<h1>Phase 3.5 红利策略执行现状（2026-09-07）<br/><br/><div class="mermaid">
+flowchart LR
+  T309["T309 红利税真集成 ✅<br/>FIFO扣税+拆股因子适配+流水入账"] --> T310["T310 跳空缺口滑点 ✅<br/>26 单测全绿"]
+  T310 --> T311["T311 红利策略实现 ✅<br/>市值加权生效+MA200择时"]
+  T311 --> T313["T313 压力测试 ✅<br/>4 单测全绿 G4.5 防守通过"]
+  T311 --> T312["T312 真实10年全周期回测 ✅<br/>Run 20260907-150402<br/>CAGR -3.20% / 红利税 5043元"]
+  T312 --> AUDIT["防伪审计工具 ✅<br/>audit_evidence_integrity.py<br/>5/5 项严审全通过"]
+  AUDIT --> G45["G4.5 决策状态<br/>底层硬伤全根治 / 防伪全通过<br/>等待用户拍板后续路线"]
+  style T309 fill:#dcfce7,stroke:#16a34a
+  style T310 fill:#dcfce7,stroke:#16a34a
+  style T311 fill:#dcfce7,stroke:#16a34a
+  style T313 fill:#dcfce7,stroke:#16a34a
+  style T312 fill:#dcfce7,stroke:#16a34a
+  style AUDIT fill:#dcfce7,stroke:#16a34a
+  style G45 fill:#dbeafe,stroke:#2563eb,color:#0f172a
+</div><br/><br/>#<h1>T312 审计防伪与硬伤修复全景<br/><br/><div class="mermaid">
+flowchart TB
+  subgraph FIX_AND_AUDIT["T312 底层硬伤根治与防伪实证 (5/5 PASS)"]
+    direction TB
+    subgraph DATA_FIX["数据层四大硬伤根治（全量 488 标的）"]
+      D1["① 剔除 18 只 Baostock 历史后复权脏数据<br/>全部重拉腾讯 RAW 真实未复权日线"]
+      D2["② 真实流通股本与市值还原<br/>采集 487 只股票真实 float_shares，彻底根治 2 亿成交额冒充市值"]
+      D3["③ Point-in-Time 滚动 395 天除权股息率<br/>随当日收盘价逐日动态计算，彻底根除全年单一均值未来函数泄露"]
+      D4["④ 巨潮无分红异常防御<br/>修复次新股/零分红 Key 异常，补齐 488 只标的除权 sidecar"]
+    end
+    subgraph ENGINE_FIX["回测引擎与策略层修复"]
+      E1["⑤ 组合层市值加权真正生效<br/>portfolio.py 接入 weights 分配资金，消除被 total_nav/N 强制等权"]
+      E2["⑥ 红利税真集成与送转拆股容错<br/>开启 enable_dividend_tax，解决 10送5 后 FIFO 队列缺股崩盘，扣税全额进账"]
+    end
+    subgraph AUDIT_GATE["防伪审计工具硬约束 (scripts/audit_evidence_integrity.py)"]
+      A1["1. 红利税生产调用链验证: PASS"]
+      A2["2. 市值加权代码落地验证: PASS"]
+      A3["3. 落盘 JSON 费用明细对账: PASS (逐笔吻合)"]
+      A4["4. 成交额充当市值检验: PASS (标准差 732 亿)"]
+      A5["5. 未来函数与前视偏差检验: PASS (严格 PIT)"]
+    end
+  end
+  style DATA_FIX fill:#dbeafe,stroke:#2563eb,color:#0f172a
+  style ENGINE_FIX fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style AUDIT_GATE fill:#dcfce7,stroke:#16a34a,color:#0f172a
+</div><br/><br/>#<h1>测试基线演进<br/><br/><div class="mermaid">
+flowchart LR
+  B0["Phase 0 起点<br/>19 passed"] --> B1["Phase 1 数据层<br/>162 passed"]
+  B1 --> B2["Phase 2 回测引擎<br/>394 passed"]
+  B2 --> B3["Phase 3 策略层<br/>435 passed"]
+  B3 --> B35["Phase 3.5 红利切换<br/>524 passed"]
+  B35 --> B402["T402 偏差容忍带<br/>616 passed"]
+  B402 --> B404["T401/403/404 修复与台账<br/>619 passed"]
+  B404 --> B312_OLD["T312 离线测试补充<br/>626 passed"]
+  B312_OLD --> B312_NOW["T312 审计与红利税/拆股加权修复<br/>629 passed"]
+  B312_NOW --> GATES1["阶段一：六维防御门禁工具包<br/>23 项门禁 + 52 单测<br/>681 passed"]
+  GATES1 --> GATES2["阶段二：执行流前置/后置闸门植入<br/>runner.py + 18 集成单测<br/>699 passed"]
+  GATES2 --> GATES3["阶段三：CI / Git Hooks 硬化与验签<br/>tamper_guard + 24 门禁 + 18 单测<br/>717 passed"]
+  GATES3 --> PHASE4["Phase 4 模拟盘准入与合规报备 (T405)<br/>run_paper_trading_daily + 8 单测<br/>725 passed ⏵当前基线"]
+  style B0 fill:#e0e7ff,stroke:#818cf8
+  style B1 fill:#e0e7ff,stroke:#818cf8
+  style B2 fill:#e0e7ff,stroke:#818cf8
+  style B3 fill:#e0e7ff,stroke:#818cf8
+  style B35 fill:#e0e7ff,stroke:#818cf8
+  style B402 fill:#e0e7ff,stroke:#818cf8
+  style B404 fill:#e0e7ff,stroke:#818cf8
+  style B312_OLD fill:#e0e7ff,stroke:#818cf8
+  style B312_NOW fill:#e0e7ff,stroke:#818cf8
+  style GATES1 fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style GATES2 fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style GATES3 fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style PHASE4 fill:#dcfce7,stroke:#16a34a,color:#0f172a
+</div><br/><br/>#<h1>当前位置与运行状态<br/><br/><div class="mermaid">
+flowchart TD
+  GATE_DONE["六维防伪与质量门禁体系 ✅ 三大阶段完工<br/>24 道门禁 / tamper_guard / CI / 725 passed"]
+  GATE_DONE --> P4_ADMIT["Phase 4 准入基建与 T405 报备 ✅<br/>日终执行器 / 跟踪总账 / 725 单测"]
+  P4_ADMIT --> CLOUD["Colab 云端链路 ✅ 2026-09-10<br/>公开 clone + Drive 数据 + 云端回测与本地一致"]
+  CLOUD --> DIAG["T312 全周期诊断 ✅<br/>P0：日均持仓 0.5–1.8 / 空仓 54.7%<br/>CAGR -3.20%，2019/2020/2024 跑输 512890"]
+  DIAG --> HOLD["Phase 4 模拟盘 ⏸ 暂停<br/>不以当前策略继续 6 个月长跑"]
+  HOLD --> DECIDE["待用户拍板<br/>A 修仓位+降频 ｜ B ETF 增强 512890"]
+  DECIDE --> OK["达标后重启 Phase 4"]
+  style GATE_DONE fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style P4_ADMIT fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style CLOUD fill:#dbeafe,stroke:#2563eb,color:#0f172a
+  style DIAG fill:#fef3c7,stroke:#f59e0b,color:#0f172a
+  style HOLD fill:#fee2e2,stroke:#dc2626,color:#0f172a
+  style DECIDE fill:#fee2e2,stroke:#dc2626,color:#0f172a
+  style OK fill:#f1f5f9,stroke:#94a3b8,color:#64748b
+</div><br/><br/>---<br/><br/>**更新历史**：
+- 2026-08-31：Phase 0–1 完成标记
+- 2026-09-01：Phase 2–3 完成标记 + G3/G4 门禁通过
+- 2026-09-02：Phase 3.5 红利策略切换完成 + G4.5 门禁通过 + 测试基线 524
+- 2026-09-02：T402 偏差容忍带 + T401/T403/T404 修复与台账自动化完成 + 测试基线 619
+- 2026-09-07：T312 底层四大硬伤彻底根治 + 回测引擎红利税真集成与送转拆股容错 + 市值加权生效 + 自动化防伪审计 5/5 全 PASS + 真实 10 年全周期回测正式落盘（Run ID 20260907-150402，总收益 -27.72%，CAGR -3.20%，实扣红利税 5,043.75 元，每一分钱有据可查）+ 测试基线提升至 629 passed 全绿。
+- 2026-09-07：第 17 号《中低频量化研发防伪与工程质量门禁体系深度调研报告》定稿（Commit `3119acd`）。确立学术三里程碑、工业平台准入门禁与监管法案；明确 10~15 万纯多头无对冲散户客观物理约束；构建六维防御门禁（D-L-E-A-S-G）体系；代码仓冻结待命。
+- 2026-09-07：六维门禁体系【阶段一：独立门禁工具包开发】完工闭环（Commit `4d93246`）。落盘 scripts/gates/ 工具包（23 项机读门禁 + gate_master_audit.py 调度器）；tests/test_gates.py 52 项单测全绿；测试基线提升至 681 passed 全绿；母库 FINDING- 守卫恒等于 370 行。
+- 2026-09-07：六维门禁体系【阶段二：执行流前置/后置闸门植入】完工闭环。回测主流程 scripts/run_dividend_backtest.py 深度挂接前置与后置闸门；新增 runner.py 与 tests/test_gate_integration.py（18 单测全绿）；全库回归单测提升至 699 passed 全绿；母库 370 行守卫严格保持。
+- 2026-09-07：六维门禁体系【阶段三：CI / Git Hooks 自动化防伪硬化与防篡改签名】完工闭环（Commit `4878ffe`）。落地 tamper_guard.py 验签引擎；扩展至 24 道机读门禁；装配 pre-commit 与 pre-push 本地硬卡；两仓 CI 流水线；单测提升至 717 passed 全绿。
+- 2026-09-07：Phase 4 模拟盘准入启动与合规报备核验（T405）完工闭环。发布准入决议书；完成策略说明书、系统架构说明书与 7 项必须项清单（T405 合规审计报告 100% PASS 签署）；研发落地日终执行器 scripts/run_paper_trading_daily.py 与 6 个月跟踪总账 docs/paper_trading/paper_trading_ledger.md 并完成 Day 1 首日执行；编写 Phase 4 单测 tests/test_t405_compliance_and_paper_e2e.py（8 例全绿）；全库回归单测跃升至 725 passed in 18.02s 全绿！Phase 4 模拟盘 6 个月常态化跟踪（T406）正式进入长跑轨道。
+- 2026-09-10：Colab 云端验收 + T312 全周期诊断（P0 仓位不足）+ Phase 4 暂停待 A/B；CI Gate5 修复；完整阶段流程图恢复。
 
-<div class="zoomhint">
-  看不清时请用浏览器缩放：<kbd>Ctrl</kbd> + 滚轮，或 <kbd>Ctrl</kbd> + <kbd>+</kbd> / <kbd>-</kbd>。
-</div>
-
-<header class="hero">
-  <h1>FinAI2.0 当前状态</h1>
-  <div class="sub">
-    2026-09-10 ｜ 代码 <b>338847b</b> ｜ 离线测试 <b>725 passed</b> ｜ CI 已修
-  </div>
-
-  <div class="chips">
-    <div class="chip"><div class="k">当前位置</div><div class="v warn">策略 v2 决策</div></div>
-    <div class="chip"><div class="k">Phase 4</div><div class="v stop">已暂停</div></div>
-    <div class="chip"><div class="k">工程/门禁</div><div class="v ok">就绪</div></div>
-    <div class="chip"><div class="k">10 年 CAGR</div><div class="v stop">−3.20%</div></div>
-    <div class="chip"><div class="k">空仓交易日</div><div class="v stop">54.7%</div></div>
-    <div class="chip"><div class="k">日均持仓</div><div class="v stop">0.5–1.8 只</div></div>
-    <div class="chip"><div class="k">云端链路</div><div class="v ok">已打通</div></div>
-    <div class="chip"><div class="k">下一步</div><div class="v info">等你选 A / B</div></div>
-  </div>
-
-  <div class="callout">
-    <b>一句话现状：</b>
-    测试、回测、云端都通了；红利策略长期没满仓、牛市跑输红利低波 ETF，所以模拟盘先停，等你决定 A（修仓位）还是 B（改 ETF）。
-  </div>
-</header>
-
-<!-- ===================== 1. 现在在哪 ===================== -->
-<h2>1. 现在处于什么情况</h2>
-<p class="lead">先看结论表，再看要不要继续往下看细节。</p>
-<table>
-  <tr><th style="width:38%">问题</th><th>结论</th></tr>
-  <tr><td>代码能不能跑？</td><td class="ok">能。本地与 Colab 结果一致。</td></tr>
-  <tr><td>测试挂没挂？</td><td class="ok">没挂。725 全绿。</td></tr>
-  <tr><td>策略赚钱了吗？</td><td class="stop">没有。总收益 −27.72%，CAGR −3.20%。</td></tr>
-  <tr><td>最大病根</td><td class="stop">仓位不足：目标 5 只，实际日均 0.5–1.8 只；54.7% 交易日空仓。</td></tr>
-  <tr><td>和 512890 比</td><td class="stop">2019 / 2020 / 2024 大幅跑输。</td></tr>
-  <tr><td>要不要上模拟盘</td><td class="warn">不要。先修策略。</td></tr>
-  <tr><td>要不要上神经网络</td><td class="warn">现阶段不要。</td></tr>
-</table>
-
-<!-- ===================== 2. 走到哪了 ===================== -->
-<h2>2. 项目走到了哪一步</h2>
-<p class="lead">绿=已完成，黄=当前暂停点，红=等你拍板。</p>
-
-<div class="steps">
-  <div class="step done"><div class="num">✓</div><div>
-    <div class="t">Phase 0–2：环境、数据、回测引擎</div>
-    <div class="d">数据管道、事件驱动引擎、费用、指标、门禁 G2/G3</div>
-  </div></div>
-
-  <div class="step done"><div class="num">✓</div><div>
-    <div class="t">Phase 3 / 3.5：策略与红利切换</div>
-    <div class="d">动量淘汰 → 红利策略 + 红利税 + 压力测试 G4.5</div>
-  </div></div>
-
-  <div class="step done"><div class="num">✓</div><div>
-    <div class="t">防伪门禁三阶段 + 725 单测</div>
-    <div class="d">24 道门禁、CI、防篡改签名</div>
-  </div></div>
-
-  <div class="step done"><div class="num">✓</div><div>
-    <div class="t">Colab 云端链路</div>
-    <div class="d">GitHub 代码 + Drive 数据 + 云端回测复现</div>
-  </div></div>
-
-  <div class="step now"><div class="num">!</div><div>
-    <div class="t">T312 全周期诊断（当前）</div>
-    <div class="d">P0：仓位不足；牛市跑输 512890</div>
-  </div></div>
-
-  <div class="step hold"><div class="num">⏸</div><div>
-    <div class="t">Phase 4 模拟盘：已暂停</div>
-    <div class="d">基建就绪，但不以当前策略继续 6 个月长跑</div>
-  </div></div>
-
-  <div class="step hold"><div class="num">?</div><div>
-    <div class="t">待你拍板：A 或 B</div>
-    <div class="d">见下一节</div>
-  </div></div>
-</div>
-
-<!-- ===================== 3. 诊断 ===================== -->
-<h2>3. 诊断：为什么亏</h2>
-<p class="lead">完整报告：<code style="background:#0f172a;padding:2px 6px;border-radius:4px">docs/diagnosis/t312_full_period_diagnosis.md</code></p>
-
-<table>
-  <tr><th>年份</th><th>策略</th><th>510300</th><th>512890</th><th>日均持仓</th></tr>
-  <tr class="good"><td>2016</td><td>−2%</td><td>−11%</td><td>—</td><td>0.32</td></tr>
-  <tr class="good"><td>2018</td><td>+2%</td><td>−24%</td><td>—</td><td>0.49</td></tr>
-  <tr class="bad"><td>2019</td><td>−8%</td><td>+39%</td><td>+21%</td><td>1.75</td></tr>
-  <tr class="bad"><td>2020</td><td>−12%</td><td>+29%</td><td>+9%</td><td>1.34</td></tr>
-  <tr class="good"><td>2022</td><td>+5%</td><td>−20%</td><td>+3%</td><td>0.08</td></tr>
-  <tr class="bad"><td>2024</td><td>−17%</td><td>+18%</td><td>+23%</td><td>0.75</td></tr>
-</table>
-
-<p class="lead" style="margin-top:14px">
-  <b>读法：</b>绿行=熊市防守还行；红行=牛市该赚钱时没满仓、还选得差。
-</p>
-
-<table style="margin-top:14px">
-  <tr><th>指标</th><th>数值</th><th>含义</th></tr>
-  <tr><td>零持仓日</td><td class="stop">54.7%</td><td>一半以上交易日空仓</td></tr>
-  <tr><td>平均现金占比</td><td class="stop">65.4%</td><td>资金大部分闲置</td></tr>
-  <tr><td>红利税占费用</td><td class="warn">51.8%</td><td>摩擦高，但不是主因</td></tr>
-</table>
-
-<!-- ===================== 4. A/B ===================== -->
-<h2>4. 下一步：A 还是 B</h2>
-<p class="lead">可以先 A，不行再切 B。</p>
-
-<div class="ab">
-  <div class="box a">
-    <h3>A. 修仓位 + 降频 <span class="tag">保留个股</span></h3>
-    <ul>
-      <li>查流动性 5000 万、单票 2 万下限是否过严</li>
-      <li>建仓分批，把日均持仓拉到 ≥3</li>
-      <li>调仓 20 日 → 60 或 120 日，压红利税</li>
-      <li>重跑 10 年，对比 512890</li>
-    </ul>
-  </div>
-  <div class="box b">
-    <h3>B. ETF 增强 <span class="tag">512890</span></h3>
-    <ul>
-      <li>以红利低波 ETF 为底仓</li>
-      <li>MA200 做仓位/择时</li>
-      <li>个股只做卫星，不硬选 5 只</li>
-      <li>摩擦更低，适合 10–15 万</li>
-    </ul>
-  </div>
-</div>
-
-<div class="callout" style="margin-top:16px;background:#0c1a33;border-color:#1e3a8a;color:#bfdbfe">
-  <b style="color:#fff">建议：</b>先做 A 一轮；若修满仓后仍明显跑输 512890，再切 B。
-</div>
-
-<!-- ===================== 5. 云端 ===================== -->
-<h2>5. 代码与数据怎么上云</h2>
-<p class="lead">代码走 GitHub，数据走 Drive，不要把 parquet 塞进 git。</p>
-
-<div class="pipe">
-  <div class="node local">本机</div>
-  <div class="arr">→</div>
-  <div class="node gh">GitHub 代码</div>
-  <div class="arr">→</div>
-  <div class="node colab">Colab 云端</div>
-  <div class="arr">+</div>
-  <div class="node drive">Drive 数据 zip</div>
-  <div class="arr">→</div>
-  <div class="node">回测 / 诊断</div>
-</div>
-
-<table style="margin-top:16px">
-  <tr><th style="width:22%">步骤</th><th>操作</th></tr>
-  <tr><td>1</td><td>本机改代码 → <code>git push</code></td></tr>
-  <tr><td>2</td><td>本机采数据 → 打包 zip → 上传 Google Drive</td></tr>
-  <tr><td>3</td><td>Colab：clone/pull 代码 + unzip 数据</td></tr>
-  <tr><td>4</td><td>跑 <code>1.ipynb</code> 第 5–7 步</td></tr>
-</table>
-
-<!-- ===================== 6. 记录 ===================== -->
-<h2>6. 最近更新</h2>
-<table>
-  <tr><th style="width:22%">日期</th><th>内容</th></tr>
-  <tr><td>2026-09-10</td><td>云端诊断（P0 仓位不足）→ Phase 4 暂停；CI Gate5 修复</td></tr>
-  <tr><td>2026-09-07</td><td>T312 硬伤根治 + 真实 10 年回测 + 门禁三阶段 + 725 passed</td></tr>
-  <tr><td>2026-09-02</td><td>红利切换 T309–T313，压力测试 G4.5</td></tr>
-</table>
-
-<div class="footer">
-  真值源：research-finai spec/plan/tasks ｜ 代码仓 FinAI2.0 ｜ 诊断
-  <code>docs/diagnosis/t312_full_period_diagnosis.md</code>
-</div>
-
-</div>
+<script>mermaid.initialize({ startOnLoad: true, theme: "default" });</script>
 </body>
 </html>
