@@ -431,7 +431,7 @@ with open("ledger_export.csv", "w", encoding="utf-8") as f:
 
 **集成路径**：
 1. 配置飞书Webhook或MCP连接
-2. 实现 `ops/feishu_alert.py`：
+2. 在 `ops/` 下新增告警模块（**⛔ 尚未实现**；当前 `ops/` 仅有台账提醒四模块：`ops/check_reminder.py`、`ops/expiry_reminder.py`、`ops/ledger_registry.py`、`ops/update_ledger.py`）：
    ```python
    def send_card(title: str, content: str, level: str):
        """发送交互式卡片到飞书群"""
@@ -464,7 +464,7 @@ with open("ledger_export.csv", "w", encoding="utf-8") as f:
 | 调度脚本 | `scripts/run_ledger_tasks.py` | ✅ 完成 |
 | 单元测试 | `tests/test_t404_ledger_automation.py` | ✅ 完成（≥28例） |
 | 文档说明 | `docs/t404_ledger_automation.md` | ✅ 本文档 |
-| 飞书告警集成 | `ops/feishu_alert.py` | ⏳ 待实现（当前为mock） |
+| 飞书告警集成 | ⛔ 无对应模块（`ops/` 下仅有台账提醒四模块） | ⏳ 待实现（当前为 mock，仅 `data/collector.py` 的 stub） |
 
 ---
 

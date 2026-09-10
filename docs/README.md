@@ -1,12 +1,12 @@
 # FinAI2.0 · 文档全景导航索引（Documentation Index）
 
 > 更新日期：2026-09-10  
-> 对应项目版本：Phase 0~3.5 与门禁体系完成；Colab 云端链路验收；T312 全周期诊断完成（P0=仓位不足）；**Phase 4 ⏸ 暂停，待策略 v2 落地后重审**；基线 **725 passed**
+> 对应项目版本：Phase 0~3.5 与门禁体系完成；Colab 云端链路验收；T312 全周期诊断完成（P0=仓位不足）；**Phase 4 ⏸ 暂停，待策略 v2 落地后重审**；基线 **760 passed**（2026-09-10 实测）
 > 外部计划与理论权威：`D:\Projects\research-finai\`（00–17 号报告 + `specs\001-a-stock-longonly-daily-quant\`）
 
 ---
 
-> **⛔ 2026-09-10 批注**：经 2026-09-10 诊断确认，`docs/compliance/` 全套报备材料与 `docs/T312_FINAL_SUMMARY.md`、`docs/t313_dividend_stress_report.md`、`docs/delivery/PHASE4_ADMISSION_RESOLUTION.md` 中的结论性数字**依据失效、已标注“作废 / 待重写”**（详见 [`audit/roadmap_decision.md`](audit/roadmap_decision.md) §5）。**Phase 4 状态统一为「⏸ 暂停，待策略 v2 落地后重审」**；上述文件在重写完成前不得对外提交、不得作为任何准入依据。
+> **✅ 2026-09-10 批注（M4' 口径统一后更新）**：`docs/compliance/` 全套报备材料与 `docs/T312_FINAL_SUMMARY.md`、`docs/t313_dividend_stress_report.md`、`docs/delivery/PHASE4_ADMISSION_RESOLUTION.md` 中的结论性数字**已按权威产物 `experiments/runs/20260907-150402-t312-dividend-v1-noseed.json` 逐项更正并复跑 `G-DOC-1` / `G-REF-1`**（详见各文件顶部状态横幅与 [`audit/roadmap_decision.md`](audit/roadmap_decision.md) §5）。**Phase 4 状态统一为「⏸ 暂停，待策略 v2 落地后重审」**。⛔ 仍不可提交的部分：① 权威产物回撤超限（实测 43.08% 高于 35% 上限，`G-MDD-1` FAIL）；② T313「压力测试」为 0 成交空测；③ 引用动量/T304/T305 结论的 5 份文档在 `experiments/runs/` 无对应机读产物，已加 `gate-doc-void` 标记并登记于 [`audit/void_documents.md`](audit/void_documents.md)。
 
 ## 快速导航分类
 
@@ -17,9 +17,9 @@ flowchart TD
   DOCS --> D1["1. 架构与工程规范<br/>• DATA_LAYER_WORK_ORDER<br/>• docs/spec 只读快照"]
   DOCS --> D2["2. 回测引擎与门禁 (Phase 2)<br/>• T204 价格与敏感度<br/>• T207 G3 门禁验收"]
   DOCS --> D3["3. 策略风控与防伪 (Phase 3)<br/>• T304 动量压测<br/>• T305 评审报告<br/>• 前视偏差审计<br/>• 缺口滑点 / 高价股过滤"]
-  DOCS --> D4["4. 红利策略实证 (Phase 3.5)<br/>• T309 红利税真集成<br/>• T311 红利策略<br/>• T312 硬伤根治与10年回测<br/>• T313 压力测试全绿"]
-  DOCS --> D5["5. Phase 4 ⏸ 暂停（待策略 v2 落地后重审）<br/>• 准入决议书 & T405 合规材料（⛔ 已标注作废/待重写）<br/>• run_paper_trading_daily 日终执行器<br/>• paper_trading_ledger 总账已停计时<br/>• tests/ 725 passed 100% 全绿"]
-  DOCS --> D6["6. 六维质量防伪门禁 (Phase 1~3 全闭环)<br/>• scripts/gates/ 24道门禁+tamper_guard<br/>• .githooks/ & CI 本地云端双拦截<br/>• delivery/ 阶段一~三完工总结"]
+  DOCS --> D4["4. 红利策略实证 (Phase 3.5)<br/>• T309 红利税真集成<br/>• T311 红利策略<br/>• T312 硬伤根治与10年回测<br/>• T313 压测（⛔ 0 成交空测，结论已推翻）"]
+  DOCS --> D5["5. Phase 4 ⏸ 暂停（待策略 v2 落地后重审）<br/>• 准入决议书 & T405 合规材料（⛔ 已标注作废/待重写）<br/>• run_paper_trading_daily 日终执行器<br/>• paper_trading_ledger 总账已停计时<br/>• tests/ 760 passed 100% 全绿"]
+  DOCS --> D6["6. 六维质量防伪门禁 (Phase 1~3 全闭环)<br/>• scripts/gates/ 28道门禁+tamper_guard<br/>• .githooks/ & CI 本地云端双拦截<br/>• delivery/ 阶段一~三完工总结"]
   DOCS --> D7["7. 流程图与交付归档<br/>• project_status_flowchart (md/html)<br/>• docs/delivery/ 归档区"]
 ```
 
@@ -70,8 +70,8 @@ flowchart TD
 | [`t311_dividend_strategy_acceptance.md`](t311_dividend_strategy_acceptance.md) | 红利策略单测与端到端模拟验收报告 | T311 |
 | [`t312_dividend_strategy.md`](t312_dividend_strategy.md) | 红利策略回测执行规格与参数定义书 | T312 |
 | [`t312_implementation_summary.md`](t312_implementation_summary.md) | 红利股数据采集管道与回测链路实施总结 | T312 |
-| [`T312_FINAL_SUMMARY.md`](T312_FINAL_SUMMARY.md) | **T312 最终完工总结**：四大底层硬伤彻底根治 + 自动化防伪审计 5/5 PASS + 真实 10 年回测落盘 | T312 |
-| [`t313_dividend_stress_report.md`](t313_dividend_stress_report.md) | **G4.5 门禁压力测试报告**：红利策略在股灾/熊市 MA200 100% 空仓保命避险实证 | T313 (G4.5) |
+| [`T312_FINAL_SUMMARY.md`](T312_FINAL_SUMMARY.md) | **T312 最终完工总结**（已按权威产物更正数字）：四大底层硬伤彻底根治 + 凭据脚本 5/5 PASS + 真实 10 年回测落盘；⛔ 回撤超限未达准入 | T312 |
+| [`t313_dividend_stress_report.md`](t313_dividend_stress_report.md) | **G4.5 门禁压力测试报告**：⛔ 0 成交空测，原「空仓避险实证 / G4.5 通过」结论**已推翻**（保留留痕） | T313 (G4.5) |
 | [`diagnosis/t312_full_period_diagnosis.md`](diagnosis/t312_full_period_diagnosis.md) | **T312 全周期诊断（2026-09-10 云端）**：分年度 vs 300/512890、红利税 51.8%、空仓 54.7%、日均持仓 0.5–1.8（P0 仓位不足） | 诊断 |
 
 ---
@@ -80,12 +80,12 @@ flowchart TD
 
 | 文档 / 路径 | 说明 | 对应阶段 / 编号 |
 |---|---|---|
-| [`delivery/PHASE4_ADMISSION_RESOLUTION.md`](delivery/PHASE4_ADMISSION_RESOLUTION.md) | **Phase 4 模拟盘正式准入决议书**：五大物理枷锁与 6 个月跟踪纪律确立 | Phase 4 准入 |
+| [`delivery/PHASE4_ADMISSION_RESOLUTION.md`](delivery/PHASE4_ADMISSION_RESOLUTION.md) | **Phase 4 准入决议书**：⛔ 原「准予准入」结论**已撤回**；Phase 4 现为 ⏸ 暂停（保留留痕） | Phase 4 准入 |
 | [`compliance/strategy_description_template.md`](compliance/strategy_description_template.md) | **程序化交易策略说明书**（锁定 commit `4878ffe`、T312 10 年回测与单测基线） | T405 (FR-COMP-1) |
-| [`compliance/system_architecture_template.md`](compliance/system_architecture_template.md) | **程序化交易系统架构说明书**（披露六层物理架构与 24 道六维防伪门禁） | T405 (FR-COMP-1) |
+| [`compliance/system_architecture_template.md`](compliance/system_architecture_template.md) | **程序化交易系统架构说明书**（披露六层物理架构与 28 道六维防伪门禁；已按实现更正 ST/参与率/告警/基线口径） | T405 (FR-COMP-1) |
 | [`compliance/filing_checklist.md`](compliance/filing_checklist.md) | **程序化交易报备材料清单**（7 项必须项核验与报备时间表） | T405 (FR-COMP-1) |
-| [`compliance/T405_COMPLIANCE_AUDIT.md`](compliance/T405_COMPLIANCE_AUDIT.md) | **T405 合规审计报告**（穿透核验 100% PASS 终审签署） | T405 (FR-COMP-1) |
-| [`paper_trading/paper_trading_ledger.md`](paper_trading/paper_trading_ledger.md) | **模拟盘 6 个月运行跟踪总账**（T406 每日流水、对账状态与防篡改签名留痕） | T406 (G5 前半) |
+| [`compliance/T405_COMPLIANCE_AUDIT.md`](compliance/T405_COMPLIANCE_AUDIT.md) | **T405 合规审计报告**（⛔ 已重做为 ❌ 不通过；原「100% PASS 终审签署」已撤回） | T405 (FR-COMP-1) |
+| [`docs/paper_trading/paper_trading_ledger.md`](file:///D:/Projects/FinAI2.0/docs/paper_trading/paper_trading_ledger.md) | **模拟盘 6 个月运行跟踪总账**（T406 每日流水、对账状态与防篡改签名留痕） | T406 (G5 前半) |
 | [`../scripts/run_paper_trading_daily.py`](../scripts/run_paper_trading_daily.py) | **模拟盘日终自动化执行器**（支持状态推进、双账本自对账与防篡改验签） | Phase 4 执行主干 |
 | [`../tests/test_t405_compliance_and_paper_e2e.py`](../tests/test_t405_compliance_and_paper_e2e.py) | **Phase 4 合规材料与端到端自动化测试套件**（8 单测全绿） | T405 / T406 验证 |
 | [`t401_paper_trading_design.md`](t401_paper_trading_design.md) | 模拟盘执行器架构设计（回测与实盘同构桥） | T401 |
@@ -99,9 +99,9 @@ flowchart TD
 
 | 路径 / 文档 | 说明 | 对应阶段 / 类别 |
 |---|---|---|
-| [`../scripts/gates/`](../scripts/gates/) | **六维质量防伪门禁包**：D-L-E-A-S-G 全六维 24 项机读门禁与调度器 `gate_master_audit.py` | Phase 1~3 |
+| [`../scripts/gates/`](../scripts/gates/) | **六维质量防伪门禁包**：D-L-E-A-S-G 全六维 28 项机读门禁与调度器 `gate_master_audit.py` | Phase 1~3 |
 | [`../scripts/gates/tamper_guard.py`](../scripts/gates/tamper_guard.py) | **防伪硬化与防篡改签名引擎**：SHA-256 结构化验签、tasks 证据验签与镜像比对 | Phase 3 (T-GATE-P3) |
-| [`../scripts/hooks/`](../scripts/hooks/) & [`.githooks/`](../.githooks/) | **本地 Git Hooks 拦截体系**：pre-commit（370行+tasks+产物验签）与 pre-push（725 单测基线硬拦截） | Phase 3 (T-GATE-P3) |
+| [`../scripts/hooks/`](../scripts/hooks/) & [`.githooks/`](../.githooks/) | **本地 Git Hooks 拦截体系**：pre-commit（370行+tasks+产物验签）与 pre-push（760 单测基线硬拦截，2026-09-10 实测） | Phase 3 (T-GATE-P3) |
 | [`../scripts/install_hooks.py`](../scripts/install_hooks.py) | **Git 门禁钩子一键装配工具**：支持 `--verify` 自动化核验与状态自愈 | Phase 3 (T-GATE-P3) |
 | [`../.github/workflows/ci.yml`](../.github/workflows/ci.yml) | **云端 GitHub Actions CI 防伪流水线**：370 行守卫+5/5 防伪审计+门禁总检+单测全绿 | Phase 3 (T-GATE-P3) |
 | [`../scripts/gates/runner.py`](../scripts/gates/runner.py) | **执行流前置/后置闸门运行器**：`run_pre_run_gates` 与 `run_post_run_gates` | Phase 2 (T-GATE-P2) |
@@ -111,7 +111,7 @@ flowchart TD
 | [`../tests/test_gate_p3_hardening.py`](../tests/test_gate_p3_hardening.py) | **阶段三防伪硬化单测套件**（18 个单测验证签名、篡改拦截、tasks 验签与钩子逻辑） | 硬化测试 |
 | [`delivery/GATE_PHASE1_COMPLETION_SUMMARY.md`](delivery/GATE_PHASE1_COMPLETION_SUMMARY.md) | **阶段一完工交付验收总结**：23 项门禁实现全景、散户约束映射与 681 passed 基线证明 | 阶段交付归档 |
 | [`delivery/GATE_PHASE2_COMPLETION_SUMMARY.md`](delivery/GATE_PHASE2_COMPLETION_SUMMARY.md) | **阶段二完工交付验收总结**：前置/后置闸门植入、Fail-Closed 机制与 699 passed 基线证明 | 阶段交付归档 |
-| [`delivery/GATE_PHASE3_COMPLETION_SUMMARY.md`](delivery/GATE_PHASE3_COMPLETION_SUMMARY.md) | **阶段三完工交付验收总结**：CI/Git Hooks 硬拦截、防篡改验签与 717 passed 基线证明 | 阶段交付归档 |
+| [`delivery/GATE_PHASE3_COMPLETION_SUMMARY.md`](delivery/GATE_PHASE3_COMPLETION_SUMMARY.md) | **阶段三完工交付验收总结**：CI/Git Hooks 硬拦截、防篡改验签与**阶段三时点快照 717 passed** 基线证明（当前基线 760 passed） | 阶段交付归档 |
 | [`delivery/gate_phase1_test_output.txt`](delivery/gate_phase1_test_output.txt) | 全库 681 passed in 21.01s 完整控制台单测执行日志真实物理落盘 | 真实物理留痕 |
 | [`delivery/gate_phase2_test_output.txt`](delivery/gate_phase2_test_output.txt) | 全库 699 passed in 18.82s 完整控制台单测执行日志真实物理落盘 | 真实物理留痕 |
 | [`delivery/gate_audit_report.json`](delivery/gate_audit_report.json) | 调度器 `gate_master_audit.py` 导出的机读 JSON 审计报告 | 机器签名留痕 |

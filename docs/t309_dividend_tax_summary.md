@@ -172,7 +172,7 @@ for bracket in TAX_BRACKETS:
    - 将税额写入 `Journal` 为 `DIVIDEND_TAX` 条目
 
 2. **策略层评估**（T311+）：
-   - 在 `reporting/metrics.py` 的 `FeeItem` 汇总中展示 `DIVIDEND_TAX`
+   - 在 `backtest/metrics.py` 的 `FeeItem` 汇总中展示 `DIVIDEND_TAX`（⛔ 原文所指模块路径不存在（误指报告层），已按实现更正；`reporting/` 下仅有 `reporting/registry.py`）
    - 高分红策略启用前先跑敏感度分析（月度调仓 vs 高频调仓，税率差 10%-20%）
    - 参考 T207 评估：极端保守上限 ≈0.4%/年，月度调仓可降至 10% 税率
 

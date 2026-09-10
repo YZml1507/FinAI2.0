@@ -151,9 +151,9 @@ DividendStrategy
 - 更新频率: 日频（收盘后更新）
 
 **实现方式**:
-- 扩展 `data/collector.py` 或新建 `data/fundamentals.py`
+- 扩展 `data/collector.py`，或新增独立财务模块（⛔ 原文所列拟新建文件**从未实现**，该路径不存在；财务 PIT 实际落点为 `data/financial_pit.py`）
 - Parquet 落盘，与日线数据并行存储
-- 集成到 `data/feed.py` 加载流程
+- 集成到 `backtest/feed.py` 加载流程（⛔ 原文所指数据层加载模块不存在，已按实现更正；行情加载实现在 `backtest/feed.py`）
 
 ---
 

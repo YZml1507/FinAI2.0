@@ -96,7 +96,7 @@ DividendConfig(
 
 **输出**：
 - ✅ PerformanceReport（含 CAGR / 夏普 / MDD / 换手 / 胜率 / 费用明细）
-- ✅ 实验 registry（`experiments/t312-dividend-v1/<run_id>.json`）
+- ✅ 实验 registry（实际落盘 `experiments/runs/<run_id>.json`；⛔ 原文所指实验目录不存在（旧目录约定，缺 `runs/` 层），已按实现更正）
 - ✅ 终端摘要（彩色表格输出）
 
 ### 2.4 测试套件（`tests/test_t312_dividend_backtest.py`）

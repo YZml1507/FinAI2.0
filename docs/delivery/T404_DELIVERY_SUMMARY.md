@@ -235,7 +235,7 @@ python scripts/run_ledger_tasks.py
 
 **下一步**：
 1. 配置飞书Webhook或MCP连接
-2. 实现 `ops/feishu_alert.py`：
+2. 在 `ops/` 下新增告警模块（**⛔ 尚未实现**；当前 `ops/` 仅有台账提醒四模块：`ops/check_reminder.py`、`ops/expiry_reminder.py`、`ops/ledger_registry.py`、`ops/update_ledger.py`，原文所指告警模块**不存在**）：
    ```python
    def send_card(title: str, content: str, level: str):
        """发送交互式卡片到飞书群"""

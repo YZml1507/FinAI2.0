@@ -1,6 +1,6 @@
 # T312 红利股数据采集 + 红利策略回测 —— 准备就绪
 
-**状态**: ✅ 代码实现完成，等待用户决策执行  
+**状态**: ⚠️ 历史计划稿（保留留痕）；正文命令与路径已按**当前实现**逐条更正，未实现的项已显式标注。⛔ 本稿中的「预期收益」类数字非实测值，不得作为结论。  
 **日期**: 2026-09-02  
 **测试**: 6 个测试用例就绪（因数据未采集而 skip，符合预期）  
 **回归**: 37 个 Phase 3 测试全绿，无冲突
@@ -54,10 +54,15 @@ python scripts/run_dividend_backtest.py --data-path data/dividend_stocks
 **执行命令**：
 ```bash
 # 步骤 1：采集完整 A 股日线数据（1000+ 只 × 10 年，≈2 小时）
-python scripts/collect_full_market_data.py --start 2015-01-01 --end 2024-12-31
+# ⛔ 原文脚本名不存在（计划稿残留，全市场采集脚本从未落地）
+# 实际采集脚本：scripts/collect_dividend_stocks.py（红利池）
+python scripts/collect_dividend_stocks.py --start 2015-01-01 --end 2024-12-31 --min-yield 0.03
 
 # 步骤 2：重跑 MomentumStrategy 2015-2024 全周期回测
-python scripts/run_momentum_backtest.py --data-path data/daily_bars
+python scripts/run_momentum_backtest_full.py --data-path data/daily_bars
+# ⛔ 原文脚本名不存在（无 _full 后缀），已更正为实际脚本
+# ⛔ 数据不足：data/daily_bars/ 现仅 1 只标的（sh.600000/2024.parquet），
+#    动量全周期回测数据不足，任何「动量全周期」结论均无有效机读产物（见 docs/audit/void_documents.md）
 ```
 
 **风险**：
@@ -182,7 +187,8 @@ python scripts/collect_dividend_stocks.py --start 2015-01-01 --end 2024-12-31 --
 python scripts/run_dividend_backtest.py --data-path data/dividend_stocks
 
 # 查看结果
-cat experiments/t312-dividend-v1/latest_run.json
+cat experiments/runs/20260907-150402-t312-dividend-v1-noseed.json
+# ⛔ 原文路径不存在（旧实验目录约定），已更正为实际产物路径
 ```
 
 然后告知我回测结果，我将：
@@ -193,8 +199,8 @@ cat experiments/t312-dividend-v1/latest_run.json
 ### ⏳ 如果选择"选项 B"
 
 我将：
-1. 创建 `scripts/collect_full_market_data.py`（完整 A 股采集器）
-2. 修改 `scripts/run_momentum_backtest.py`（适配完整数据）
+1. 创建全市场日线采集器（⛔ **尚未实现**；当前仅有红利池采集器 `scripts/collect_dividend_stocks.py`）
+2. 适配动量全周期回测脚本 `scripts/run_momentum_backtest_full.py`（⛔ 原文所指脚本名不存在）
 3. 执行采集 + 回测（≈3 小时）
 4. 对比动量策略 vs 红利策略表现
 

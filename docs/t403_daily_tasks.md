@@ -144,7 +144,7 @@ runner = DailyTaskRunner(
     broker=PaperBroker(...),
     strategy=DividendStrategy(...),
     alert_fn=send_feishu_alert,
-    nav_file=Path("paper_trading/data/nav_series.parquet"),
+    nav_file=Path("runs/paper_trading/data/nav_series.parquet"),   # 实际落盘：运行期目录 runs/paper_trading/（原文 paper_trading/data/... 不存在）
     report_dir=Path("paper_trading/reports"),
     risk_free_annual=Decimal("0.02"),
 )

@@ -220,7 +220,7 @@ from pathlib import Path
 config = PaperTradingConfig(
     initial_capital=Decimal("100000"),
     data_root=Path("data/daily_bars"),
-    state_path=Path("paper_trading/state.json"),
+    state_path=Path("runs/paper_trading/state.json"),   # 实际落盘：运行期目录 runs/paper_trading/（原文路径缺 runs/ 前缀，已按实现更正）
     dry_run=True,  # v1 模拟盘，不真实下单
 )
 

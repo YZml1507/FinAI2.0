@@ -4,7 +4,7 @@
 > 数据取数母库：`finai/sources/`（860 接口探测目录，守护红线 `FINDING-` 恒为 370 行）  
 > 权威工程指令：`docs\engineering\DATA_LAYER_WORK_ORDER.md`  
 > 文档全景导航：[`docs/README.md`](docs/README.md)  
-> 当前测试基线：**629 passed in 15.69s（0 failed, 0 errors, 100% PASS）**  
+> 当前测试基线：**760 passed（2026-09-10 实测，0 failed, 0 errors, 100% PASS）**；历史阶段快照 629 / 681 / 699 / 717 / 725 见 `docs/delivery/` 归档  
 > 核心物理约束：**实际资金 10~15 万元、纯多头（Long-Only）、无两融对冲手段、持仓 3~8 只、5 元佣金地板**
 
 ## 系统工程结构
@@ -15,15 +15,19 @@ FinAI2.0/
   data/           # 数据层：日线采集/清洗/停牌过滤/PIT 财务对齐/股票池回放/增量更新
   backtest/       # 回测引擎：事件驱动九模块/订单状态机/双账本/分段费率/红利税/拆股扩充
   strategy/       # 策略层：组合管理(3-8只/2万下限)/红利策略/MA200择时/高价股排除/参数扫描
-  accounting/     # 会计层：双账本流水、日终资产守恒对账
+  accounting/     # 【占位包】⛔ 无实现：__init__.py 为 0 字节；双账本真实落地在 backtest/ledger.py，
+                  #   日终对账实现在 paper_trading/reconciliation.py::reconcile_account
   reporting/      # 报告层：绩效指标计算(纯函数)/实验 Registry 原子落盘
   paper_trading/  # 模拟盘：模拟执行器/偏差容忍带量化/日终任务/台账保鲜调度
-  ops/            # 运维层：飞书告警与心跳监控
+  ops/            # 运维层（台账提醒 4 模块）：check_reminder / expiry_reminder / ledger_registry / update_ledger
+                  #   ⛔ 无飞书告警与心跳监控实现（飞书仅 data/collector.py 的 stub，只记日志不真发）
   scripts/        # 自动化工具：防伪审计(audit_evidence_integrity)/数据采集/回测运行
   docs/           # 技术文档库（详见 docs/README.md 导航）
     delivery/     # 阶段交付与就绪清单归档
-  tests/          # 自动化离线单测套件（629 单测全绿）
+  tests/          # 自动化离线单测套件（760 单测全绿，2026-09-10 实测）
   experiments/    # 正式全周期回测实验落盘产物（JSON + 索引）
+  data/daily_bars/  # ⚠️ 仅 1 只标的（sh.600000/2024.parquet）——动量全周期回测数据不足，
+                  #   相关动量结论无机读产物，见 docs/audit/void_documents.md
   requirements.txt
 ```
 
@@ -35,7 +39,7 @@ py -3.11 -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
 
-# 运行全量离线单测（629 例全绿基线）
+# 运行全量离线单测（760 例全绿基线，2026-09-10 实测）
 py -3.11 -m pytest tests/ -p no:ddtrace -p no:ddtrace.pytest_bdd
 
 # 运行自动化防伪与数据真值审计工具（5/5 PASS）
