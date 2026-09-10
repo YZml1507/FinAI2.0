@@ -7,6 +7,7 @@
 """
 from __future__ import annotations
 
+import hashlib
 import json
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
@@ -312,3 +313,88 @@ class TestProvenanceFingerprint:
         data = json.loads((tmp_path / "exp" / "runs" / f"{rid}.json").read_text("utf-8"))
         assert data["repro_fingerprint"] is None
         assert data["code_hash"] is None and data["data_hash"] is None
+
+
+# ======================================================================
+# M2 不变式守卫（Fail-Closed）：缺失输入**不得**坍缩为"合法外观"的指纹
+# ======================================================================
+
+class TestProvenanceNullSafety:
+    """防回归：任何输入缺失都必须表现为 ``None`` / 抛错，⛔ 绝不产出常量或假指纹。
+
+    （对照 `test_baseline_constant_matches_collected_count` 的思路：核心不变式必须自带守卫测试，
+    否则它还会漂。）
+    """
+
+    def test_hash_path_manifest_missing_raises_empty_returns_none(self, tmp_path: Path) -> None:
+        """不存在 ⇒ 抛 MissingDataError；空目录 ⇒ None；两者均**绝不**等于 sha256("") 常量。"""
+        from reporting.provenance import MissingDataError, hash_path_manifest
+
+        constant = hashlib.sha256(b"").hexdigest()[:16]      # e3b0c44298fc1c14（旧漏洞常量）
+        with pytest.raises(MissingDataError):
+            hash_path_manifest(tmp_path / "no_such_dir")
+        empty = tmp_path / "empty_dir"
+        empty.mkdir()
+        assert hash_path_manifest(empty) is None
+        assert hash_path_manifest(empty) != constant
+
+    def test_two_missing_paths_do_not_collapse_to_same_fingerprint(self, tmp_path: Path) -> None:
+        """两个**不同**缺失路径不得坍缩到同一指纹（旧实现两者都是 sha256("")）。"""
+        from reporting.provenance import MissingDataError, hash_path_manifest, repro_fingerprint
+
+        for name in ("missing_a", "missing_b"):
+            with pytest.raises(MissingDataError):
+                hash_path_manifest(tmp_path / name)
+        # 缺失路径无法产出 data_hash ⇒ 无法拼出 repro_fingerprint（= 不再共享常量指纹）
+        with pytest.raises(ValueError):
+            repro_fingerprint(params_hash="p", code_hash="c", data_hash=None,
+                              calendar_hash="cal", universe_hash="u", seed=None)
+
+    def test_hash_sequence_empty_is_none(self) -> None:
+        from reporting.provenance import hash_sequence
+
+        assert hash_sequence([], label="universe") is None
+        assert hash_sequence([], label="cal") is None
+
+    def test_repro_fingerprint_rejects_none_member(self) -> None:
+        """⛔ 不得 str(None) 变字面量参与哈希 ⇒ 任一要素 None 必须抛错。"""
+        from reporting.provenance import repro_fingerprint
+
+        with pytest.raises(ValueError):
+            repro_fingerprint(params_hash="p", code_hash="c", data_hash=None,
+                              calendar_hash="cal", universe_hash="u", seed=None)
+
+    def test_fingerprint_changes_with_any_input_component(self) -> None:
+        """核心不变式守卫：任一要素变动 ⇒ 指纹变动（防再次坍缩）。"""
+        from reporting.provenance import repro_fingerprint
+
+        base = dict(params_hash="p", code_hash="c", data_hash="d",
+                    calendar_hash="cal", universe_hash="u", seed=None)
+        fp0 = repro_fingerprint(**base)
+        for key in ("params_hash", "code_hash", "data_hash", "calendar_hash", "universe_hash"):
+            mutated = dict(base)
+            mutated[key] = base[key] + "_x"
+            assert repro_fingerprint(**mutated) != fp0, f"{key} 变动未改变指纹"
+        # seed 亦参与
+        assert repro_fingerprint(**{**base, "seed": 7}) != fp0
+
+    def test_registry_any_missing_element_forces_none(self, tmp_path: Path) -> None:
+        """registry 守卫必须是 ``is not None``：任一要素（含 calendar/universe）缺失 ⇒ 指纹 None。"""
+        # (a) code_hash 有但 data_hash 缺失
+        reg = ExperimentRegistry(
+            tmp_path / "e1", code_version="abc1234", data_version="sha256:abc",
+            code_hash="c1", data_hash=None, calendar_hash="cal", universe_hash="u", clock=_clock(),
+        )
+        rid = reg.record_run({"a": 1}, _report(), seed=7)
+        d = json.loads((tmp_path / "e1" / "runs" / f"{rid}.json").read_text("utf-8"))
+        assert d["repro_fingerprint"] is None
+
+        # (b) code/data 有，但 calendar/universe 未注入（⛔ 不得 "na" 兜底）
+        reg2 = ExperimentRegistry(
+            tmp_path / "e2", code_version="abc1234", data_version="sha256:abc",
+            code_hash="c1", data_hash="d1", clock=_clock(),
+        )
+        rid2 = reg2.record_run({"a": 1}, _report(), seed=7)
+        d2 = json.loads((tmp_path / "e2" / "runs" / f"{rid2}.json").read_text("utf-8"))
+        assert d2["repro_fingerprint"] is None
+        assert d2["calendar_hash"] is None and d2["universe_hash"] is None

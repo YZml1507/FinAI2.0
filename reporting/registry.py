@@ -23,7 +23,7 @@ M2/PM-1 修复补充（内容寻址出处）：
 |---|---|
 | ``schema_version`` | 现行 = 2；缺该字段的历史产物 = legacy(1)，⛔ 不得当作"检查通过" |
 | ``code_hash`` / ``data_hash`` / ``calendar_hash`` / ``universe_hash`` | 注入式**内容哈希**；缺内容哈希时**显式 ``None``**，⛔ 不静默兜底 |
-| ``repro_fingerprint`` | ``repro_fingerprint(params_hash, code_hash, data_hash, calendar_hash, universe_hash, seed)``；四要素（code+data）齐备才生成，否则 ``None`` |
+| ``repro_fingerprint`` | ``repro_fingerprint(params_hash, code_hash, data_hash, calendar_hash, universe_hash, seed)``；**五要素全部非 None** 才生成，**任一缺失即 ``None``**（守卫用 ``is not None``，⛔ 无 ``or "na"`` 兜底） |
 | ``gate_statuses`` | 本次回测各门禁 status 快照（报告用；⛔ 不入 params/metrics/hash，避免扰动复现比对） |
 
 落盘纪律：**原子写**（``.<run_id>.tmp`` → ``os.replace``），同 ``run_id`` 重复登记
@@ -196,16 +196,19 @@ class ExperimentRegistry:
             raise RegistryError(f"run_id {run_id} 已登记（同参同种子同秒 ⇒ 幂等拒重）")
 
         params_hash = _params_hash(params)
-        # 完整出处键：四要素齐备才生成；否则**显式 None**（报告 §6.1(B)，⛔ 不静默兜底）。
-        if self._code_hash and self._data_hash:
-            fingerprint = repro_fingerprint(
-                params_hash=params_hash,
-                code_hash=self._code_hash,
-                data_hash=self._data_hash,
-                calendar_hash=self._calendar_hash or "na",
-                universe_hash=self._universe_hash or "na",
-                seed=seed,
-            )
+        # 完整出处键：**五要素全部非 None** 才生成；任一缺失 ⇒ **显式 None**。
+        # ⛔ 守卫必须是 `is not None`（⛔ 不得用真值判断——"e3b0c44…" 这类
+        #    非空字符串会骗过真值判断，把"数据缺失"包装成合法指纹）；
+        # ⛔ 不得 `or "na"` 兜底（那会让两个不同缺失分量共享同一指纹）。
+        elements = {
+            "params_hash": params_hash,
+            "code_hash": self._code_hash,
+            "data_hash": self._data_hash,
+            "calendar_hash": self._calendar_hash,
+            "universe_hash": self._universe_hash,
+        }
+        if all(value is not None for value in elements.values()):
+            fingerprint = repro_fingerprint(seed=seed, **elements)
         else:
             fingerprint = None
 
