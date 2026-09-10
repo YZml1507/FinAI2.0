@@ -30,6 +30,7 @@ A 股中低频**长仓（long-only）日线**量化系统。**代码在本仓（
 - ✅ **T402 回测-模拟偏差容忍带量化完成**（2026-09-02，commit `6bac068`；离线单测累计 **616 passed** = 597 原有 + T402×19）。落点：`paper_trading/deviation.py` 偏差计算（NAV/收益/换手/成交价/滑点 5 项指标，纯函数零 IO）+ `tolerance.py` 容忍带配置（DEFAULT_TOLERANCE_BANDS 唯一登记点，基于 T204/T304 实测：NAV 日偏差 ≤0.5% / 月度收益 ≤2% / 换手 ≤10pp / 成交价 ≤1% / 滑点 ≤0.5%）+ `monitor.py` 监控器（判定超出+根因提示+联合诊断，NAV+换手同超 → 执行路径偏离 / 成交价+滑点同超 → 流动性不足）+ `docs/t402_deviation_tolerance.md` 完整文档。容忍带设定依据：单档滑点终值影响 0.1%~0.16%（T204 敏感度分析），保守设定 5×~10× 留误差空间；监控器纯函数零 IO（告警推送由调用方负责，接飞书 hermes_orchestrator MCP）；fail-closed（NAV≤0 / 分母为 0 全 raise）。
 - ✅ **T401/T403 模拟盘与报告模块测试修复**（2026-09-02，commit `964ca91`；测试基线 **619 passed** = 616 原有 + 10 修复 - 7 重复计数）。落点：① T401 Ledger 构造函数适配（移除废弃 BookView 手工构造 → 新构造 `Ledger(initial_capital, date=today)`，15 单测全绿）；② T403 报告序列化修复（`paper_trading/reporting.py::_decimal_to_str` 支持 tuple 键转换 `(year, month)` → `"YYYY-MM"`，FeeItem 枚举名纠正 EXCHANGE_FEE/REGULATION_FEE → HANDLING_FEE/MANAGEMENT_FEE，10 单测全绿）；③ 文档补充（T404_DELIVERY_SUMMARY.md 台账自动化交付摘要 + filing_checklist.md 程序化交易报备清单精简 + strategy_description_template.md 策略说明书模板）。全局 **0 failed, 0 errors**。
 - ✅ **T312 数据层底层硬伤与回测引擎真实集成彻底修复（测试基线 629 passed）**（2026-09-07，commit 待固化）。落点：① 根除数据层四大硬伤（清除 18 只 Baostock 历史后复权污染日线改为腾讯 RAW 不复权真实日线；批量抓取 487 只股票真实流通股本还原每日真实流通市值，根治成交额 amount 冒充市值；实现 Point-in-Time 滚动 395 天真实股息率，彻底消除全年单一均值常数的未来前视泄露；防御巨潮无分红个股异常补齐 488 只标的除权 sidecar）；② 修复组合层市值加权（`portfolio.py` 支持 `weights` 参数，`candidates.py` 传入 `weights=scores`，彻底解决底层被 `total_nav / N` 强制等权均分）；③ 修复回测引擎红利税集成（`broker.py` 开启 `enable_dividend_tax=True`，FIFO 持股期扣减现金、重算 NAV、写入 `DIVIDEND_TAX` 流水，修复拆股送转股数同步扩充避免卖出缺股崩溃；`metrics.py` 与 `registry.py` 完整透视并上报 `fees_total`）；④ 自动化防伪审计工具 `scripts/audit_evidence_integrity.py` 实证 5 项全 PASS；⑤ 真实 10 年全周期回测跑通（Run ID `20260907-150402`）：总收益 -27.72%，CAGR -3.20%，总费用 9,738.26 元（红利税实扣 5,043.75 元，每一分钱有账可查）。全库 629 项单测全绿。
+- ✅ **Colab 云端链路验收 + T312 全周期诊断；Phase 4 暂停待策略 v2**（2026-09-10）。① GitHub 改 public 后 Colab 公开 clone `bb235c0`；数据流=**代码→GitHub、数据→本地采集→Drive zip→Colab**；云端 725 单测与全周期回测（`20260910-034719`）与本地逐项一致。② 诊断 `scripts/diagnose_t312_full_period.py` + `docs/diagnosis/t312_full_period_diagnosis.md` + `1.ipynb` 第 1–7 步：**P0=仓位长期不足**（日均持仓 0.5–1.8 只/目标 5；零持仓日 54.7%；平均现金 65.4%）；2019/2020/2024 相对 510300 与 512890 大幅跑输；红利税占费用 51.8%。③ 流程图/Obsidian/tasks TK-29 已同步。**待拍板：A 修仓位+降频 / B ETF 增强（512890）**。
 
 ---
 
@@ -89,7 +90,7 @@ A 股中低频**长仓（long-only）日线**量化系统。**代码在本仓（
 
 Phase 0 环境（T101–T103）→ Phase 1 数据层（T104–T110）→ Phase 2 回测 → Phase 3 策略 → **Phase 3.5 红利策略切换**（T309–T313）→ Phase 4 模拟盘（≥6 个月）→ Phase 5 小资金实盘 → Phase 6 运营。
 
-**当前位置：Phase 3.5 真实回测实证清零（2026-09-07）**：T312 数据层四大硬伤（后复权误标、成交额充当市值、全年未来前视泄露、巨潮次新无分红异常）与回测引擎两大缺陷（市值加权强制等权、红利税死代码与拆股缺股）已彻底修复并全量落盘验证。实测真实 10 年全周期回测（Run ID `20260907-150402-t312-dividend-v1-noseed`）：总收益 -27.72%，CAGR -3.20%，总费用 9,738.26 元（含实扣红利税 5,043.75 元，严格 FIFO 扣费，无前视未来函数），全库测试基线提升至 **629 passed**，防伪审计工具 5 项指标全 PASS。
+**当前位置：策略 v2 决策点（2026-09-10）**：T312 云端诊断 **P0=仓位长期不足**（日均持仓 0.5–1.8 只 / 目标 5；零持仓日 54.7%；平均现金 65.4%），全周期 CAGR −3.20% 且 2019/2020/2024 相对 510300 与 512890 大幅跑输；红利税占费用 51.8%。**Phase 4 模拟盘暂停**，待用户拍板 **A 修仓位+降频（保留个股）** 或 **B ETF 增强（512890+MA200）**。工程与门禁（725 passed）保持就绪。证据：`docs/diagnosis/t312_full_period_diagnosis.md`。
 
 ---
 

@@ -29,7 +29,7 @@ pre {
 </style>
 </head>
 <body>
-<h1>FinAI2.0 · 项目状态流程图（2026-09-07 更新）<br/><br/>> 渲染器：支持 mermaid 的 Markdown 查看器（VS Code / Obsidian / GitHub）
+<h1>FinAI2.0 · 项目状态流程图（2026-09-10 更新）<br/><br/>> 渲染器：支持 mermaid 的 Markdown 查看器（VS Code / Obsidian / GitHub）
 > 数据来源：本会话真实命令输出 + research-finai spec 三件套
 > 交互版见：`docs/project_status_flowchart.html`<br/><br/>#<h1>仓库 / 基建总览<br/><br/><div class="mermaid">
 flowchart TD
@@ -59,7 +59,10 @@ flowchart LR
   P35 --> G_AUDIT1["阶段一：六维门禁工具包 ✅<br/>scripts/gates/ 23道门禁 + 52单测全绿"]
   G_AUDIT1 --> G_AUDIT2["阶段二：执行流前置/后置闸门植入 ✅<br/>runner.py + 回测主流程阻断 + 18集成单测"]
   G_AUDIT2 --> G_AUDIT3["阶段三：CI / Git Hooks 防伪硬化 ✅<br/>tamper_guard 验签 + pre-commit/pre-push 硬拦截 + CI 全绿 ⏵当前"]
-  G_AUDIT3 --> P4["Phase 4 模拟盘<br/>T401–T404 基建全绿 / 门禁三阶段全闭环 待准入评审"]
+  G_AUDIT3 --> P4["Phase 4 模拟盘<br/>基建全绿；因策略负收益+仓位不足 ⏸ 暂停待 v2 决策"]
+  P4 --> CLOUD["Colab 云端链路 ✅ 2026-09-10<br/>公开clone / Drive数据 / 725单测 / 回测复现"]
+  CLOUD --> DIAG["T312 全周期诊断 ✅<br/>P0：日均持仓仅0.5–1.8只 / 54.7%空仓<br/>CAGR -3.20% vs 512890 牛市大幅跑输"]
+  DIAG --> DECIDE["待用户拍板<br/>A 修仓位+降频 | B ETF增强(512890)"]
   style G0 fill:#dcfce7,stroke:#16a34a
   style R15 fill:#dcfce7,stroke:#16a34a
   style UT fill:#dcfce7,stroke:#16a34a
@@ -72,8 +75,11 @@ flowchart LR
   style G_AUDIT1 fill:#dcfce7,stroke:#16a34a,color:#0f172a
   style G_AUDIT2 fill:#dcfce7,stroke:#16a34a,color:#0f172a
   style G_AUDIT3 fill:#fef3c7,stroke:#f59e0b,color:#0f172a
-  style P4 fill:#f1f5f9,stroke:#94a3b8,color:#64748b
-</div><br/><br/>#<h1>Phase 3.5 红利策略执行现状（2026-09-07）<br/><br/><div class="mermaid">
+  style P4 fill:#fef3c7,stroke:#f59e0b,color:#0f172a
+  style CLOUD fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style DIAG fill:#dbeafe,stroke:#2563eb,color:#0f172a
+  style DECIDE fill:#fee2e2,stroke:#dc2626,color:#0f172a
+</div><br/><br/>#<h1>Phase 3.5 红利策略执行现状（2026-09-10）<br/><br/><div class="mermaid">
 flowchart LR
   T309["T309 红利税真集成 ✅<br/>FIFO扣税+拆股因子适配+流水入账"] --> T310["T310 跳空缺口滑点 ✅<br/>26 单测全绿"]
   T310 --> T311["T311 红利策略实现 ✅<br/>市值加权生效+MA200择时"]

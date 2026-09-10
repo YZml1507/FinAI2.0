@@ -1,4 +1,4 @@
-# FinAI2.0 · 项目状态流程图（2026-09-07 更新）
+# FinAI2.0 · 项目状态流程图（2026-09-10 更新）
 
 > 渲染器：支持 mermaid 的 Markdown 查看器（VS Code / Obsidian / GitHub）
 > 数据来源：本会话真实命令输出 + research-finai spec 三件套
@@ -38,7 +38,10 @@ flowchart LR
   P35 --> G_AUDIT1["阶段一：六维门禁工具包 ✅<br/>scripts/gates/ 23道门禁 + 52单测全绿"]
   G_AUDIT1 --> G_AUDIT2["阶段二：执行流前置/后置闸门植入 ✅<br/>runner.py + 回测主流程阻断 + 18集成单测"]
   G_AUDIT2 --> G_AUDIT3["阶段三：CI / Git Hooks 防伪硬化 ✅<br/>tamper_guard 验签 + pre-commit/pre-push 硬拦截 + CI 全绿 ⏵当前"]
-  G_AUDIT3 --> P4["Phase 4 模拟盘<br/>T401–T404 基建全绿 / 门禁三阶段全闭环 待准入评审"]
+  G_AUDIT3 --> P4["Phase 4 模拟盘<br/>基建全绿；因策略负收益+仓位不足 ⏸ 暂停待 v2 决策"]
+  P4 --> CLOUD["Colab 云端链路 ✅ 2026-09-10<br/>公开clone / Drive数据 / 725单测 / 回测复现"]
+  CLOUD --> DIAG["T312 全周期诊断 ✅<br/>P0：日均持仓仅0.5–1.8只 / 54.7%空仓<br/>CAGR -3.20% vs 512890 牛市大幅跑输"]
+  DIAG --> DECIDE["待用户拍板<br/>A 修仓位+降频 | B ETF增强(512890)"]
   style G0 fill:#dcfce7,stroke:#16a34a
   style R15 fill:#dcfce7,stroke:#16a34a
   style UT fill:#dcfce7,stroke:#16a34a
@@ -51,7 +54,10 @@ flowchart LR
   style G_AUDIT1 fill:#dcfce7,stroke:#16a34a,color:#0f172a
   style G_AUDIT2 fill:#dcfce7,stroke:#16a34a,color:#0f172a
   style G_AUDIT3 fill:#fef3c7,stroke:#f59e0b,color:#0f172a
-  style P4 fill:#f1f5f9,stroke:#94a3b8,color:#64748b
+  style P4 fill:#fef3c7,stroke:#f59e0b,color:#0f172a
+  style CLOUD fill:#dcfce7,stroke:#16a34a,color:#0f172a
+  style DIAG fill:#dbeafe,stroke:#2563eb,color:#0f172a
+  style DECIDE fill:#fee2e2,stroke:#dc2626,color:#0f172a
 ```
 
 ## Phase 3.5 红利策略执行现状（2026-09-07）
@@ -63,7 +69,8 @@ flowchart LR
   T311 --> T313["T313 压力测试 ✅<br/>4 单测全绿 G4.5 防守通过"]
   T311 --> T312["T312 真实10年全周期回测 ✅<br/>Run 20260907-150402<br/>CAGR -3.20% / 红利税 5043元"]
   T312 --> AUDIT["防伪审计工具 ✅<br/>audit_evidence_integrity.py<br/>5/5 项严审全通过"]
-  AUDIT --> G45["G4.5 决策状态<br/>底层硬伤全根治 / 防伪全通过<br/>等待用户拍板后续路线"]
+  AUDIT --> G45["G4.5 决策状态<br/>硬伤全根治；全周期仍亏损<br/>诊断P0=仓位不足 → 等用户拍板 A/B"]
+  G45 --> DIAG2["2026-09-10 云端诊断<br/>详见 docs/diagnosis/t312_full_period_diagnosis.md"]
   style T309 fill:#dcfce7,stroke:#16a34a
   style T310 fill:#dcfce7,stroke:#16a34a
   style T311 fill:#dcfce7,stroke:#16a34a
@@ -71,6 +78,7 @@ flowchart LR
   style T312 fill:#dcfce7,stroke:#16a34a
   style AUDIT fill:#dcfce7,stroke:#16a34a
   style G45 fill:#dbeafe,stroke:#2563eb,color:#0f172a
+  style DIAG2 fill:#fee2e2,stroke:#dc2626,color:#0f172a
 ```
 
 ## T312 审计防伪与硬伤修复全景

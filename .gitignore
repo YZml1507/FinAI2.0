@@ -22,6 +22,7 @@ credentials*.json
 artifacts/interface_matrix/*.lock
 artifacts/**/*.tmp
 artifacts/**/*.partial
+*.zip
 
 # 采集落盘的行情数据（可再生，不入 git；含 T105 小样本冒烟产物）
 data/daily_bars/

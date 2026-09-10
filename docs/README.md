@@ -1,7 +1,7 @@
 # FinAI2.0 · 文档全景导航索引（Documentation Index）
 
-> 更新日期：2026-09-07  
-> 对应项目版本：Phase 0~Phase 3.5 完成，Phase 4 模拟盘准入启动与常态化跟踪中，基线 **725 passed 全绿**  
+> 更新日期：2026-09-10  
+> 对应项目版本：Phase 0~3.5 与门禁体系完成；Colab 云端链路验收；T312 全周期诊断完成（P0=仓位不足）；Phase 4 暂停待策略 v2 用户拍板；基线 **725 passed**
 > 外部计划与理论权威：`D:\Projects\research-finai\`（00–17 号报告 + `specs\001-a-stock-longonly-daily-quant\`）
 
 ---
@@ -70,6 +70,7 @@ flowchart TD
 | [`t312_implementation_summary.md`](t312_implementation_summary.md) | 红利股数据采集管道与回测链路实施总结 | T312 |
 | [`T312_FINAL_SUMMARY.md`](T312_FINAL_SUMMARY.md) | **T312 最终完工总结**：四大底层硬伤彻底根治 + 自动化防伪审计 5/5 PASS + 真实 10 年回测落盘 | T312 |
 | [`t313_dividend_stress_report.md`](t313_dividend_stress_report.md) | **G4.5 门禁压力测试报告**：红利策略在股灾/熊市 MA200 100% 空仓保命避险实证 | T313 (G4.5) |
+| [`diagnosis/t312_full_period_diagnosis.md`](diagnosis/t312_full_period_diagnosis.md) | **T312 全周期诊断（2026-09-10 云端）**：分年度 vs 300/512890、红利税 51.8%、空仓 54.7%、日均持仓 0.5–1.8（P0 仓位不足） | 诊断 |
 
 ---
 
