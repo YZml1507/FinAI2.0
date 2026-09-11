@@ -18,6 +18,12 @@ ENV/
 *.pem
 credentials*.json
 
+# 本地/云端个人操作脚手架 notebook（不入库）
+# 理由：含环境专属路径（如 Colab /content/）、外部仓库 URL 与**会漂移的硬编码数字**
+#      （例：1.ipynb 写死"当前基线 725"）⇒ 违反「文档不硬编码会漂移的值」纪律。
+# 范围：仅忽略仓库根目录的临时 notebook，子目录中经评审的 notebook 不受影响。
+/*.ipynb
+
 # Data artifacts (large / regenerable)
 artifacts/interface_matrix/*.lock
 artifacts/**/*.tmp
