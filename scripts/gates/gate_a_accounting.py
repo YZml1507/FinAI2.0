@@ -57,17 +57,21 @@ class FeeSumBalanceGate(BaseGate):
             )
 
         discrepancies = []
+        checked = 0
         for t in trades:
             trade_id = str(t.get("trade_id", "") if isinstance(t, dict) else getattr(t, "trade_id", ""))
             fees = t.get("fees", {}) if isinstance(t, dict) else getattr(t, "fees", {})
             total_fee_declared = Decimal(str(t.get("total_fee", 0) if isinstance(t, dict) else getattr(t, "total_fee", 0)))
+            total_fee_given = ("total_fee" in t) if isinstance(t, dict) else hasattr(t, "total_fee")
 
             item_sum = Decimal("0")
             for _, amt in fees.items():
                 item_sum += Decimal(str(amt))
 
-            # 若未显式传入 total_fee，只要七科目求和有效且均为正数
-            if total_fee_declared > Decimal("0"):
+            # 仅在明确提供了 total_fee（键存在，或值 > 0）时才可对账；
+            # ⛔ 缺该字段的成交不得被默认值 0 抹平为"平衡"（0 == item_sum 平凡成立）。
+            if total_fee_given or total_fee_declared > Decimal("0"):
+                checked += 1
                 diff = abs(item_sum - total_fee_declared)
                 if diff > Decimal("0.0001"):
                     discrepancies.append({
@@ -90,14 +94,28 @@ class FeeSumBalanceGate(BaseGate):
                 evidence=self.evidence,
             )
 
+        # ⛔ Fail-Closed：所有成交均未提供可对账的 total_fee ⇒ 实际对账 0 笔 ⇒ INCONCLUSIVE（无证据 ≠ 通过）
+        if checked == 0:
+            return GateResult(
+                gate_id=self.gate_id,
+                name=self.name,
+                category=self.category,
+                status=GateStatus.INCONCLUSIVE,
+                severity=self.severity,
+                message="无任何成交提供可对账的总费用（total_fee），实际对账 0 笔，无法判定费用平衡（无证据 ≠ 通过）",
+                metrics={"checked_trades": 0, "total_trades": len(trades)},
+                threshold=self.threshold_desc,
+                evidence=self.evidence,
+            )
+
         return GateResult(
             gate_id=self.gate_id,
             name=self.name,
             category=self.category,
             status=GateStatus.PASS,
             severity=self.severity,
-            message=f"七科目费用逐笔分厘平衡检验通过 (共校验 {len(trades)} 笔成交，差额严格为 0.00)",
-            metrics={"checked_trades": len(trades)},
+            message=f"七科目费用逐笔分厘平衡检验通过 (共校验 {checked} 笔成交，差额严格为 0.00)",
+            metrics={"checked_trades": checked, "total_trades": len(trades)},
             threshold=self.threshold_desc,
             evidence=self.evidence,
         )
@@ -143,6 +161,29 @@ class DailyCashConserveGate(BaseGate):
             )
 
         leaks = []
+        # ⛔ Fail-Closed：逐日对账要求每行提供锚点字段 cash_start / cash_end。
+        # 缺字段的行会被默认值 0 抹平 ⇒ c_end(=0) == expected_end(=0) 平凡成立 ⇒ 假通过。
+        anchor_keys = ("cash_start", "cash_end")
+        uninformative = [
+            i for i, row in enumerate(flows)
+            if not isinstance(row, dict) or not all(k in row for k in anchor_keys)
+        ]
+        if uninformative:
+            return GateResult(
+                gate_id=self.gate_id,
+                name=self.name,
+                category=self.category,
+                status=GateStatus.INCONCLUSIVE,
+                severity=self.severity,
+                message=(
+                    f"检出 {len(uninformative)} 行对账流水缺少现金锚点字段 cash_start/cash_end"
+                    f"（行号 {uninformative[:3]}），其等式被默认值 0 抹平、无法真实对账（无证据 ≠ 守恒）"
+                ),
+                metrics={"uninformative_rows": len(uninformative), "total_rows": len(flows)},
+                threshold=self.threshold_desc,
+                evidence=self.evidence,
+            )
+
         for row in flows:
             dt = str(row.get("date", ""))
             c_start = Decimal(str(row.get("cash_start", 0)))
@@ -309,6 +350,8 @@ class SegmentRateScheduleGate(BaseGate):
             )
 
         violations = []
+        sell_seen = 0          # 卖出成交总数
+        sell_eligible = 0      # 可穿透（有可解析日期且金额 > 0）的卖出成交数
         for t in trades:
             side = str(t.get("side", "") if isinstance(t, dict) else getattr(t, "side", "")).upper()
             dt_raw = t.get("date") if isinstance(t, dict) else getattr(t, "date", None)
@@ -317,6 +360,8 @@ class SegmentRateScheduleGate(BaseGate):
             elif isinstance(dt_raw, datetime.date):
                 dt = dt_raw
             else:
+                if "SELL" in side:
+                    sell_seen += 1
                 continue
 
             price = Decimal(str(t.get("price", 0) if isinstance(t, dict) else getattr(t, "price", 0)))
@@ -332,20 +377,23 @@ class SegmentRateScheduleGate(BaseGate):
                     break
 
             # 仅卖出有印花税
-            if "SELL" in side and amount > Decimal("0"):
-                effective_rate = stamp_tax / amount
-                if dt < self.CUTOFF_STAMP:
-                    # 2023-08-28 之前应为 1‰ (0.001)
-                    if effective_rate < Decimal("0.0008"):
-                        violations.append({
-                            "date": dt.isoformat(),
-                            "side": side,
-                            "amount": str(amount),
-                            "stamp_tax": str(stamp_tax),
-                            "effective_rate": f"{effective_rate*1000:.2f}‰",
-                            "expected": "1.00‰",
-                            "reason": "2023-08-28 之前卖出印花税少于 1‰，发生穿越历史少扣税！",
-                        })
+            if "SELL" in side:
+                sell_seen += 1
+                if amount > Decimal("0"):
+                    sell_eligible += 1
+                    effective_rate = stamp_tax / amount
+                    if dt < self.CUTOFF_STAMP:
+                        # 2023-08-28 之前应为 1‰ (0.001)
+                        if effective_rate < Decimal("0.0008"):
+                            violations.append({
+                                "date": dt.isoformat(),
+                                "side": side,
+                                "amount": str(amount),
+                                "stamp_tax": str(stamp_tax),
+                                "effective_rate": f"{effective_rate*1000:.2f}‰",
+                                "expected": "1.00‰",
+                                "reason": "2023-08-28 之前卖出印花税少于 1‰，发生穿越历史少扣税！",
+                            })
 
         if violations:
             return GateResult(
@@ -360,6 +408,33 @@ class SegmentRateScheduleGate(BaseGate):
                 evidence=self.evidence,
             )
 
+        # ⛔ Fail-Closed：无卖出成交 ⇒ 该维（卖出印花税时序）不适用 ⇒ SKIP（不得记 PASS）。
+        if sell_seen == 0:
+            return GateResult(
+                gate_id=self.gate_id,
+                name=self.name,
+                category=self.category,
+                status=GateStatus.SKIP,
+                severity=self.severity,
+                message="无卖出成交，历史分段印花税时序检验不适用（有证据表明该门禁不适用）",
+                metrics={"sell_trades": 0},
+                threshold=self.threshold_desc,
+                evidence=self.evidence,
+            )
+        # ⛔ 有卖出成交但均缺可解析日期/正金额 ⇒ 无可穿透样本 ⇒ INCONCLUSIVE（证据不足 ≠ 通过）。
+        if sell_eligible == 0:
+            return GateResult(
+                gate_id=self.gate_id,
+                name=self.name,
+                category=self.category,
+                status=GateStatus.INCONCLUSIVE,
+                severity=self.severity,
+                message="存在卖出成交但均缺少可解析日期或正金额，无法穿透历史分段费率时序（证据不足 ≠ 通过）",
+                metrics={"sell_trades": sell_seen, "sell_trades_eligible": 0},
+                threshold=self.threshold_desc,
+                evidence=self.evidence,
+            )
+
         return GateResult(
             gate_id=self.gate_id,
             name=self.name,
@@ -367,7 +442,7 @@ class SegmentRateScheduleGate(BaseGate):
             status=GateStatus.PASS,
             severity=self.severity,
             message="历史分段费率时序穿透检验通过 (历史印花税率无穿越)",
-            metrics={"trades_checked": len(trades)},
+            metrics={"trades_checked": len(trades), "sell_trades_evaluated": sell_eligible},
             threshold=self.threshold_desc,
             evidence=self.evidence,
         )

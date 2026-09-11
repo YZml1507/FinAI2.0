@@ -25,7 +25,7 @@ class ProvenanceTriadGate(BaseGate):
     category = GateCategory.G_GATE
     severity = GateSeverity.BLOCKER
     evidence = "17 号报告 §4.6: 杜绝口头汇报与无源交付，任何产出必须附带 Git SHA + Data Hash + Timestamp 三件套"
-    threshold_desc = "git_commit (>=7位有效SHA), data_hash (64位hex), timestamp (ISO-8601) 缺一不可"
+    threshold_desc = "git_commit (>=7位有效SHA), data_hash (>=16位十六进制摘要), timestamp (ISO-8601) 缺一不可"
 
     def evaluate(self, context: Any = None) -> GateResult:
         """context 包含:
@@ -52,7 +52,10 @@ class ProvenanceTriadGate(BaseGate):
         missing = []
         if not commit or len(commit) < 7 or not re.match(r"^[0-9a-fA-F]+$", commit):
             missing.append("git_commit (无效或缺失)")
-        if not data_hash or len(data_hash) < 16:
+        # ⛔ 声明阈值须与实现口径一致（GATE-R3）：真实 data_hash 为 provenance.hash_path_manifest
+        # 的 SHA-256 前 16 hex ⇒ 校验「长度 >= 16 **且** 全为十六进制」，而非仅长度
+        # （此前 `data_hash="zzzz…"` 16 位非 hex 会假 PASS；旧声明写"64位hex"亦与实现背离）。
+        if not data_hash or len(data_hash) < 16 or not re.match(r"^[0-9a-fA-F]+$", data_hash):
             missing.append("data_hash (无效或缺失)")
         if not ts:
             missing.append("timestamp (缺失)")
@@ -171,6 +174,24 @@ class TasksSignGate(BaseGate):
                 evidence=self.evidence,
             )
 
+        if not is_checked:
+            # ⛔ Fail-Closed（GATE-R3）：任务**未勾选** ⇒ 无"勾选签名"可验 ⇒ 该维**不适用**（SKIP）。
+            # ⛔ 绝不落到 PASS 谎报"勾选签名验证通过"（此前 `is_checked=False` 会假 PASS）。
+            return GateResult(
+                gate_id=self.gate_id,
+                name=self.name,
+                category=self.category,
+                status=GateStatus.SKIP,
+                severity=self.severity,
+                message=(
+                    f"任务 [{task_id}] 处于未勾选状态（is_checked=False），无勾选签名待验，"
+                    "该维不适用（有证据表明不适用 ≠ 验签通过）"
+                ),
+                metrics={"task_id": task_id, "is_checked": False},
+                threshold=self.threshold_desc,
+                evidence=self.evidence,
+            )
+
         return GateResult(
             gate_id=self.gate_id,
             name=self.name,
@@ -178,6 +199,7 @@ class TasksSignGate(BaseGate):
             status=GateStatus.PASS,
             severity=self.severity,
             message=f"任务 [{task_id}] 勾选签名验证通过",
+            metrics={"task_id": task_id, "is_checked": True},
             threshold=self.threshold_desc,
             evidence=self.evidence,
         )

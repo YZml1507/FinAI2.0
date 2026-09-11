@@ -201,6 +201,12 @@ class TestGateIntegration:
         unbalanced_trades = [
             {
                 "trade_id": "TR_TEST_001",
+                "side": "BUY",
+                "price": Decimal("10.00"),
+                # ⛔ GATE-R1：E-3 现要求板价证据（无板价 ⇒ 不再空转 PASS）。
+                # 本用例瞄准 A-1，故补齐**非越界**板价，使 E-3 不被误判、A-1 如期阻断。
+                "limit_up": Decimal("11.00"),
+                "limit_down": Decimal("9.00"),
                 "fees": {
                     "COMMISSION": Decimal("5.00"),
                     "TRANSFER_FEE": Decimal("0.20"),
@@ -223,7 +229,13 @@ class TestGateIntegration:
                 "price": Decimal("10.00"),
                 "volume": 10000,
                 "amount": Decimal("100000.00"),
+                # ⛔ GATE-R1：补齐**非越界**板价，使 E-3（无板价不再空转 PASS）不抢在 A-4 之前阻断。
+                "limit_up": Decimal("11.00"),
+                "limit_down": Decimal("9.00"),
                 "fees": {"STAMP_TAX": Decimal("50.00")},  # 10万卖出按 0.5‰ 扣了 50 元 (应为 100 元)
+                # ⛔ GATE-R1：A-1 现要求可对账的 total_fee（缺则不再空转 PASS ⇒ 会先于 A-4 阻断）。
+                # 补齐与七科目求和一致的 total_fee，使 A-1 如实通过、A-4 如期阻断。
+                "total_fee": Decimal("50.00"),
             }
         ]
         # 需同时给出可判的 A-2 现金流（否则 A-2 先判 INCONCLUSIVE 阻断，与预期 A-4 冲突）

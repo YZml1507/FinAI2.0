@@ -65,6 +65,7 @@ class RawPriceJumpGate(BaseGate):
 
         violations = []
         max_seen_jump = 0.0
+        valid_pairs = 0
 
         for i in range(1, len(bars)):
             curr = bars[i]
@@ -77,6 +78,7 @@ class RawPriceJumpGate(BaseGate):
             if c_prev <= 0:
                 continue
 
+            valid_pairs += 1
             jump = abs(c_curr - c_prev) / c_prev
             if jump > max_seen_jump:
                 max_seen_jump = jump
@@ -103,6 +105,20 @@ class RawPriceJumpGate(BaseGate):
                 evidence=self.evidence,
             )
 
+        # ⛔ Fail-Closed：有 bars 但无任何"前收 > 0"的相邻可比对 ⇒ 无法计算跳变率 ⇒ INCONCLUSIVE（不得记 PASS）。
+        if valid_pairs == 0:
+            return GateResult(
+                gate_id=self.gate_id,
+                name=self.name,
+                category=self.category,
+                status=GateStatus.INCONCLUSIVE,
+                severity=self.severity,
+                message=f"[{symbol}] 有 {len(bars)} 根日线，但无任何前收盘价 > 0 的可比对相邻日，无法计算跳变率（退化输入 ≠ 通过）",
+                metrics={"bars_count": len(bars), "valid_pairs": 0},
+                threshold=self.threshold_desc,
+                evidence=self.evidence,
+            )
+
         return GateResult(
             gate_id=self.gate_id,
             name=self.name,
@@ -110,7 +126,7 @@ class RawPriceJumpGate(BaseGate):
             status=GateStatus.PASS,
             severity=self.severity,
             message=f"[{symbol}] 连续 {len(bars)} 根日线跳变率正常 (最大跳变 {max_seen_jump*100:.1f}%)",
-            metrics={"bars_count": len(bars), "max_jump_pct": round(max_seen_jump * 100, 2)},
+            metrics={"bars_count": len(bars), "valid_pairs": valid_pairs, "max_jump_pct": round(max_seen_jump * 100, 2)},
             threshold=self.threshold_desc,
             evidence=self.evidence,
         )
@@ -342,15 +358,18 @@ class SuspensionVolumeGate(BaseGate):
             )
 
         suspension_violations = []
+        suspended_days = 0
         for b in bars:
             status_val = str(b.get("tradestatus", "1") if isinstance(b, dict) else getattr(b, "tradestatus", "1"))
             vol = float(b.get("volume", 0) if isinstance(b, dict) else getattr(b, "volume", 0))
-            if status_val != "1" and vol > 0:
-                suspension_violations.append({
-                    "date": str(b.get("date", "") if isinstance(b, dict) else getattr(b, "date", "")),
-                    "tradestatus": status_val,
-                    "volume": vol,
-                })
+            if status_val != "1":
+                suspended_days += 1
+                if vol > 0:
+                    suspension_violations.append({
+                        "date": str(b.get("date", "") if isinstance(b, dict) else getattr(b, "date", "")),
+                        "tradestatus": status_val,
+                        "volume": vol,
+                    })
 
         if suspension_violations:
             return GateResult(
@@ -365,13 +384,28 @@ class SuspensionVolumeGate(BaseGate):
                 evidence=self.evidence,
             )
 
+        # ⛔ Fail-Closed：样本内无任何停牌交易日 ⇒ 该维（停牌成交量）不适用 ⇒ SKIP（不得记 PASS）。
+        if suspended_days == 0:
+            return GateResult(
+                gate_id=self.gate_id,
+                name=self.name,
+                category=self.category,
+                status=GateStatus.SKIP,
+                severity=self.severity,
+                message=f"样本内 {len(bars)} 根日线无任何停牌交易日（tradestatus != '1'），停牌日成交量检验不适用（有证据表明不适用）",
+                metrics={"bars_count": len(bars), "suspended_days": 0},
+                threshold=self.threshold_desc,
+                evidence=self.evidence,
+            )
+
         return GateResult(
             gate_id=self.gate_id,
             name=self.name,
             category=self.category,
             status=GateStatus.PASS,
             severity=self.severity,
-            message="停牌日成交量检验通过 (所有停牌日成交量均为 0)",
+            message=f"停牌日成交量检验通过 (共 {suspended_days} 个停牌日成交量均为 0)",
+            metrics={"suspended_days": suspended_days},
             threshold=self.threshold_desc,
             evidence=self.evidence,
         )
@@ -417,12 +451,14 @@ class HighPriceLotGate(BaseGate):
             )
 
         violations = []
+        buy_orders = 0
         for o in orders:
             side = str(o.get("side", "BUY") if isinstance(o, dict) else getattr(o, "side", "BUY")).upper()
             price = float(o.get("price", 0) if isinstance(o, dict) else getattr(o, "price", 0))
             vol = int(o.get("volume", 0) if isinstance(o, dict) else getattr(o, "volume", 0))
 
             if "BUY" in side:
+                buy_orders += 1
                 if price > 300.0:
                     violations.append(f"买入高价股单价 {price} > 300 元")
                 if vol % 100 != 0:
@@ -441,14 +477,28 @@ class HighPriceLotGate(BaseGate):
                 evidence=self.evidence,
             )
 
+        # ⛔ Fail-Closed：有委托但无任何买入单 ⇒ 高价股/整手约束无适用样本 ⇒ SKIP（不得记 PASS）。
+        if buy_orders == 0:
+            return GateResult(
+                gate_id=self.gate_id,
+                name=self.name,
+                category=self.category,
+                status=GateStatus.SKIP,
+                severity=self.severity,
+                message=f"委托中无任何买入单（共 {len(orders)} 笔），高价股与整手约束不适用（有证据表明不适用）",
+                metrics={"total_orders": len(orders), "buy_orders": 0},
+                threshold=self.threshold_desc,
+                evidence=self.evidence,
+            )
+
         return GateResult(
             gate_id=self.gate_id,
             name=self.name,
             category=self.category,
             status=GateStatus.PASS,
             severity=self.severity,
-            message=f"高价股与整手约束检验通过 (共检查 {len(orders)} 笔委托)",
-            metrics={"total_orders": len(orders)},
+            message=f"高价股与整手约束检验通过 (共检查 {buy_orders} 笔买入委托)",
+            metrics={"total_orders": len(orders), "buy_orders": buy_orders},
             threshold=self.threshold_desc,
             evidence=self.evidence,
         )

@@ -116,23 +116,31 @@ class ReproducibilityGate(BaseGate):
                 groups[LEGACY_PREFIX + str(rec.get("params_hash", "unknown"))].append(rec)
 
         violations: list[dict[str, Any]] = []
+        empty_metric_groups: list[str] = []
         for key, recs in groups.items():
             if key.startswith(LEGACY_PREFIX) or len(recs) < 2:
                 continue
+            metrics_seq = [(r.get("metrics") or {}) for r in recs]
+            # ⛔ Fail-Closed（GATE-R3）：同源分组但 metrics **全为空** ⇒ 逐字段比对退化为
+            # "空集平凡相等"（**0 信息**）⇒ ⛔ 不得据此判 PASS（此前会谎报"逐字段一致"）。
+            # 该组不计入 verified_groups，透出到下方 INCONCLUSIVE 分支（无证据 ≠ 通过）。
+            if all(not m for m in metrics_seq):
+                empty_metric_groups.append(key)
+                continue
             verified_groups += 1
-            base = recs[0].get("metrics") or {}
+            base = metrics_seq[0]
             base_id = recs[0].get("run_id", "<unknown>")
-            for r in recs[1:]:
-                if (r.get("metrics") or {}) != base:
+            for r, r_metrics in zip(recs[1:], metrics_seq[1:]):
+                if r_metrics != base:
                     violations.append({
                         "repro_fingerprint": key,
                         "run_id_a": base_id,
                         "run_id_b": r.get("run_id", "<unknown>"),
                         "metric_keys_diverged": sorted(
-                            set(base.keys()) ^ set((r.get("metrics") or {}).keys())
+                            set(base.keys()) ^ set(r_metrics.keys())
                         ) or [
                             k for k in base
-                            if base.get(k) != (r.get("metrics") or {}).get(k)
+                            if base.get(k) != r_metrics.get(k)
                         ],
                     })
 
@@ -196,14 +204,44 @@ class ReproducibilityGate(BaseGate):
                 },
             )
 
+        # ⛔ Fail-Closed：无任何"含 >=2 份产物且 metrics 非空"的同源分组 ⇒ 从未发生过
+        # **实质**跨产物比对 ⇒ INCONCLUSIVE（此前会以 "0 组同源产物...一致" 谎报复现一致性成立）。
+        if verified_groups == 0:
+            if empty_metric_groups:
+                detail = (
+                    f"其中 {len(empty_metric_groups)} 组同源产物的 metrics **全为空**"
+                    "（0 信息、空集平凡相等 ⇒ 不得据此判通过）"
+                )
+            else:
+                detail = "且无任何含 >=2 份产物的同源分组"
+            return self._make(
+                GateStatus.INCONCLUSIVE,
+                (
+                    f"检出 {len(records)} 份带内容寻址出处的产物，但无任何**可实质比对**的同源分组"
+                    f"（{detail}），无法验证'同参同输入必得同结果'（无证据 ≠ 通过）"
+                ),
+                metrics={
+                    "verified_groups": 0,
+                    "empty_metric_groups": len(empty_metric_groups),
+                    "empty_metric_group_keys": sorted(empty_metric_groups)[:20],
+                    "total_records": len(records),
+                    "legacy_records": 0,
+                },
+            )
+
         return self._make(
             GateStatus.PASS,
             (
                 f"{len(records)} 份产物均带内容寻址出处，{verified_groups} 组同源产物的 metrics "
                 "逐字段一致，复现一致性成立"
+                + (
+                    f"（另有 {len(empty_metric_groups)} 组 metrics 全为空，未纳入实质比对）"
+                    if empty_metric_groups else ""
+                )
             ),
             metrics={
                 "verified_groups": verified_groups,
+                "empty_metric_groups": len(empty_metric_groups),
                 "total_records": len(records),
                 "legacy_records": 0,
             },

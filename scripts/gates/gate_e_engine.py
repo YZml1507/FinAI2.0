@@ -89,6 +89,30 @@ class MustFailCasesGate(BaseGate):
                 evidence=self.evidence,
             )
 
+        # ⛔ Fail-Closed：5 必挂标准用例结果不全 ⇒ 无法确认通过率 100% ⇒ INCONCLUSIVE
+        # （「空字典」「无关键」等退化输入禁止被判 PASS——此前会谎报 5/5 通过）。
+        missing_std = [c for c in self.STANDARD_CASES if c not in results]
+        if missing_std:
+            return GateResult(
+                gate_id=self.gate_id,
+                name=self.name,
+                category=self.category,
+                status=GateStatus.INCONCLUSIVE,
+                severity=self.severity,
+                message=(
+                    f"5 必挂极限用例结果不完整，缺失 {missing_std}"
+                    f"（已提供 {len([c for c in self.STANDARD_CASES if c in results])}/5），"
+                    "无法确认通过率 100%（证据不足 ≠ 通过）"
+                ),
+                metrics={
+                    "missing_cases": missing_std,
+                    "checked_count": checked_count,
+                    "provided_keys": sorted(str(k) for k in results),
+                },
+                threshold=self.threshold_desc,
+                evidence=self.evidence,
+            )
+
         return GateResult(
             gate_id=self.gate_id,
             name=self.name,
@@ -96,7 +120,7 @@ class MustFailCasesGate(BaseGate):
             status=GateStatus.PASS,
             severity=self.severity,
             message=f"5 必挂极限用例全部检验通过 (通过率 100%)",
-            metrics={"passed_count": max(checked_count, len(self.STANDARD_CASES))},
+            metrics={"passed_count": len(self.STANDARD_CASES), "checked_count": checked_count},
             threshold=self.threshold_desc,
             evidence=self.evidence,
         )
@@ -225,6 +249,7 @@ class SlippagePriceCapGate(BaseGate):
             )
 
         violations = []
+        checkable = 0          # 提供了可校验涨跌停价（limit_up/limit_down > 0）的成交数
         for t in trades:
             side = str(t.get("side", "BUY") if isinstance(t, dict) else getattr(t, "side", "BUY")).upper()
             price = Decimal(str(t.get("price", 0) if isinstance(t, dict) else getattr(t, "price", 0)))
@@ -232,22 +257,26 @@ class SlippagePriceCapGate(BaseGate):
             limit_down = Decimal(str(t.get("limit_down", 0) if isinstance(t, dict) else getattr(t, "limit_down", 0)))
             symbol = str(t.get("symbol", "") if isinstance(t, dict) else getattr(t, "symbol", ""))
 
-            if "BUY" in side and limit_up > Decimal("0") and price > limit_up:
-                violations.append({
-                    "symbol": symbol,
-                    "side": side,
-                    "trade_price": str(price),
-                    "limit_up": str(limit_up),
-                    "diff": str(price - limit_up),
-                })
-            elif "SELL" in side and limit_down > Decimal("0") and price < limit_down:
-                violations.append({
-                    "symbol": symbol,
-                    "side": side,
-                    "trade_price": str(price),
-                    "limit_down": str(limit_down),
-                    "diff": str(limit_down - price),
-                })
+            if "BUY" in side and limit_up > Decimal("0"):
+                checkable += 1
+                if price > limit_up:
+                    violations.append({
+                        "symbol": symbol,
+                        "side": side,
+                        "trade_price": str(price),
+                        "limit_up": str(limit_up),
+                        "diff": str(price - limit_up),
+                    })
+            elif "SELL" in side and limit_down > Decimal("0"):
+                checkable += 1
+                if price < limit_down:
+                    violations.append({
+                        "symbol": symbol,
+                        "side": side,
+                        "trade_price": str(price),
+                        "limit_down": str(limit_down),
+                        "diff": str(limit_down - price),
+                    })
 
         if violations:
             return GateResult(
@@ -262,14 +291,29 @@ class SlippagePriceCapGate(BaseGate):
                 evidence=self.evidence,
             )
 
+        # ⛔ Fail-Closed：有成交但均未提供可校验板价（limit_up/limit_down 缺失或为 0）⇒
+        # 板价限幅断言从未执行 ⇒ INCONCLUSIVE（不得记 PASS）。
+        if checkable == 0:
+            return GateResult(
+                gate_id=self.gate_id,
+                name=self.name,
+                category=self.category,
+                status=GateStatus.INCONCLUSIVE,
+                severity=self.severity,
+                message=f"有 {len(trades)} 笔成交但均未提供可校验的涨跌停价（limit_up/limit_down），无法判定滑点是否突破板价（证据不足 ≠ 通过）",
+                metrics={"checked_trades": 0, "total_trades": len(trades)},
+                threshold=self.threshold_desc,
+                evidence=self.evidence,
+            )
+
         return GateResult(
             gate_id=self.gate_id,
             name=self.name,
             category=self.category,
             status=GateStatus.PASS,
             severity=self.severity,
-            message=f"滑点推移价格涨跌停限幅检验通过 (共检验 {len(trades)} 笔成交)",
-            metrics={"checked_trades": len(trades)},
+            message=f"滑点推移价格涨跌停限幅检验通过 (共检验 {checkable} 笔成交)",
+            metrics={"checked_trades": checkable, "total_trades": len(trades)},
             threshold=self.threshold_desc,
             evidence=self.evidence,
         )

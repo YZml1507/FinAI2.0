@@ -185,6 +185,64 @@ def _inconclusive(gate: BaseGate, message: str, metrics: dict[str, Any] | None =
     )
 
 
+#: 门禁结果聚合的严重度次序（数值越小越严重）。
+#: 规则：**FAIL > INCONCLUSIVE > WARNING > SKIP > PASS**（GATE-R3 明确聚合律）。
+_GATE_STATUS_PRECEDENCE: dict[GateStatus, int] = {
+    GateStatus.FAIL: 0,
+    GateStatus.INCONCLUSIVE: 1,
+    GateStatus.WARNING: 2,
+    GateStatus.SKIP: 3,
+    GateStatus.PASS: 4,
+}
+
+
+def _aggregate_gate_results(
+    gate: BaseGate, results: Sequence[GateResult], label: str
+) -> GateResult:
+    """把「逐样本门禁结果」按 **FAIL > INCONCLUSIVE > WARNING > SKIP > PASS** 汇总为**一个**结果。
+
+    Fail-Closed 铁律（GATE-R3 / D-1 / D-4）：
+    ⛔ **不得**在"逐样本皆非 FAIL"时**自造** ``GateStatus.PASS``——那会掩蔽逐样本的
+    ``INCONCLUSIVE`` / ``SKIP``（回测路径逃逸口）。此处把**最严重**的那个既有结果
+    **原样上抛**（其 status 与 message 直接透出），聚合 message 仅作补充说明。
+
+    Args:
+        gate: 归属门禁（用于补齐 gate_id/name/category/severity/threshold/evidence）。
+        results: 逐样本门禁结果（可空）。
+        label: 人类可读的聚合标签。
+
+    Returns:
+        聚合后的单个 ``GateResult``；无样本时返回 ``INCONCLUSIVE``（无证据 ≠ 通过）。
+    """
+    if not results:
+        return _inconclusive(gate, f"{label}：无可用样本，无法判定（无证据 ≠ 通过）")
+    worst = min(results, key=lambda r: _GATE_STATUS_PRECEDENCE.get(r.status, 99))
+    counts: dict[str, int] = {}
+    for r in results:
+        counts[r.status.value] = counts.get(r.status.value, 0) + 1
+    return GateResult(
+        gate_id=gate.gate_id,
+        name=gate.name,
+        category=gate.category,
+        status=worst.status,                 # ⛔ 上抛本体（逐样本）判定，绝不在此自造 PASS
+        severity=gate.severity,
+        message=(
+            f"{label}（{len(results)} 个样本）：状态汇总 {counts}；"
+            f"最严重[{worst.status.value}] {worst.message}"
+        ),
+        metrics={
+            "aggregate_rule": "FAIL>INCONCLUSIVE>WARNING>SKIP>PASS",
+            "sample_size": len(results),
+            "status_counts": counts,
+            "worst_status": worst.status.value,
+            "worst_message": worst.message,
+            "worst_metrics": worst.metrics,
+        },
+        threshold=getattr(gate, "threshold_desc", ""),
+        evidence=getattr(gate, "evidence", ""),
+    )
+
+
 def _trade_notional(t: Any) -> Decimal:
     """成交记录的名义金额（volume × price），兼容对象与 dict。"""
     if isinstance(t, dict):
@@ -288,7 +346,7 @@ def run_pre_run_gates(
     if "bars" in ctx:
         _check_result(d1_gate.evaluate(ctx))
     elif tables:
-        d1_passed = True
+        d1_results: list[GateResult] = []
         for symbol, df in tables.items():
             if df is None or df.empty:
                 continue
@@ -309,23 +367,11 @@ def run_pre_run_gates(
                 )
                 bars.append({"date": d_str, "close": float(getattr(row, "close")), "is_exdiv": is_ex})
                 prev_d_str = d_str
-            res = d1_gate.evaluate({"bars": bars, "symbol": symbol})
-            if res.status == GateStatus.FAIL:
-                _check_result(res)
-                d1_passed = False
-                break
-        if d1_passed:
-            _check_result(GateResult(
-                gate_id=d1_gate.gate_id,
-                name=d1_gate.name,
-                category=d1_gate.category,
-                status=GateStatus.PASS,
-                severity=d1_gate.severity,
-                message=f"全部 {len(tables)} 只股票原始日线跳变率检验通过",
-                metrics={"tables_count": len(tables)},
-                threshold=d1_gate.threshold_desc,
-                evidence=d1_gate.evidence,
-            ))
+            d1_results.append(d1_gate.evaluate({"bars": bars, "symbol": symbol}))
+        # ⛔ Fail-Closed（GATE-R3）：逐票结果按 FAIL>INCONCLUSIVE>SKIP>PASS 汇总上抛——
+        # ⛔ 不再「无 FAIL 即自造 PASS」（旧逻辑会掩蔽逐票 INCONCLUSIVE/SKIP；真实回测路径
+        # 以 tables= 调用本函数，D-1 的 INCONCLUSIVE 曾被合成 PASS 绕开）。
+        _check_result(_aggregate_gate_results(d1_gate, d1_results, "全部股票原始日线跳变率检验"))
     else:
         _check_result(d1_gate.evaluate({}))
 
@@ -355,26 +401,27 @@ def run_pre_run_gates(
     if "bars" in ctx:
         _check_result(d4_gate.evaluate(ctx))
     elif tables:
-        d4_dirty = False
+        # ⛔ Fail-Closed（GATE-R3）：把**全部日线**（含 tradestatus=="1" 的非停牌行）喂给门禁本体，
+        # 由其自行判定 PASS/FAIL/SKIP——⛔ 不再"只筛脏行、无脏行即自造 PASS"。
+        # 门禁本体对「样本内无停牌日」判 SKIP（不适用），该结论必须**透出**，不得被合成 PASS 掩蔽。
+        d4_results: list[GateResult] = []
         for symbol, df in tables.items():
             if "tradestatus" in df.columns and "volume" in df.columns and not df.empty:
-                susp = df[(df["tradestatus"].astype(str) != "1") & (df["volume"].astype(float) > 0)]
-                if not susp.empty:
-                    bars = [{"date": str(r["date"]), "tradestatus": str(r["tradestatus"]), "volume": float(r["volume"])} for _, r in susp.iterrows()]
-                    _check_result(d4_gate.evaluate({"bars": bars, "symbol": symbol}))
-                    d4_dirty = True
-                    break
-        if not d4_dirty:
-            _check_result(GateResult(
-                gate_id=d4_gate.gate_id,
-                name=d4_gate.name,
-                category=d4_gate.category,
-                status=GateStatus.PASS,
-                severity=d4_gate.severity,
-                message=f"全部 {len(tables)} 只股票停牌日成交量检验通过",
-                threshold=d4_gate.threshold_desc,
-                evidence=d4_gate.evidence,
-            ))
+                has_date = "date" in df.columns
+                bars = [
+                    {
+                        "date": str(r["date"]) if has_date else "",
+                        "tradestatus": str(r["tradestatus"]),
+                        "volume": float(r["volume"]),
+                    }
+                    for _, r in df.iterrows()
+                ]
+                d4_results.append(d4_gate.evaluate({"bars": bars, "symbol": symbol}))
+        if d4_results:
+            _check_result(_aggregate_gate_results(d4_gate, d4_results, "全部股票停牌日成交量检验"))
+        else:
+            # 无任何含 tradestatus/volume 的表 ⇒ 无证据 ⇒ 门禁本体判 INCONCLUSIVE（⛔ 不自造 PASS）。
+            _check_result(d4_gate.evaluate({}))
     else:
         _check_result(d4_gate.evaluate({}))
 

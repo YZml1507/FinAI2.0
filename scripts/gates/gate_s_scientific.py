@@ -152,6 +152,25 @@ class TimingExitSurvivalGate(BaseGate):
             )
 
         violations = []
+        # ⛔ Fail-Closed：破 MA200 交易日必须**逐日**提供仓位比例；缺失日不得被默认 0.0
+        # 顶替成"已空仓避险"（否则缺证据即 PASS，正是假通过）。
+        missing_dates = [dt for dt in below_dates if dt not in pos_ratios]
+        if missing_dates:
+            return GateResult(
+                gate_id=self.gate_id,
+                name=self.name,
+                category=self.category,
+                status=GateStatus.INCONCLUSIVE,
+                severity=self.severity,
+                message=(
+                    f"存在 {len(missing_dates)} 个破 MA200 交易日缺少逐日仓位比例"
+                    f"（如 {missing_dates[:3]}），无法判定是否已空仓避险（证据不足 ≠ 通过）"
+                ),
+                metrics={"below_dates_count": len(below_dates), "missing_ratio_dates": len(missing_dates)},
+                threshold=self.threshold_desc,
+                evidence=self.evidence,
+            )
+
         for dt in below_dates:
             ratio = pos_ratios.get(dt, 0.0)
             if ratio > 0.05:  # 持仓大于 5% 视为未空仓避险
@@ -255,6 +274,23 @@ class DynamicSlippageAdvGate(BaseGate):
                     status=GateStatus.FAIL,
                     severity=self.severity,
                     message=f"滑点 +50% 压力测试失败：收益率由基准 {base_ret*100:.2f}% 崩塌至 {stress_ret*100:.2f}%，过度拟合超低滑点！",
+                    metrics={"baseline_return": base_ret, "stress_return": stress_ret},
+                    threshold=self.threshold_desc,
+                    evidence=self.evidence,
+                )
+            # 阈值明示"滑点 +50% 扰动后年化收益率仍必须保持为正 (> 0)" ⇒ stress_ret <= 0 一律 FAIL
+            # （⛔ 此前 base<=0 时该断言被短路，负压力收益率竟判 PASS）。
+            if stress_ret <= 0:
+                return GateResult(
+                    gate_id=self.gate_id,
+                    name=self.name,
+                    category=self.category,
+                    status=GateStatus.FAIL,
+                    severity=self.severity,
+                    message=(
+                        f"滑点 +50% 压力测试失败：压力情景收益率 {stress_ret*100:.2f}% <= 0，"
+                        "不满足'扰动后年化收益率仍必须保持为正 (> 0)'的阈值"
+                    ),
                     metrics={"baseline_return": base_ret, "stress_return": stress_ret},
                     threshold=self.threshold_desc,
                     evidence=self.evidence,
@@ -385,6 +421,7 @@ class AttributionEvidenceGate(BaseGate):
         tax = Decimal(str(context.get("total_stamp_tax", 0) if isinstance(context, dict) else getattr(context, "total_stamp_tax", 0)))
         comm = Decimal(str(context.get("total_commission", 0) if isinstance(context, dict) else getattr(context, "total_commission", 0)))
         trades_count = int(context.get("trades_count", 0) if isinstance(context, dict) else getattr(context, "trades_count", 0))
+        trades_given = isinstance(context, dict) and "trades_count" in context
         code_ev = str(context.get("code_evidence", "") if isinstance(context, dict) else getattr(context, "code_evidence", ""))
 
         if trades_count > 0:
@@ -400,6 +437,23 @@ class AttributionEvidenceGate(BaseGate):
                     threshold=self.threshold_desc,
                     evidence=self.evidence,
                 )
+        elif not trades_given and (tax <= Decimal("0") or comm <= Decimal("0")):
+            # ⛔ Fail-Closed：未提供成交笔数，且印花税/佣金为零或缺失 ⇒ 无法区分"无成交"与
+            # "有成交但把规费置零作弊" ⇒ INCONCLUSIVE（⛔ 默认 trades_count=0 不得静默跳过核心断言）。
+            return GateResult(
+                gate_id=self.gate_id,
+                name=self.name,
+                category=self.category,
+                status=GateStatus.INCONCLUSIVE,
+                severity=self.severity,
+                message=(
+                    f"缺少成交笔数（trades_count），且印花税({tax})/佣金({comm})为零或缺失，"
+                    "无法排除'有成交却把规费置零'的关税作弊（证据不足 ≠ 通过）"
+                ),
+                metrics={"stamp_tax": str(tax), "commission": str(comm)},
+                threshold=self.threshold_desc,
+                evidence=self.evidence,
+            )
 
         if not code_ev:
             return GateResult(

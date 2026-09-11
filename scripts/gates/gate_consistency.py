@@ -340,14 +340,26 @@ class StressValidityGate(BaseGate):
                 metrics={"round_trips": round_trips, "trading_days": int(days)},
             )
 
+        # ⛔ Fail-Closed（GATE-R3）：阈值声明为「round_trips > 0 **且 >= 200 交易日**」，
+        # 缺 trading_days 时**该维证据缺失** ⇒ 无法校验 ≥200 日要求 ⇒ ⛔ 不得判 PASS
+        # （此前会以"…>= 200 日…"的 message 谎报通过，而实际天数维度被静默跳过）。
+        if days is None:
+            return self._make(
+                GateStatus.INCONCLUSIVE,
+                (
+                    f"压测区间有 {round_trips} 笔成交，但缺少交易日数（trading_days/stress_days），"
+                    f"无法校验「>= {self.MIN_TRADING_DAYS} 交易日」有效性要求（无证据 ≠ 通过）"
+                ),
+                metrics={"round_trips": round_trips, "trading_days": None},
+            )
+
         return self._make(
             GateStatus.PASS,
             (
-                f"压测区间有效：{round_trips} 笔成交"
-                + (f"、{int(days)} 交易日" if days is not None else "")
-                + "（>= 200 日且 round_trips > 0），允许进入 MDD/胜率判定"
+                f"压测区间有效：{round_trips} 笔成交、{int(days)} 交易日"
+                f"（>= {self.MIN_TRADING_DAYS} 日且 round_trips > 0），允许进入 MDD/胜率判定"
             ),
-            metrics={"round_trips": round_trips, "trading_days": days},
+            metrics={"round_trips": round_trips, "trading_days": int(days)},
         )
 
     def _make(self, status: GateStatus, message: str, metrics: dict[str, Any] | None = None) -> GateResult:
@@ -897,6 +909,7 @@ class DocMetricConsistencyGate(BaseGate):
         declarations: list[dict[str, Any]] = []   # ④ 门禁数量/单测基线声明漂移（任务 3 补充）
         stats: dict[str, int] = {}
         files = _doc_files(context)
+        unreadable_docs = 0                      # 读取失败文档数（读不到 = 未比对，不得记 PASS）
         void_docs = 0                            # 作废文档（gate-doc-void 标记）⛔ 必须可见计数
         historical_docs = 0                      # 历史归档快照（显式白名单）⛔ 必须可见计数
         ignored_keys: set[tuple[str, int]] = set()   # 行内 ignore 豁免（(文件,行号) 去重，必须可见）
@@ -907,6 +920,7 @@ class DocMetricConsistencyGate(BaseGate):
             try:
                 text = path.read_text(encoding="utf-8")
             except Exception:                # noqa: BLE001
+                unreadable_docs += 1
                 continue
             if is_void_doc(text):            # 已作废文档：跳过数字比对（但计数可见）
                 void_docs += 1
@@ -1074,6 +1088,24 @@ class DocMetricConsistencyGate(BaseGate):
                 },
             )
 
+        # ⛔ Fail-Closed：无文档可扫描 / 有文档读取失败 ⇒ 实际比对 0 份 ⇒ INCONCLUSIVE
+        # （此前会以"已扫描 N 份文档，关键指标...全部一致"对**未读到的文档**记 PASS）。
+        if not files or unreadable_docs > 0:
+            return self._make(
+                GateStatus.INCONCLUSIVE,
+                (
+                    f"文档指标一致性无法判定：待扫描 {len(files)} 份，其中读取失败 {unreadable_docs} 份"
+                    "（读不到的文档无法比对，无证据 ≠ 通过）"
+                ),
+                metrics={
+                    "scanned_files": len(files),
+                    "unreadable_docs": unreadable_docs,
+                    "void_docs": void_docs,
+                    "historical_snapshot_docs": historical_docs,
+                    "truth_run": Path(truth_path).name,
+                },
+            )
+
         return self._make(
             GateStatus.PASS,
             f"已扫描 {len(files)} 份文档，关键指标与权威产物 {Path(truth_path).name} 全部一致（{head}）",
@@ -1167,12 +1199,14 @@ class DocPathReferenceGate(BaseGate):
         negated_hits = 0                         # 否定语境豁免行数（如实披露"某路径不存在"，⛔ 必须可见）
         void_docs = 0                            # 作废文档（gate-doc-void 标记）⛔ 必须可见计数
         ignored_lines = 0                        # 行内 ignore 豁免行数（⛔ 必须可见，不得静默隐藏）
+        unreadable_docs = 0                      # 读取失败文档数（读不到 = 未检验，不得记 PASS）
         files = _doc_files(context)
 
         for path in files:
             try:
                 text = path.read_text(encoding="utf-8")
             except Exception:                # noqa: BLE001
+                unreadable_docs += 1
                 continue
             if is_void_doc(text):            # 已作废文档：跳过路径存在性比对（但计数可见）
                 void_docs += 1
@@ -1271,6 +1305,23 @@ class DocPathReferenceGate(BaseGate):
                     "scanned_files": len(files),
                 },
             )
+        # ⛔ Fail-Closed：无文档可扫描 / 有文档读取失败 ⇒ 实际校验 0 份 ⇒ INCONCLUSIVE
+        # （此前会以"已扫描 N 份文档，引用路径全部存在"对**未读到的文档**记 PASS）。
+        if not files or unreadable_docs > 0:
+            return self._make(
+                GateStatus.INCONCLUSIVE,
+                (
+                    f"文档引用路径存在性无法判定：待扫描 {len(files)} 份，其中读取失败 {unreadable_docs} 份"
+                    "（读不到的文档无法校验，无证据 ≠ 通过）"
+                ),
+                metrics={
+                    "scanned_files": len(files),
+                    "unreadable_docs": unreadable_docs,
+                    "void_docs": void_docs,
+                    "ignored_lines": ignored_lines,
+                },
+            )
+
         return self._make(
             GateStatus.PASS,
             f"已扫描 {len(files)} 份文档，引用路径全部存在"

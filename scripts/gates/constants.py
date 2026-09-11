@@ -18,4 +18,4 @@ __all__ = ["TEST_BASELINE_PASSED"]
 #: 引用方：``scripts/hooks/pre_push.py``（防倒退），``scripts/gates/gate_consistency.py``（G-DOC-1 文档一致性）。
 #: ⛔ 守卫：``tests/test_gate_consistency.py::test_baseline_constant_matches_collected_count``
 #: 强制本常量 **等于** 真实收集数（不许 ``>=`` 软化），防"单一事实源自己漂移"。
-TEST_BASELINE_PASSED = 914
+TEST_BASELINE_PASSED = 978
