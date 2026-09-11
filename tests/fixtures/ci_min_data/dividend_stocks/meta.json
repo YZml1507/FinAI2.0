@@ -1,0 +1,15 @@
+{
+  "fixture": true,
+  "note": "CI 最小 fixture（非全量真实数据）。抽样自 data/dividend_stocks：30 只 × 130 天（2024 年），含合成停牌日 9 天。",
+  "collection_date": "2026-09-07T14:41:30.163266",
+  "start_date": "2024-01-01",
+  "end_date": "2024-12-31",
+  "total_symbols": 30,
+  "done_symbols": 30,
+  "successful": 30,
+  "failed_this_run": [],
+  "adjust_mode": "RAW",
+  "index_symbol": "sh.000300",
+  "source": "ci-fixture(sampled from tencent-kline(RAW) + cninfo-dividend(PIT) + tencent-shares)",
+  "synthetic_suspension_days": 9
+}

@@ -56,6 +56,80 @@ RUN_EVIDENCE_GATE_IDS: frozenset[str] = frozenset({
 #: ``G-MDD-1``：推送被 43.08% 回撤永久阻断 ⇒ 必逼出逃生阀 ⇒ 门禁沦为摆设，故降级为 WARN。
 WARN_GATE_IDS: frozenset[str] = frozenset({"G-MDD-1"})
 
+# ---------------------------------------------------------------------------
+# 数据取证根：真实数据优先，CI 最小 fixture 回退（GATE-R8）
+# ---------------------------------------------------------------------------
+#: CI 最小数据 fixture 相对仓库根的路径。
+#:
+#: **为什么需要它**：``.gitignore`` 排除了 ``data/dividend_stocks/``（采集落盘、可再生），
+#: 于是 GitHub Actions 上该目录**完全不存在**（本地 490 个文件 / CI 0 个）⇒
+#: D-1~D-4 无处取证判 INCONCLUSIVE、G-1 的 ``data_hash`` 取不到 ⇒ CI **永久红**。
+#: 红的是"没数据"而不是"数据有问题"，门禁既没在判、又堵住流水线 —— 两头落空。
+#:
+#: **它是什么**：抽样自 ``data/dividend_stocks`` **真实数据**的小样
+#: （30 只标的 × 130 个交易日，生成脚本 ``scripts/build_ci_fixture_data.py``，
+#: 详见 ``tests/fixtures/ci_min_data/FIXTURE_PROVENANCE.md``）。
+#:
+#: ⛔ **如实登记**：CI 上数据类门禁校验的是**这份抽样小样**，
+#: **不等于**校验全量真实数据质量；全量校验仍须在本地 ``data/`` 上跑同一条命令。
+#: ⛔ **不豁免、不放宽策略**：门禁阈值与判据一行未改，只是让 CI 有**真东西可判**。
+CI_FIXTURE_DATA_REL: tuple[str, ...] = ("tests", "fixtures", "ci_min_data", "dividend_stocks")
+
+#: fixture 清单文件名（位于 fixture 根的**上一级**目录）。
+CI_FIXTURE_MANIFEST_NAME: str = "fixture_manifest.json"
+
+
+def _has_symbol_dirs(data_dir: Path) -> bool:
+    """``data_dir`` 下是否存在至少一个 ``sh.*`` / ``sz.*`` 标的目录（有数据可取证）。"""
+    if not data_dir.exists() or not data_dir.is_dir():
+        return False
+    return any(p.is_dir() and p.name.startswith(("sh.", "sz.")) for p in data_dir.iterdir())
+
+
+def _fixture_label(fixture_root: Path, repo_root: Path) -> str:
+    """读取 fixture 清单，生成**自述式**取证来源标签（规模与合成成分必须可见）。"""
+    try:
+        rel = "/".join(fixture_root.relative_to(repo_root).parts)
+    except ValueError:                          # noqa: BLE001 —— 无法取相对路径则退回绝对路径
+        rel = str(fixture_root)
+    manifest_path = fixture_root.parent / CI_FIXTURE_MANIFEST_NAME
+    base = f"CI 最小 fixture {rel}"
+    if not manifest_path.exists():
+        return f"{base}（⛔ 缺清单 {CI_FIXTURE_MANIFEST_NAME}，规模不可自述）"
+    try:
+        m = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except Exception:                           # noqa: BLE001
+        return f"{base}（⛔ 清单解析失败）"
+    syms = m.get("total_symbols")
+    days = m.get("days_per_symbol")
+    synth = (m.get("synthetic_suspension_days") or {}).get("count", 0)
+    return (
+        f"{base}（抽样自真实数据 {syms} 只 × {days} 天"
+        f"；含合成停牌日 {synth} 天 —— 真实集 2015-2024 全池 tradestatus 均为 '1'，无停牌日可抽样）"
+    )
+
+
+def resolve_data_root(repo_root: Path) -> tuple[Path, str]:
+    """确定数据取证根：**真实数据优先，缺失才回退 CI 最小 fixture**。
+
+    ⛔ 本地 ``data/dividend_stocks`` 存在时行为**完全不变**（真实数据优先）；
+    fixture **仅**在该目录不存在/无标的目录时启用，且来源**显式可见**（不得静默）。
+
+    Returns:
+        ``(data_root, 取证来源标签)``。两者皆无数据时返回真实数据路径 +
+        "数据缺失"标签 —— **不编造任何路径**，交由各门禁判 INCONCLUSIVE。
+    """
+    real_dir = repo_root / "data" / "dividend_stocks"
+    if _has_symbol_dirs(real_dir):
+        n = sum(1 for p in real_dir.iterdir() if p.is_dir() and p.name.startswith(("sh.", "sz.")))
+        return real_dir, f"真实数据 data/dividend_stocks（{n} 只标的）"
+
+    fixture_dir = repo_root.joinpath(*CI_FIXTURE_DATA_REL)
+    if _has_symbol_dirs(fixture_dir):
+        return fixture_dir, _fixture_label(fixture_dir, repo_root)
+
+    return real_dir, "数据缺失（真实数据 data/dividend_stocks 与 CI fixture 均无标的目录）"
+
 
 def build_repo_context(repo_root: Path | str | None = None) -> tuple[dict[str, Any], str]:
     """从仓库现状构建门禁 ctx；返回 ``(ctx, 取证来源说明)``。"""
@@ -73,6 +147,20 @@ def build_repo_context(repo_root: Path | str | None = None) -> tuple[dict[str, A
     except Exception:                       # noqa: BLE001
         pass
     ctx["timestamp"] = _now_iso()
+
+    # 数据取证根（GATE-R8）：真实数据优先，CI 无 data/ 时回退最小 fixture。
+    # ⛔ 取证来源必须显式可见（打印 + 写进 ctx + 并入 source），不得静默切换。
+    data_root, data_source = resolve_data_root(root)
+    ctx["data_snapshot_root"] = str(data_root)
+    ctx["data_evidence_source"] = data_source
+    print(f"[数据取证] 门禁取证来源: {data_source}")
+    if data_root != root / "data" / "dividend_stocks":
+        # 非真实数据时**再重复一次**到 stdout：CI 日志里这条必须一眼可见，
+        # 防止"CI 绿了"被误读为"已校验全量真实数据质量"。
+        print(
+            "[数据取证] ⚠ 注意：本次数据类门禁（D-1~D-4 / G-1 data_hash）校验的是 "
+            "**抽样小样**，⛔ 不等于校验全量真实数据质量。"
+        )
 
     # 最新签名产物
     runs_dir = root / "experiments" / "runs"
@@ -109,7 +197,9 @@ def build_repo_context(repo_root: Path | str | None = None) -> tuple[dict[str, A
             try:
                 from reporting.provenance import hash_path_manifest
 
-                data_hash = hash_path_manifest(root / "data" / "dividend_stocks")
+                # 与 D-1~D-4 **同一**数据根（真实数据优先 / CI fixture 回退），
+                # 保证 data_hash 描述的正是本次被门禁实际校验的那份快照。
+                data_hash = hash_path_manifest(data_root)
             except Exception:                # noqa: BLE001 —— 取不到则交门禁判 INCONCLUSIVE
                 data_hash = None
         if data_hash:
@@ -136,9 +226,9 @@ def build_repo_context(repo_root: Path | str | None = None) -> tuple[dict[str, A
     except Exception:                       # noqa: BLE001
         pass
 
-    # D-1~D-4 抽样现读 parquet
+    # D-1~D-4 抽样现读 parquet（数据根已在上方解析：真实数据优先 / CI fixture 回退）
     try:
-        _sample_data_evidence(ctx, root)
+        _sample_data_evidence(ctx, data_root)
     except Exception:                       # noqa: BLE001
         pass
 
@@ -151,6 +241,8 @@ def build_repo_context(repo_root: Path | str | None = None) -> tuple[dict[str, A
         ctx["source_code"] = run_file.read_text(encoding="utf-8")
         ctx["required_calls"] = ["BacktestBroker", "MatchEngine", "compute_metrics"]
 
+    # 取证来源合并进 source：``gate_master_audit --ci`` 与 ``pre_push`` 都会打印它。
+    source = f"{source}；数据取证: {data_source}"
     return ctx, source
 
 
@@ -160,13 +252,18 @@ def _now_iso() -> str:
     return _dt.datetime.now(_dt.timezone.utc).isoformat()
 
 
-def _sample_data_evidence(ctx: dict[str, Any], repo_root: Path) -> None:
-    """抽样现读 ``data/dividend_stocks/`` parquet，为 D-1~D-4 提供真实证据。"""
+def collect_data_evidence(data_dir: Path) -> dict[str, Any]:
+    """从**给定数据根**抽样现读 parquet，返回 D-1~D-4 的证据片段。
+
+    抽取逻辑与 ``data/dividend_stocks/`` 完全一致（同一函数、同一阈值口径），
+    使 "真实数据" 与 "CI 最小 fixture" 两条路径**判的是同一件事**——
+    ⛔ 不得为 fixture 单独放宽样本口径（那样 CI 绿了也是在自欺）。
+    """
     import pandas as pd
 
-    data_dir = repo_root / "data" / "dividend_stocks"
+    evidence: dict[str, Any] = {}
     if not data_dir.exists():
-        return
+        return evidence
     sym_dirs = sorted(d for d in data_dir.iterdir() if d.is_dir() and d.name.startswith(("sh.", "sz.")))
 
     # D-1 / D-4：取前 1 只标的的日线
@@ -195,7 +292,7 @@ def _sample_data_evidence(ctx: dict[str, Any], repo_root: Path) -> None:
                 "volume": float(getattr(row, "volume", 0)),
             })
         if len(bars) >= 2:
-            ctx["bars"] = bars
+            evidence["bars"] = bars
         break
 
     # D-2：抽样 >= 30 只标的的最后一日 market_cap / amount
@@ -213,8 +310,8 @@ def _sample_data_evidence(ctx: dict[str, Any], repo_root: Path) -> None:
         if len(mvs) >= 35:
             break
     if len(mvs) >= 30:
-        ctx["float_mv_list"] = mvs
-        ctx["amount_list"] = amts
+        evidence["float_mv_list"] = mvs
+        evidence["amount_list"] = amts
 
     # D-3：抽样"某自然年内股息率有真实 PIT 变异"的标的序列
     for sym_dir in sym_dirs[:60]:
@@ -229,9 +326,21 @@ def _sample_data_evidence(ctx: dict[str, Any], repo_root: Path) -> None:
             sub = df[[str(d)[:4] == year for d in df["date"].tolist()]]
             ys = [float(y) for y in sub["dividend_yield"].dropna().tolist()]
             if len(ys) >= 60 and len({round(y, 4) for y in ys}) >= 50:
-                ctx["daily_yields"] = ys
-                ctx["year"] = int(year)
-                return
+                evidence["daily_yields"] = ys
+                evidence["year"] = int(year)
+                return evidence
+    return evidence
+
+
+def _sample_data_evidence(ctx: dict[str, Any], data_dir: Path) -> None:
+    """把 :func:`collect_data_evidence` 的取证结果并入门禁 ctx。
+
+    Args:
+        ctx: 门禁上下文（原地更新）。
+        data_dir: 数据根——**真实数据优先**，CI 上无 ``data/`` 时为最小 fixture
+            （由 :func:`resolve_data_root` 决定，调用方无需关心）。
+    """
+    ctx.update(collect_data_evidence(data_dir))
 
 
 def ci_policy(

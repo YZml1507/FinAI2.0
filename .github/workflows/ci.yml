@@ -39,6 +39,24 @@ jobs:
           python -c "import pytest,pandas,pyarrow,numpy,requests; print('deps ok', pytest.__version__, pandas.__version__, numpy.__version__)"
           python -c "import sys; print(sys.version); print('PYTHONPATH', __import__('os').environ.get('PYTHONPATH'))"
 
+      - name: "Materialize CI minimal data sample (fixture → data/)"
+        run: |
+          set -euo pipefail
+          # ⚠ 为什么需要这一步（2026-09-11 CI 红灯根因）：
+          #   `data/**` 被 .gitignore 排除（数据资产不入库）⇒ CI 上**没有任何数据**。
+          #   后果：D-1~D-4 判 INCONCLUSIVE、G-1 的 data_hash 失效、G-REF-1 报文档引用的
+          #         data/dividend_stocks/ 与 data/daily_bars/ 为「不存在的仓内路径」⇒ --ci exit 1。
+          #   处置：把版本库内的最小数据样本物化到数据区，使这些路径在 CI 上**真实存在**。
+          #   ⛔ 这不是豁免、也不改任何门禁判据——门禁照常判定，只是终于有数据可判。
+          SRC="tests/fixtures/ci_min_data"
+          test -d "$SRC" || { echo "[CI] 缺少最小数据样本 $SRC"; exit 1; }
+          mkdir -p data
+          cp -r "$SRC/dividend_stocks" data/dividend_stocks
+          cp -r "$SRC/daily_bars" data/daily_bars
+          echo "[CI] 已物化最小数据样本 → data/dividend_stocks（$(find data/dividend_stocks -name '*.parquet' | wc -l) 个 parquet）、data/daily_bars"
+          echo "[CI] ⚠ 注意：CI 上数据类门禁（D-1~D-4 / G-1 data_hash）校验的是**抽样小样**"
+          echo "[CI]    ⛔ 不等于校验全量真实数据质量；全量校验须在本地 data/ 上跑同一条命令。"
+
       - name: "Gate Check 1: Mother Library 370 Findings Guard"
         run: |
           set -euo pipefail
