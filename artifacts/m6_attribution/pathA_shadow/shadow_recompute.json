@@ -1,0 +1,508 @@
+{
+  "brute_equivalence": {
+    "closed_form_counterexample": {
+      "base": "30000",
+      "closed_form_says_dead": true,
+      "price": "200",
+      "production_says_dead": false
+    },
+    "grid": {
+      "base_hi": 40000,
+      "base_lo": 18000,
+      "base_step": 500,
+      "n_bases": 45,
+      "n_prices": 281,
+      "price_window": [
+        20,
+        300
+      ]
+    },
+    "mismatch_closed_samples": [
+      [
+        "18000",
+        "20"
+      ],
+      [
+        "18000",
+        "21"
+      ],
+      [
+        "18000",
+        "22"
+      ],
+      [
+        "18000",
+        "23"
+      ],
+      [
+        "18000",
+        "24"
+      ],
+      [
+        "18000",
+        "25"
+      ],
+      [
+        "18000",
+        "26"
+      ],
+      [
+        "18000",
+        "27"
+      ],
+      [
+        "18000",
+        "28"
+      ],
+      [
+        "18000",
+        "29"
+      ]
+    ],
+    "mismatch_exact_samples": [],
+    "n_checked": 12645,
+    "n_mismatch_closed_vs_production": 5452,
+    "n_mismatch_exact_vs_production": 0
+  },
+  "config_defaults": {
+    "hard_limit": 10,
+    "lot_size": 100,
+    "max_participation_rate": "0.05",
+    "max_price": "300.0",
+    "min_daily_amount": "50000000",
+    "min_position_value": "20000",
+    "target_count": 5
+  },
+  "counter_61_double_count": {
+    "nav": "150000",
+    "rows": [
+      {
+        "N": 5,
+        "base": "30000",
+        "default_positions": 5,
+        "drop_reasons": [],
+        "dropped": [],
+        "n_built": 5,
+        "n_dropped": 0,
+        "target_count": 5
+      },
+      {
+        "N": 5,
+        "base": "30000",
+        "default_positions": 5,
+        "drop_reasons": [],
+        "dropped": [],
+        "n_built": 5,
+        "n_dropped": 0,
+        "target_count": 8
+      },
+      {
+        "N": 5,
+        "base": "30000",
+        "default_positions": 8,
+        "drop_reasons": [],
+        "dropped": [],
+        "n_built": 5,
+        "n_dropped": 0,
+        "target_count": 5
+      },
+      {
+        "N": 8,
+        "base": "18750",
+        "default_positions": 8,
+        "drop_reasons": [
+          "低于单票下限"
+        ],
+        "dropped": [
+          [
+            "s0",
+            "低于单票下限"
+          ],
+          [
+            "s1",
+            "低于单票下限"
+          ],
+          [
+            "s2",
+            "低于单票下限"
+          ],
+          [
+            "s3",
+            "低于单票下限"
+          ],
+          [
+            "s4",
+            "低于单票下限"
+          ],
+          [
+            "s5",
+            "低于单票下限"
+          ],
+          [
+            "s6",
+            "低于单票下限"
+          ],
+          [
+            "s7",
+            "低于单票下限"
+          ]
+        ],
+        "n_built": 0,
+        "n_dropped": 8,
+        "target_count": 8
+      },
+      {
+        "N": 3,
+        "base": "50000",
+        "default_positions": 3,
+        "drop_reasons": [],
+        "dropped": [],
+        "n_built": 3,
+        "n_dropped": 0,
+        "target_count": 5
+      }
+    ]
+  },
+  "endpoint_bracket": {
+    "artifact_fields_read": {
+      "metrics.final_nav": "108421.14",
+      "metrics.initial_nav": "150000",
+      "metrics.max_dd_peak": "2018-01-29",
+      "metrics.max_dd_recovery": null,
+      "metrics.max_dd_trough": "2024-10-11",
+      "metrics.max_drawdown": "0.4307653722557783501291325324"
+    },
+    "dead_share_interval": {
+      "derivation": "峰值 NAV ≥ initial_nav 且 谷值 NAV ≤ final_nav；死带随 base 单调不减（H5c 单调性）⇒ share(谷值) ∈ [share(final), 100%]",
+      "hi": "1",
+      "lo": "0.8113879003558718861209964413"
+    },
+    "final_point": {
+      "base": "21684.228",
+      "n_dead": 228,
+      "nav": "108421.14",
+      "share": "0.8113879003558718861209964413"
+    },
+    "trough_point": {
+      "base_at_lower_bound": "17077.03883232664949612602403",
+      "n_dead_at_lower_bound": 281,
+      "nav_lower_bound": "85385.19416163324748063012014",
+      "nav_upper_bound": "108421.14",
+      "share_at_lower_bound": "1"
+    }
+  },
+  "h5_weight_dispersion": {
+    "close": "10.00",
+    "nav": "150000",
+    "rows": [
+      {
+        "dropped": [],
+        "n_built": 5,
+        "n_candidates": 5,
+        "n_dropped": 0,
+        "planned": {
+          "s0": "30000.00",
+          "s1": "30000.00",
+          "s2": "30000.00",
+          "s3": "30000.00",
+          "s4": "30000.00"
+        },
+        "planned_total": "150000.00",
+        "retained_cash": "0.00",
+        "scenario": "等权 1:1:1:1:1"
+      },
+      {
+        "dropped": [
+          [
+            "s3",
+            "低于单票下限"
+          ],
+          [
+            "s4",
+            "低于单票下限"
+          ]
+        ],
+        "n_built": 3,
+        "n_candidates": 5,
+        "n_dropped": 2,
+        "planned": {
+          "s0": "50000.00",
+          "s1": "33000.00",
+          "s2": "33000.00"
+        },
+        "planned_total": "116000.00",
+        "retained_cash": "34000.00",
+        "scenario": "加权 3:2:2:1:1"
+      },
+      {
+        "dropped": [
+          [
+            "s1",
+            "低于单票下限"
+          ],
+          [
+            "s2",
+            "低于单票下限"
+          ],
+          [
+            "s3",
+            "低于单票下限"
+          ],
+          [
+            "s4",
+            "低于单票下限"
+          ]
+        ],
+        "n_built": 1,
+        "n_candidates": 5,
+        "n_dropped": 4,
+        "planned": {
+          "s0": "107000.00"
+        },
+        "planned_total": "107000.00",
+        "retained_cash": "43000.00",
+        "scenario": "加权 10:1:1:1:1"
+      }
+    ]
+  },
+  "h5b_dead_band_boundary": {
+    "base_30000_dead_band": {
+      "count": 49,
+      "prices": [
+        151,
+        152,
+        153,
+        154,
+        155,
+        156,
+        157,
+        158,
+        159,
+        160,
+        161,
+        162,
+        163,
+        164,
+        165,
+        166,
+        167,
+        168,
+        169,
+        170,
+        171,
+        172,
+        173,
+        174,
+        175,
+        176,
+        177,
+        178,
+        179,
+        180,
+        181,
+        182,
+        183,
+        184,
+        185,
+        186,
+        187,
+        188,
+        189,
+        190,
+        191,
+        192,
+        193,
+        194,
+        195,
+        196,
+        197,
+        198,
+        199
+      ],
+      "share": "0.1743772241992882562277580071",
+      "window": [
+        20,
+        300
+      ],
+      "window_size": 281
+    },
+    "boundary_cases": [
+      {
+        "base": "30000",
+        "built": true,
+        "drop_reason": "",
+        "lots": 2,
+        "planned": "30000",
+        "price": "150"
+      },
+      {
+        "base": "30000",
+        "built": false,
+        "drop_reason": "低于单票下限",
+        "lots": 1,
+        "planned": "15100",
+        "price": "151"
+      },
+      {
+        "base": "30000",
+        "built": false,
+        "drop_reason": "低于单票下限",
+        "lots": 1,
+        "planned": "19900",
+        "price": "199"
+      },
+      {
+        "base": "30000",
+        "built": true,
+        "drop_reason": "",
+        "lots": 1,
+        "planned": "20000",
+        "price": "200"
+      },
+      {
+        "base": "30000",
+        "built": false,
+        "drop_reason": "超过价格上限",
+        "lots": 0,
+        "planned": "0",
+        "price": "301"
+      },
+      {
+        "base": "21684",
+        "built": true,
+        "drop_reason": "",
+        "lots": 10,
+        "planned": "20000",
+        "price": "20"
+      },
+      {
+        "base": "21684.228",
+        "built": true,
+        "drop_reason": "",
+        "lots": 10,
+        "planned": "20000",
+        "price": "20"
+      }
+    ]
+  },
+  "h5c_dead_band_vs_base": {
+    "critical_line": {
+      "base_at_equal_N8": "18750",
+      "equal_N8_always_dead": true,
+      "min_position_value": "20000",
+      "nav_trigger_equal_N5": "100000",
+      "rule": "完全无法建仓 ⟺ base < min_position_value"
+    },
+    "fully_dead_probe": {
+      "base": "18000",
+      "dropped": true,
+      "dropped_hi": true,
+      "price": "20",
+      "price_hi": "300",
+      "reason": "低于单票下限",
+      "reason_hi": "低于单票下限"
+    },
+    "monotonicity_adjacent": [
+      {
+        "dropped_from": "30000",
+        "dropped_to": "26000",
+        "passed": true,
+        "subset": "dead(26000) ⊇ dead(30000)"
+      },
+      {
+        "dropped_from": "26000",
+        "dropped_to": "22000",
+        "passed": true,
+        "subset": "dead(22000) ⊇ dead(26000)"
+      },
+      {
+        "dropped_from": "22000",
+        "dropped_to": "20000",
+        "passed": true,
+        "subset": "dead(20000) ⊇ dead(22000)"
+      },
+      {
+        "dropped_from": "20000",
+        "dropped_to": "18000",
+        "passed": true,
+        "subset": "dead(18000) ⊇ dead(20000)"
+      }
+    ],
+    "monotonicity_all_pairs_passed": true,
+    "nav_table": [
+      {
+        "base": "30000",
+        "n_dead": 49,
+        "nav": "150000",
+        "share": "0.1743772241992882562277580071"
+      },
+      {
+        "base": "26000",
+        "n_dead": 123,
+        "nav": "130000",
+        "share": "0.4377224199288256227758007117"
+      },
+      {
+        "base": "22000",
+        "n_dead": 217,
+        "nav": "110000",
+        "share": "0.7722419928825622775800711744"
+      },
+      {
+        "base": "20000",
+        "n_dead": 275,
+        "nav": "100000",
+        "share": "0.9786476868327402135231316726"
+      },
+      {
+        "base": "18000",
+        "n_dead": 281,
+        "nav": "90000",
+        "share": "1"
+      }
+    ]
+  },
+  "price_window": {
+    "hi": 300,
+    "lo": 20,
+    "n_prices": 281,
+    "note": "上界=max_price（有语义）；下界=取样约定；占比分母恒为 281"
+  },
+  "source_anchor": {
+    "anti_tamper_signature": "055cb1d6b2bedbb88aa73d107396982b49f829a6d57236d4d16b921f4c2982d5",
+    "artifact_fields_read": [
+      "run_id",
+      "anti_tamper_signature",
+      "metrics.initial_nav",
+      "metrics.final_nav",
+      "metrics.max_drawdown",
+      "metrics.max_dd_peak",
+      "metrics.max_dd_trough",
+      "metrics.max_dd_recovery",
+      "params.default_positions",
+      "params.portfolio.target_count",
+      "params.portfolio.min_position_value"
+    ],
+    "artifact_params_portfolio": {
+      "hard_limit": 10,
+      "lot_size": 100,
+      "max_participation_rate": "0.05",
+      "max_positions": 8,
+      "max_price": "300",
+      "min_daily_amount": "50000000",
+      "min_position_value": "20000",
+      "min_positions": 3,
+      "target_count": 5
+    },
+    "artifact_path": "experiments/runs/20260907-150402-t312-dividend-v1-noseed.json",
+    "production_functions": [
+      "strategy/portfolio.py:49 PortfolioConfig",
+      "strategy/portfolio.py:124 select_targets",
+      "strategy/portfolio.py:140 _plan_one（plan_positions 内部）",
+      "strategy/portfolio.py:165 plan_positions"
+    ],
+    "reproduce_command": "cd D:/Projects/FinAI2.0 && py -3.11 scripts/m6_shadow_recompute.py",
+    "reproduce_test_command": "cd D:/Projects/FinAI2.0 && py -3.11 -m pytest tests/test_m6_shadow_recompute.py -p no:ddtrace -p no:ddtrace.pytest_bdd -q",
+    "source_run_id": "20260907-150402-t312-dividend-v1-noseed"
+  }
+}
