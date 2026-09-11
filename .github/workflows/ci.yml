@@ -53,6 +53,10 @@ jobs:
           mkdir -p data
           cp -r "$SRC/dividend_stocks" data/dividend_stocks
           cp -r "$SRC/daily_bars" data/daily_bars
+          # 把小样清单一并放进数据区作为**显式标记**：数据区是 CI 小样、⛔ 不是全量真实数据。
+          # 依赖全量数据的测试（如 test_t312_dividend_backtest）据此 skip 并打印理由，
+          # ⛔ 不得让它伪装成"全量校验通过"。
+          cp "$SRC/fixture_manifest.json" data/dividend_stocks/fixture_manifest.json
           echo "[CI] 已物化最小数据样本 → data/dividend_stocks（$(find data/dividend_stocks -name '*.parquet' | wc -l) 个 parquet）、data/daily_bars"
           echo "[CI] ⚠ 注意：CI 上数据类门禁（D-1~D-4 / G-1 data_hash）校验的是**抽样小样**"
           echo "[CI]    ⛔ 不等于校验全量真实数据质量；全量校验须在本地 data/ 上跑同一条命令。"

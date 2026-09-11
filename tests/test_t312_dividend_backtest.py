@@ -40,6 +40,16 @@ def _sample_symbols(n: int) -> list[str]:
 def _skip_if_no_data():
     if not (DATA_ROOT / "meta.json").exists():
         pytest.skip("数据未采集（运行 scripts/collect_dividend_stocks.py）")
+    # ⛔ CI 小样守卫（2026-09-11）：CI 会把 tests/fixtures/ci_min_data 物化到 data/，
+    #    使数据路径真实存在（G-REF-1 需要）。但该小样只有 30 只 × 2024 一年，
+    #    ⛔ 不是全量真实数据 ⇒ 依赖全量的断言（>=300 只、含 2015/2016 分区）在此必须 skip，
+    #    ⛔ 不得让它伪装成"全量校验通过"。全量校验仍须在本地 data/ 上跑同一条命令。
+    if (DATA_ROOT / "fixture_manifest.json").exists():
+        pytest.skip(
+            "数据区是 CI 最小数据样本（30 只 × 2024 一年，非全量）⇒ "
+            "全量断言（>=300 只 / 2015-2016 分区深度）不适用；"
+            "⛔ 这不是通过，全量校验须在本地 data/ 上运行"
+        )
 
 
 # ===================================================================
