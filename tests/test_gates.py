@@ -386,15 +386,16 @@ class TestAGate:
 
     def test_a3_golden_roundtrip_pass(self):
         gate = GoldenRoundtripGate()
-        res = gate.evaluate({"roundtrip_total_fee": Decimal("103.22")})
+        # 引擎权威逐项口径黄金值（tests/test_t203_fees.py::test_golden_round_trip_100k 锁定）。
+        res = gate.evaluate({"roundtrip_total_fee": Decimal("112.82")})
         assert res.status == GateStatus.PASS
 
     def test_a3_golden_roundtrip_fail_out_of_bounds(self):
         gate = GoldenRoundtripGate()
-        # 费用为 50 元 (严重少收，比如把印花税漏了)
+        # 费用为 50 元 (严重少收，比如把印花税漏了)：距最近基准 102.00 差 52 元 ⇒ 超差 FAIL。
         res = gate.evaluate({"roundtrip_total_fee": Decimal("50.00")})
         assert res.status == GateStatus.FAIL
-        assert "严重偏离 A 股真实费率物理区间" in res.message
+        assert "超出容许容差" in res.message
 
     def test_a4_segment_rate_schedule_pass(self):
         gate = SegmentRateScheduleGate()

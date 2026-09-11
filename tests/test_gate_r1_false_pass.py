@@ -24,6 +24,7 @@ from scripts.gates import GateStatus
 from scripts.gates.gate_a_accounting import (
     DailyCashConserveGate,
     FeeSumBalanceGate,
+    GoldenRoundtripGate,
     SegmentRateScheduleGate,
 )
 from scripts.gates.gate_d_data import (
@@ -454,11 +455,15 @@ class TestL2R3NoResidualFalsePass:
         assert res.status == GateStatus.FAIL
 
     def test_uneven_target_with_nan_actual_not_pass(self):
-        # 非等权分支：旧实现 nan 参与 `nan < 0.90` 为 False ⇒ 假 PASS。现由入口有限性校验拦截。
+        # 非等权分支：旧实现 nan 参与 `nan < 0.90` 为 False ⇒ 假 PASS（QA 实测 9 例）。
+        # ⛔ P3-④ 强化锁定：必须用**能区分修复前后**的输入。旧输入（target=0.5/0.3/0.2 + nan）在旧实现下
+        #    也 FAIL（无区分力）；本输入 target={A:0.2,B:0.3,C:0.5} + actual={A:nan,B:30000,C:60000}
+        #    在旧实现下 Spearman=1.0 ⇒ **假 PASS**，修复后入口有限性校验直接 FAIL（反转实现即变红）。
         res = AllocationFidelityGate().evaluate({
-            "target_weights": {"A": 0.5, "B": 0.3, "C": 0.2},
-            "actual_values": {"A": float("nan"), "B": 30000.0, "C": 20000.0},
+            "target_weights": {"A": 0.2, "B": 0.3, "C": 0.5},
+            "actual_values": {"A": float("nan"), "B": 30000.0, "C": 60000.0},
         })
+        assert res.status == GateStatus.FAIL
         assert res.status != GateStatus.PASS
 
     def test_severe_skew_still_fails(self):
@@ -614,6 +619,193 @@ class TestP2ResidualNoFalsePass:
             "timestamp": "2026-09-07T16:00:00Z",
         })
         assert res.status == GateStatus.PASS
+
+
+# =====================================================================
+# GATE-R5/R7：A-3 判定对齐声明阈值（基准集 = 引擎权威 112.82 + 行业含规费全佣 102.00）
+# =====================================================================
+
+class TestA3GoldenBasisAlignment:
+    """A-3：threshold_desc 声明「绝对误差 <= 0.05」，实现取与最近合法基准的绝对误差。
+
+    ⛔ GATE-R7：旧基准集 (114.20, 103.22) 属注释算错(经手误用 4.10)/全仓无出处，
+       会误杀引擎权威黄金 112.82（`tests/test_t203_fees.py::test_golden_round_trip_100k`）；已删除。
+    """
+
+    def test_engine_authoritative_golden_112_82_passes(self):
+        # 引擎权威逐项口径黄金值（test_t203_fees 断言 buy31.41+sell81.41=112.82）⇒ 必须 PASS。
+        res = GoldenRoundtripGate().evaluate({"roundtrip_total_fee": Decimal("112.82")})
+        assert res.status == GateStatus.PASS
+        assert res.status != GateStatus.FAIL
+
+    def test_industry_bundled_102_00_passes(self):
+        res = GoldenRoundtripGate().evaluate({"roundtrip_total_fee": Decimal("102.00")})
+        assert res.status == GateStatus.PASS
+
+    def test_within_tolerance_of_engine_basis_passes(self):
+        # 112.80 距最近基准 112.82 仅 0.02 <= 0.05 ⇒ PASS（端点内合法）。
+        res = GoldenRoundtripGate().evaluate({"roundtrip_total_fee": Decimal("112.80")})
+        assert res.status == GateStatus.PASS
+
+    def test_removed_basis_114_20_now_fails(self):
+        # 114.20 系旧注释「经手误用 4.10」算错值，距最近基准 112.82 差 1.38 > 0.05 ⇒ FAIL。
+        res = GoldenRoundtripGate().evaluate({"roundtrip_total_fee": Decimal("114.20")})
+        assert res.status == GateStatus.FAIL
+        assert res.status != GateStatus.PASS
+
+    def test_removed_basis_103_22_now_fails(self):
+        # 103.22 全仓无出处，距最近基准 102.00 差 1.22 > 0.05 ⇒ FAIL。
+        res = GoldenRoundtripGate().evaluate({"roundtrip_total_fee": Decimal("103.22")})
+        assert res.status == GateStatus.FAIL
+        assert res.status != GateStatus.PASS
+
+    def test_r4_regression_95_5_now_fails(self):
+        # QA §R4 反例：95.5 距最近基准 102.00 差 6.50（旧实现 95~125 宽区间假 PASS）；现须 FAIL。
+        res = GoldenRoundtripGate().evaluate({"roundtrip_total_fee": Decimal("95.5")})
+        assert res.status == GateStatus.FAIL
+        assert res.status != GateStatus.PASS
+
+    def test_r4_regression_125_0_now_fails(self):
+        # QA §R4 反例：125.0 距最近基准 112.82 差 12.18（旧实现假 PASS）；现须 FAIL。
+        res = GoldenRoundtripGate().evaluate({"roundtrip_total_fee": Decimal("125.0")})
+        assert res.status == GateStatus.FAIL
+
+    def test_r4_regression_100_0_now_fails(self):
+        # QA §R4 反例：100.0 距最近基准 102.00 差 2.00（旧实现假 PASS）；现须 FAIL。
+        res = GoldenRoundtripGate().evaluate({"roundtrip_total_fee": Decimal("100.0")})
+        assert res.status == GateStatus.FAIL
+
+    def test_fail_message_reports_actual_nearest_basis_and_diff(self):
+        # FAIL 报文必须点明：实际值 + 最近基准 + 其口径 + 绝对误差 + 容差。
+        res = GoldenRoundtripGate().evaluate({"roundtrip_total_fee": Decimal("95.5")})
+        assert res.status == GateStatus.FAIL
+        assert "95.5" in res.message                      # 实际值
+        assert "102.00" in res.message                    # 最近基准
+        assert "6.50" in res.message                      # 绝对误差
+        assert "0.05" in res.message                      # 容差
+
+    def test_missing_roundtrip_fee_inconclusive(self):
+        res = GoldenRoundtripGate().evaluate({"something_else": 1})
+        assert res.status == GateStatus.INCONCLUSIVE
+        assert res.status != GateStatus.PASS
+
+    def test_expected_fee_override_is_sole_basis(self):
+        # 显式 expected_fee=100.00 ⇒ 唯一基准：100.05 在容差内 PASS；
+        # 若覆盖未生效，100.05 距内置最近基准 102.00 差 1.95 ⇒ 必 FAIL。以此证明覆盖生效。
+        gate = GoldenRoundtripGate()
+        ok = gate.evaluate({"roundtrip_total_fee": Decimal("100.05"), "expected_fee": Decimal("100.00")})
+        assert ok.status == GateStatus.PASS
+        bad = gate.evaluate({"roundtrip_total_fee": Decimal("100.10"), "expected_fee": Decimal("100.00")})
+        assert bad.status == GateStatus.FAIL
+
+    def test_expected_fee_override_can_reject_builtin_basis_value(self):
+        # 覆盖为唯一基准：112.82 本是内置基准，但 expected_fee=100.00 时差 12.82 ⇒ FAIL。
+        res = GoldenRoundtripGate().evaluate({
+            "roundtrip_total_fee": Decimal("112.82"), "expected_fee": Decimal("100.00"),
+        })
+        assert res.status == GateStatus.FAIL
+
+    def test_golden_basis_constants_locked(self):
+        # 单一事实源锁定：两个合法基准 + 容差，⛔ 不得静默漂移（114.20/103.22 已删除）。
+        assert GoldenRoundtripGate.GOLDEN_FEE_BASIS == (Decimal("112.82"), Decimal("102.00"))
+        assert GoldenRoundtripGate.GOLDEN_FEE_ABS_TOLERANCE == Decimal("0.05")
+
+    def test_threshold_desc_lists_corrected_bases(self):
+        desc = GoldenRoundtripGate.threshold_desc
+        assert "112.82" in desc and "102.00" in desc
+        assert "114.20" not in desc and "103.22" not in desc
+        assert "0.05" in desc
+
+    # ---- 兜底（QA §R5 登记）：非法输入不得崩溃、不得 PASS ----
+
+    def test_nonfinite_fee_fails(self):
+        res = GoldenRoundtripGate().evaluate({"roundtrip_total_fee": float("nan")})
+        assert res.status == GateStatus.FAIL
+        assert res.status != GateStatus.PASS
+
+    def test_invalid_roundtrip_fee_types_do_not_crash(self):
+        # QA §R5：roundtrip_total_fee = "abc" / "" / True / [103.22] 等均须**不抛异常**且非 PASS。
+        for bad in ("abc", "", True, False, [103.22], {"x": 1}, None):
+            res = GoldenRoundtripGate().evaluate({"roundtrip_total_fee": bad})
+            assert res.status != GateStatus.PASS, f"非法实测值 {bad!r} 不得 PASS"
+            assert res.status in (GateStatus.FAIL, GateStatus.INCONCLUSIVE)
+
+    def test_nonfinite_expected_fee_does_not_crash(self):
+        # expected_fee = NaN/±inf ⇒ 不得崩溃、不得 PASS（无有效外部基准 ⇒ INCONCLUSIVE）。
+        for bad in (float("nan"), float("inf"), float("-inf")):
+            res = GoldenRoundtripGate().evaluate({
+                "roundtrip_total_fee": Decimal("112.82"), "expected_fee": bad,
+            })
+            assert res.status != GateStatus.PASS
+            assert res.status == GateStatus.INCONCLUSIVE
+
+    def test_invalid_expected_fee_types_do_not_crash(self):
+        for bad in ("abc", "", True, [100.0], {"x": 1}):
+            res = GoldenRoundtripGate().evaluate({
+                "roundtrip_total_fee": Decimal("112.82"), "expected_fee": bad,
+            })
+            assert res.status != GateStatus.PASS
+            assert res.status == GateStatus.INCONCLUSIVE
+
+
+# =====================================================================
+# GATE-R5：L-2 端点浮点确定性 + 消息口径拆分 + threshold_desc 等价声明（P3 ①/②/③）
+# =====================================================================
+
+class TestL2EndpointDeterminismAndWording:
+    """GATE-R5 P3：端点含端点判定确定（不受浮点支配）+ "全为0"≠"等权均分"口径拆分。"""
+
+    @staticmethod
+    def _eq(n: int) -> dict:
+        return {f"S{i}": 1.0 / n for i in range(n)}
+
+    def test_n5_nominal_endpoint_passes(self):
+        # 名义 r_i = [2.0, 0.5, 5/6, 5/6, 5/6]，恰在 [0.5, 2.0] 端点（含端点）⇒ 须 PASS。
+        # 浮点归一化会把 max 算成 2.0000000000000004、min 算成 0.5000000000000001
+        # （旧严格 `>2.0 / <0.5` ⇒ 端点被误判 FAIL）。修复后端点确定、判 PASS。
+        av = {"S0": 0.4, "S1": 0.1, "S2": 1 / 6, "S3": 1 / 6, "S4": 1 / 6}
+        res = AllocationFidelityGate().evaluate({"target_weights": self._eq(5), "actual_values": av})
+        assert res.status == GateStatus.PASS
+
+    def test_n4_nominal_endpoint_passes(self):
+        # 同构 n=4：名义 r_i=[2.0, 0.5, 0.75, 0.75] ⇒ PASS（端点确定性、与 n 无关）。
+        av = {"S0": 0.5, "S1": 0.125, "S2": 0.1875, "S3": 0.1875}
+        res = AllocationFidelityGate().evaluate({"target_weights": self._eq(4), "actual_values": av})
+        assert res.status == GateStatus.PASS
+
+    def test_just_beyond_endpoint_still_fails(self):
+        # 端点容差只包容浮点噪声：真正越界（max r=2.5）仍须 FAIL（防"容差变宽松口子"）。
+        av = {"S0": 0.5, "S1": 0.2, "S2": 0.1, "S3": 0.1, "S4": 0.1}
+        res = AllocationFidelityGate().evaluate({"target_weights": self._eq(5), "actual_values": av})
+        assert res.status == GateStatus.FAIL
+
+    def test_uneven_target_all_zero_inconclusive_wording(self):
+        # P3-②：非等权目标 + 实际全 0 —— **并非等权均分** ⇒ INCONCLUSIVE，
+        # 消息须明确"整只未建仓/全为 0"，⛔ 不得再输出"完全等权均分"。
+        res = AllocationFidelityGate().evaluate({
+            "target_weights": {"A": 0.6, "B": 0.3, "C": 0.1},
+            "actual_values": {"A": 0.0, "B": 0.0, "C": 0.0},
+        })
+        assert res.status == GateStatus.INCONCLUSIVE
+        assert res.status != GateStatus.PASS
+        assert "完全等权均分" not in res.message
+        assert ("全为 0" in res.message) or ("未建仓" in res.message)
+
+    def test_uneven_target_all_equal_nonzero_fail_wording(self):
+        # 对照：实际各票相等且非零 ⇒ 这才是"被抹平等权"⇒ FAIL，消息含"完全等权均分"。
+        res = AllocationFidelityGate().evaluate({
+            "target_weights": {"A": 0.6, "B": 0.3, "C": 0.1},
+            "actual_values": {"A": 1.0, "B": 1.0, "C": 1.0},
+        })
+        assert res.status == GateStatus.FAIL
+        assert "完全等权均分" in res.message
+
+    def test_threshold_desc_states_endpoint_and_equivalence(self):
+        # P3-③：threshold_desc 须明示"含端点"与等价式（max/min 仓位比 ≤ 4×）。
+        desc = AllocationFidelityGate.threshold_desc
+        assert "[0.5, 2.0]" in desc
+        assert "含端点" in desc
+        assert "4×" in desc
 
 
 if __name__ == "__main__":   # pragma: no cover

@@ -154,7 +154,8 @@ class AllocationFidelityGate(BaseGate):
     threshold_desc = (
         "非等权目标：W 与 V 的 Spearman 秩相关系数 >= 0.90；"
         "等权目标（1/N，Spearman 全域并列不可判）：须无「整只未建仓」(任一实际分配 == 0)，"
-        "且已建仓任一只的相对权重比 r_i = s_i·n ∈ [0.5, 2.0]；"
+        "且已建仓任一只的相对权重比 r_i = s_i·n ∈ [0.5, 2.0]（**含端点**；"
+        "等价于「最大/最小仓位占比之比 ≤ 4×，即单只最多超配等权份额 2 倍、最少低配至 0.5 倍」）；"
         "非有限值（NaN/±inf）不得 PASS；"
         "（归一化总变差 TV 仅作观测，不再驱动判定）"
     )
@@ -178,6 +179,13 @@ class AllocationFidelityGate(BaseGate):
     #: ⛔ **仅保留供观测/历史度量**（写入 metrics），**不再驱动判定**——见上：TV 随 n 漂移，
     #: 用它作判据会在 n=10 恰一只漏建（TV=0.1000）处出现边界假通过。
     EQUAL_WEIGHT_MAX_TV = 0.10
+
+    #: 相对权重比 ``r_i`` 判据的**端点浮点容差**（P3-①）：
+    #: ``r_i`` 恰在 ``[0.5, 2.0]`` 端点（threshold_desc 声明"含端点"）时应判 **PASS**，
+    #: 但浮点归一化会把"名义恰在端点"算成 ``0.5000000000000001`` / ``2.0000000000000004``
+    #: （详见 ``tests/test_gate_r1_false_pass.py``）。故比较统一取 ``LIMIT ± EPS``，
+    #: 使**恰在端点**的判定确定、与声明一致，⛔ 不受浮点噪声支配（真正越界仍 FAIL）。
+    EQUAL_WEIGHT_RATIO_EPS = 1e-9
 
     @staticmethod
     def _rank(seq: Sequence[float]) -> list[float]:
@@ -387,10 +395,11 @@ class AllocationFidelityGate(BaseGate):
                 "weight_ratios": [round(r, 4) for r in ratios],
                 "sample_size": n,
             }
-            if (
-                max_ratio > self.EQUAL_WEIGHT_OVERWEIGHT_LIMIT
-                or min_ratio < self.EQUAL_WEIGHT_UNDERWEIGHT_LIMIT
-            ):
+            # 闭区间含端点 + 端点浮点容差（P3-①）：名义恰在 [0.5, 2.0] 端点者判 PASS
+            # （与 threshold_desc「含端点」逐字一致），⛔ 不受浮点噪声支配（真正越界仍 FAIL）。
+            over_limit = self.EQUAL_WEIGHT_OVERWEIGHT_LIMIT + self.EQUAL_WEIGHT_RATIO_EPS
+            under_limit = self.EQUAL_WEIGHT_UNDERWEIGHT_LIMIT - self.EQUAL_WEIGHT_RATIO_EPS
+            if max_ratio > over_limit or min_ratio < under_limit:
                 return GateResult(
                     gate_id=self.gate_id,
                     name=self.name,
@@ -422,6 +431,24 @@ class AllocationFidelityGate(BaseGate):
                 evidence=self.evidence,
             )
 
+        # ⛔ 先判「实际全为 0 / 整只未建仓」（P3-②）：**全 0 并非"等权均分"**（等权 = 各票额相等且 > 0）。
+        #    语义上属"无实际分配证据"，与等权分支 `sum_v <= 0` 口径一致 ⇒ INCONCLUSIVE（无证据 ≠ 通过）。
+        if all(v == 0.0 for v in v_list):
+            return GateResult(
+                gate_id=self.gate_id,
+                name=self.name,
+                category=self.category,
+                status=GateStatus.INCONCLUSIVE,
+                severity=self.severity,
+                message=(
+                    "目标权重为非等权（存在显著分化），但实际分配全部为 0（整只未建仓/全为 0）"
+                    "——此非「等权均分」，而是无实际分配证据，无法判定权重保真度（无证据 ≠ 通过）"
+                ),
+                metrics={"sum_actual_values": 0.0, "sample_size": len(v_list)},
+                threshold=self.threshold_desc,
+                evidence=self.evidence,
+            )
+        # 实际分配各票**相等且非零** ⇒ 权重打分确被"抹平等权"（1/N 均分）⇒ FAIL。
         if len(set(v_list)) <= 1:
             return GateResult(
                 gate_id=self.gate_id,

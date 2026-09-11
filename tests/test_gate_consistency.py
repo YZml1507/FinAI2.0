@@ -416,7 +416,7 @@ def _passing_context(gate_id: str, tmp_path: Path) -> dict | None:
         "A-2": {"daily_cash_flows": [{"date": "d", "cash_start": "100", "trade_in": "0",
                                       "trade_out": "50", "fee_out": "0", "dividend_in": "0",
                                       "dividend_tax_out": "0", "cash_end": "50"}]},
-        "A-3": {"roundtrip_total_fee": "103.22"},
+        "A-3": {"roundtrip_total_fee": "112.82"},
         "A-4": {"trades": [{"date": "2023-08-20", "side": "SELL", "price": "10",
                             "volume": 10000, "amount": "100000", "fees": {"STAMP_TAX": "100"}}]},
         "S-1": {"annualized_turnover": 3.2},

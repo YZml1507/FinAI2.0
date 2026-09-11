@@ -10,7 +10,7 @@
 from __future__ import annotations
 
 import datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from typing import Any, Sequence
 
 from .base import BaseGate, GateCategory, GateResult, GateSeverity, GateStatus
@@ -239,16 +239,63 @@ class GoldenRoundtripGate(BaseGate):
     category = GateCategory.A_GATE
     severity = GateSeverity.CRITICAL
     evidence = "17 号报告 §3.2: 散户 10 万元往返买卖同一只股票 (2023-08-28 之后)，总规费理论基准精确可核"
-    threshold_desc = "10 万元往返买卖总规费与基准理论值绝对误差 <= 0.05 元"
+    threshold_desc = (
+        "10 万元往返买卖总规费与基准理论值的绝对误差 <= 0.05 元；"
+        "基准集 = {引擎权威逐项口径 112.82 元；行业「含规费全佣」报价口径 102.00 元}"
+    )
 
-    # 2023-08-28 之后基准：
-    # 买入 10 万：佣金 25 + 经手 4.10 + 证管 2.00 + 过户 1.00 = 32.10
-    # 卖出 10 万：印花税 50 + 佣金 25 + 经手 4.10 + 证管 2.00 + 过户 1.00 = 82.10
-    # 合计往返：114.20 元 (全拆解口径)；若规费含于佣金则为 102.00 元或 103.22 元。
+    # 2023-08-28 之后基准（**按引擎真实费率逐项核算**，2026-09 依 backtest/fees.py 现率改正）：
+    #   沪深经手费率 = 0.0000341（backtest/fees.py:234 现率；旧注释误用 0.0000487⇒4.87，已作废）。
+    #   买入 10 万：佣金 25 + 经手 3.41 + 证管 2.00 + 过户 1.00 = 31.41
+    #   卖出 10 万：印花税 50 + 佣金 25 + 经手 3.41 + 证管 2.00 + 过户 1.00 = 81.41
+    #   往返合计：31.41 + 81.41 = 112.82 元 —— **引擎权威逐项口径**
+    #             （tests/test_t203_fees.py::test_golden_round_trip_100k 断言 buy/sell/合计）。
+    #   行业「含规费全佣」口径 = 102.00 元（规费并入佣金报价；与逐项口径差 10.82，已在 docs/t305 §归因）。
+    #   ⛔ 旧注释的 114.20（经手误用 4.10 ⇒ 每边多 0.69、双边多 1.38）与 103.22（全仓无出处）
+    #      **均已删除**——二者会误杀引擎自身黄金算例 112.82（GATE-R7）。
+    #
+    # ⛔ 判定口径（与 threshold_desc 声明逐字一致）：实测 10 万元往返总规费与**任一合法黄金基准**
+    #    的绝对误差 <= 0.05 元 ⇒ PASS，否则 FAIL。
+    #    * 严禁退化回旧版"物理区间 95~125 元"式宽区间判定——该区间会把 95.5 / 100.0 / 125.0
+    #      全部假判 PASS（⑫ 声明↔实现背离）。
+    #: 合法黄金基准（2023-08-28 之后 10 万元往返总规费）：
+    #:   * 112.82 —— 引擎权威逐项口径（primary；佣金/经手/证管/过户/印花税分列，与 fees.py 现率一致）；
+    #:   * 102.00 —— 行业「含规费全佣」报价口径（备选合法口径）。
+    GOLDEN_FEE_BASIS: tuple[Decimal, ...] = (
+        Decimal("112.82"),
+        Decimal("102.00"),
+    )
+
+    #: 各黄金基准口径的**人读标签**（FAIL 报文须点明"最近基准 + 其口径"）。
+    GOLDEN_FEE_BASIS_LABEL: dict[Decimal, str] = {
+        Decimal("112.82"): "引擎权威逐项口径（佣金+经手+证管+过户+印花税分列）",
+        Decimal("102.00"): "行业「含规费全佣」报价口径",
+    }
+
+    #: 实测值与最近基准的绝对误差容差（元）——与 threshold_desc 声明逐字一致。
+    GOLDEN_FEE_ABS_TOLERANCE = Decimal("0.05")
+
+    @staticmethod
+    def _parse_finite_decimal(value: Any) -> Decimal | None:
+        """把任意输入**安全**解析为有限 ``Decimal``；不可解析或非有限 ⇒ 返回 ``None``。
+
+        ⛔ 兜底（QA §R5 登记）：字符串/布尔/列表/字典等非法类型、``NaN``/``±inf`` 一律返回
+        ``None``，**绝不抛 ``decimal.InvalidOperation``**（由调用方据此判非 PASS）。
+        """
+        if isinstance(value, bool):        # bool 为 int 子类，但 str(True)=="True" 不可解析
+            return None
+        try:
+            dec = Decimal(str(value))
+        except (InvalidOperation, ValueError, TypeError):
+            return None
+        if not dec.is_finite():
+            return None
+        return dec
+
     def evaluate(self, context: Any = None) -> GateResult:
         """context 包含:
-        - roundtrip_total_fee: Decimal | float
-        - expected_fee: Decimal | float (可选，默认 103.22 或 114.20)
+        - roundtrip_total_fee: Decimal | float | str（**必需**；缺失/非法 ⇒ 非 PASS，⛔ 不得自证）
+        - expected_fee: Decimal | float | str（**可选**；一旦显式提供即作为唯一基准，覆盖内置基准）
         """
         if not context:
             return GateResult(
@@ -276,20 +323,80 @@ class GoldenRoundtripGate(BaseGate):
                 evidence=self.evidence,
             )
 
-        val = Decimal(str(rt_fee))
-        expected = Decimal(str(context.get("expected_fee", "103.22") if isinstance(context, dict) else getattr(context, "expected_fee", "103.22")))
-        diff = abs(val - expected)
-
-        # 允许在 100 ~ 116 元合理真实区间（取决于经手/证管是否拆出与券商最低佣金策略）
-        if val < Decimal("95.0") or val > Decimal("125.0"):
+        # ⛔ 兜底：实测值非法类型 / 非有限值（NaN/±inf）⇒ 被检值损坏、无法与基准求差 ⇒ FAIL。
+        #   （`roundtrip_total_fee` 是**被检对象**——引擎产出，其损坏即缺陷，方向取 FAIL。）
+        val = self._parse_finite_decimal(rt_fee)
+        if val is None:
             return GateResult(
                 gate_id=self.gate_id,
                 name=self.name,
                 category=self.category,
                 status=GateStatus.FAIL,
                 severity=self.severity,
-                message=f"10 万元往返费用为 {val} 元，严重偏离 A 股真实费率物理区间 (95~125 元)！",
-                metrics={"actual_fee": str(val), "expected_fee": str(expected), "diff": str(diff)},
+                message=f"10 万元往返实测费用非法（{rt_fee!r}，非有限数值），无法与黄金基准比对！",
+                metrics={"actual_fee": str(rt_fee), "parseable_finite": False},
+                threshold=self.threshold_desc,
+                evidence=self.evidence,
+            )
+
+        # 显式基准覆盖：`expected_fee` 一旦显式提供，即作为**唯一**基准（不再并列内置基准）。
+        expected_override = (
+            context.get("expected_fee", None) if isinstance(context, dict)
+            else getattr(context, "expected_fee", None)
+        )
+        if expected_override is not None:
+            # ⛔ 兜底：显式基准非法/非有限 ⇒ 外部参照无效 ⇒ INCONCLUSIVE（与"缺外部基准"同口径）。
+            #   （`expected_fee` 是**外部参照**——参照无效 = 无有效基准，方向取 INCONCLUSIVE。）
+            override_basis = self._parse_finite_decimal(expected_override)
+            if override_basis is None:
+                return GateResult(
+                    gate_id=self.gate_id,
+                    name=self.name,
+                    category=self.category,
+                    status=GateStatus.INCONCLUSIVE,
+                    severity=self.severity,
+                    message=(
+                        f"显式基准 expected_fee 非法（{expected_override!r}，非有限数值），"
+                        "无有效外部基准可判定（无效基准 ≠ 通过）"
+                    ),
+                    metrics={"expected_fee_raw": str(expected_override), "parseable_finite": False},
+                    threshold=self.threshold_desc,
+                    evidence=self.evidence,
+                )
+            bases: tuple[Decimal, ...] = (override_basis,)
+            labels: dict[Decimal, str] = {override_basis: "调用方显式指定基准（expected_fee）"}
+            override_used = True
+        else:
+            bases = self.GOLDEN_FEE_BASIS
+            labels = self.GOLDEN_FEE_BASIS_LABEL
+            override_used = False
+
+        # 与**最近**基准求绝对误差（多合法口径取最接近者，避免误杀合法核算口径）。
+        nearest = min(bases, key=lambda g: abs(val - g))
+        abs_diff = abs(val - nearest)
+        basis_label = labels.get(nearest, "自定义基准")
+        tol = self.GOLDEN_FEE_ABS_TOLERANCE
+        metrics = {
+            "actual_fee": str(val),
+            "nearest_basis": str(nearest),
+            "basis_label": basis_label,
+            "abs_diff": str(abs_diff),
+            "tolerance": str(tol),
+            "expected_override_used": override_used,
+        }
+
+        if abs_diff <= tol:
+            return GateResult(
+                gate_id=self.gate_id,
+                name=self.name,
+                category=self.category,
+                status=GateStatus.PASS,
+                severity=self.severity,
+                message=(
+                    f"10 万元往返黄金算例检验通过（实际费用 {val} 元，"
+                    f"最近基准 {nearest} 元〔{basis_label}〕，绝对误差 {abs_diff} 元 ≤ {tol} 元）"
+                ),
+                metrics=metrics,
                 threshold=self.threshold_desc,
                 evidence=self.evidence,
             )
@@ -298,10 +405,13 @@ class GoldenRoundtripGate(BaseGate):
             gate_id=self.gate_id,
             name=self.name,
             category=self.category,
-            status=GateStatus.PASS,
+            status=GateStatus.FAIL,
             severity=self.severity,
-            message=f"10 万元往返黄金算例检验通过 (实际费用 {val} 元，吻合 A 股散户真实成本物理模型)",
-            metrics={"actual_fee": str(val), "expected_fee": str(expected)},
+            message=(
+                f"10 万元往返费用为 {val} 元，与最近基准 {nearest} 元〔{basis_label}〕"
+                f"绝对误差 {abs_diff} 元，超出容许容差 {tol} 元（黄金算例基准不吻合）！"
+            ),
+            metrics=metrics,
             threshold=self.threshold_desc,
             evidence=self.evidence,
         )
