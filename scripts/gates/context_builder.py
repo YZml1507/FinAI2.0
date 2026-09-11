@@ -86,25 +86,54 @@ def _has_symbol_dirs(data_dir: Path) -> bool:
     return any(p.is_dir() and p.name.startswith(("sh.", "sz.")) for p in data_dir.iterdir())
 
 
-def _fixture_label(fixture_root: Path, repo_root: Path) -> str:
+def _find_fixture_manifest(data_root: Path) -> Path | None:
+    """定位 ``data_root`` 的 fixture 清单（清单在目录内或其父目录均可）。
+
+    两种落位：
+    * ``tests/fixtures/ci_min_data/fixture_manifest.json``（fixture **入库**位置，父目录）；
+    * ``data/dividend_stocks/fixture_manifest.json``（CI **物化**后随数据落盘，目录内，
+      物化步骤见 ``.github/workflows/ci.yml`` 的「Materialize CI minimal data sample」——
+      放目录内可避免污染 ``git status``）。
+    """
+    for candidate in (data_root / CI_FIXTURE_MANIFEST_NAME, data_root.parent / CI_FIXTURE_MANIFEST_NAME):
+        if candidate.exists():
+            return candidate
+    return None
+
+
+def is_ci_sample(data_root: Path) -> bool:
+    """``data_root`` 是否为 **CI 最小样本**（有 fixture 清单标记）。
+
+    用于把「CI 物化出的 30 只小样」与「本地 488 只全量真实数据」在取证来源上
+    **明确区分**（⛔ 不许把小样的判定结果当成全量数据的结论）。
+    """
+    return _find_fixture_manifest(data_root) is not None
+
+
+def _fixture_label(data_root: Path, repo_root: Path) -> str:
     """读取 fixture 清单，生成**自述式**取证来源标签（规模与合成成分必须可见）。"""
     try:
-        rel = "/".join(fixture_root.relative_to(repo_root).parts)
+        rel = "/".join(data_root.relative_to(repo_root).parts)
     except ValueError:                          # noqa: BLE001 —— 无法取相对路径则退回绝对路径
-        rel = str(fixture_root)
-    manifest_path = fixture_root.parent / CI_FIXTURE_MANIFEST_NAME
-    base = f"CI 最小 fixture {rel}"
-    if not manifest_path.exists():
-        return f"{base}（⛔ 缺清单 {CI_FIXTURE_MANIFEST_NAME}，规模不可自述）"
+        rel = str(data_root)
+    try:
+        data_root.relative_to(repo_root / "data")
+        base = "CI 小样"                        # 已物化进数据区（G-REF-1 能看到这些路径）
+    except ValueError:                          # noqa: BLE001
+        base = "CI 最小 fixture"                # 仍在 tests/fixtures 下（未物化）
+    label_root = f"{base} {rel}"
+    manifest_path = _find_fixture_manifest(data_root)
+    if manifest_path is None:
+        return f"{label_root}（⛔ 缺清单 {CI_FIXTURE_MANIFEST_NAME}，规模不可自述）"
     try:
         m = json.loads(manifest_path.read_text(encoding="utf-8"))
     except Exception:                           # noqa: BLE001
-        return f"{base}（⛔ 清单解析失败）"
+        return f"{label_root}（⛔ 清单解析失败）"
     syms = m.get("total_symbols")
     days = m.get("days_per_symbol")
     synth = (m.get("synthetic_suspension_days") or {}).get("count", 0)
     return (
-        f"{base}（抽样自真实数据 {syms} 只 × {days} 天"
+        f"{label_root}（{syms} 只标的 · 抽样自真实数据 {syms} 只 × {days} 天"
         f"；含合成停牌日 {synth} 天 —— 真实集 2015-2024 全池 tradestatus 均为 '1'，无停牌日可抽样）"
     )
 
@@ -121,6 +150,10 @@ def resolve_data_root(repo_root: Path) -> tuple[Path, str]:
     """
     real_dir = repo_root / "data" / "dividend_stocks"
     if _has_symbol_dirs(real_dir):
+        # CI 上 ``.github/workflows/ci.yml`` 的物化步骤会把最小样本复制到**这里**；
+        # 靠随数据落盘的 fixture 清单把它与本地全量真实数据区分开（⛔ 不得混为一谈）。
+        if is_ci_sample(real_dir):
+            return real_dir, _fixture_label(real_dir, repo_root)
         n = sum(1 for p in real_dir.iterdir() if p.is_dir() and p.name.startswith(("sh.", "sz.")))
         return real_dir, f"真实数据 data/dividend_stocks（{n} 只标的）"
 
@@ -153,10 +186,13 @@ def build_repo_context(repo_root: Path | str | None = None) -> tuple[dict[str, A
     data_root, data_source = resolve_data_root(root)
     ctx["data_snapshot_root"] = str(data_root)
     ctx["data_evidence_source"] = data_source
+    ctx["data_is_ci_sample"] = is_ci_sample(data_root)
     print(f"[数据取证] 门禁取证来源: {data_source}")
-    if data_root != root / "data" / "dividend_stocks":
-        # 非真实数据时**再重复一次**到 stdout：CI 日志里这条必须一眼可见，
+    if is_ci_sample(data_root):
+        # 小样时**再重复一次**到 stdout：CI 日志里这条必须一眼可见，
         # 防止"CI 绿了"被误读为"已校验全量真实数据质量"。
+        # （CI 上数据区是物化出的最小样本，路径为 data/dividend_stocks，故此判断
+        #  ⛔ 不能用"是否等于 data/dividend_stocks"，必须看是否有 fixture 清单标记。）
         print(
             "[数据取证] ⚠ 注意：本次数据类门禁（D-1~D-4 / G-1 data_hash）校验的是 "
             "**抽样小样**，⛔ 不等于校验全量真实数据质量。"

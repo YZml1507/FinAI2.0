@@ -210,3 +210,90 @@ def test_local_repo_prefers_real_data_when_present() -> None:
     data_root, label = resolve_data_root(REPO_ROOT)
     assert data_root == real
     assert "真实数据" in label
+    assert "CI 小样" not in label
+
+
+# ---------------------------------------------------------------------------
+# 4. CI 物化（追加项 (a)）：小样落进 data/ 后必须被识别为「CI 小样」
+# ---------------------------------------------------------------------------
+
+def _materialize_like_ci(tmp_path: Path) -> Path:
+    """模拟 ci.yml 的物化步骤：fixture → ``<root>/data/``（含清单随数据落盘）。"""
+    data_dir = tmp_path / "data" / "dividend_stocks"
+    data_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(FIXTURE_DATA_DIR, data_dir, dirs_exist_ok=True)
+    shutil.copy(MANIFEST_PATH, data_dir / MANIFEST_PATH.name)   # ci.yml 的显式标记
+    (tmp_path / "data" / "daily_bars").mkdir(parents=True, exist_ok=True)
+    shutil.copytree(FIXTURE_DIR / "daily_bars", tmp_path / "data" / "daily_bars", dirs_exist_ok=True)
+    return tmp_path
+
+
+def test_materialized_sample_is_flagged_as_ci_sample(tmp_path: Path) -> None:
+    """物化后 ``data/dividend_stocks`` 带清单 ⇒ 必须识别为 CI 小样（⛔ 不冒充全量真实数据）。"""
+    from scripts.gates.context_builder import is_ci_sample, resolve_data_root
+
+    root = _materialize_like_ci(tmp_path)
+    assert is_ci_sample(root / "data" / "dividend_stocks") is True
+    data_root, label = resolve_data_root(root)
+    assert data_root == root / "data" / "dividend_stocks"
+    assert "CI 小样" in label
+    assert "真实数据" not in label
+    assert "30 只标的" in label, f"取证来源必须自述规模（一眼看出是小样）: {label}"
+
+
+def test_real_data_without_manifest_is_not_flagged(tmp_path: Path) -> None:
+    """无清单标记的 ``data/dividend_stocks``（= 本地真实数据）⇒ 不得被误判为小样。"""
+    from scripts.gates.context_builder import is_ci_sample
+
+    data_dir = tmp_path / "data" / "dividend_stocks"
+    data_dir.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(FIXTURE_DATA_DIR, data_dir, dirs_exist_ok=True)   # 故意**不放**清单
+    assert is_ci_sample(data_dir) is False
+
+
+def test_materialized_paths_satisfy_g_ref_1(tmp_path: Path) -> None:
+    """G-REF-1 报的 3 处路径在物化后必须**真实存在**（该门禁直接查文件系统 exists()）。"""
+    root = _materialize_like_ci(tmp_path)
+    for rel in (
+        ("data", "dividend_stocks", "meta.json"),
+        ("data", "dividend_stocks", "sh.600000", "2024.parquet"),
+        ("data", "daily_bars", "sh.600000", "2024.parquet"),
+    ):
+        assert (root.joinpath(*rel)).exists(), f"物化后仍缺: {'/'.join(rel)}"
+
+
+def test_daily_bars_fixture_is_derived_from_real_sample() -> None:
+    """``daily_bars/`` 必须是**真实派生行**：15 列 / ≥120 天 / RAW / 与同源标的逐行一致。
+
+    ⛔ 回归目标：本地 ``data/daily_bars`` 只有 T105 **合成冒烟产物**
+    （5 行 / HFQ / 价格 10.0→12.2 等距常量），绝不可被搬进 fixture 冒充真实抽样。
+    """
+    pd = _require_pandas()
+    daily_dir = FIXTURE_DIR / "daily_bars"
+    assert daily_dir.exists(), "缺 daily_bars/（G-REF-1 引用 data/daily_bars/）"
+    expect_cols = [c for c in EXPECTED_COLUMNS if c not in ("dividend_yield", "market_cap")]
+    checked = 0
+    for sym in sorted(p for p in daily_dir.iterdir() if p.is_dir()):
+        parts = sorted(p for p in sym.glob("*.parquet") if p.stem.isdigit())
+        assert parts, f"daily_bars/{sym.name}: 无年份 parquet"
+        d = pd.read_parquet(parts[-1])
+        assert list(d.columns) == expect_cols, f"daily_bars/{sym.name}: 列结构漂移 -> {list(d.columns)}"
+        assert len(d) >= 120, f"daily_bars/{sym.name}: {len(d)} 天 < 120（疑似 5 行合成冒烟产物）"
+        assert set(d["adjust_mode"].astype(str).unique()) == {"RAW"}, "daily_bars 必须是 RAW 不复权"
+        src_parts = sorted(p for p in (FIXTURE_DATA_DIR / sym.name).glob("*.parquet") if p.stem.isdigit())
+        src = pd.read_parquet(src_parts[-1])
+        left = list(zip(d["date"].astype(str), d["close"].astype(float).round(6)))
+        right = list(zip(src["date"].astype(str), src["close"].astype(float).round(6)))
+        assert left == right, f"daily_bars/{sym.name}: 与 dividend_stocks 同源标的逐行不一致 ⇒ 非真实派生"
+        checked += 1
+    assert checked > 0
+
+
+def test_manifest_registers_daily_bars_provenance() -> None:
+    """清单必须登记 ``daily_bars`` 的**派生方式与禁用来路**（⛔ 不得静默混入合成数据）。"""
+    m = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+    db = m.get("daily_bars")
+    assert db, "清单缺 daily_bars 登记"
+    assert db["days_per_symbol"] >= 120
+    assert "dividend_yield" in db["derivation"] or "剥离" in db["derivation"]
+    assert "T105" in db["why_not_sampled_from_local"], "必须说明为何不从本地 data/daily_bars 抽样"

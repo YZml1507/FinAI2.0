@@ -85,6 +85,30 @@ EXPECTED_COLUMNS: tuple[str, ...] = (
     "dividend_yield", "market_cap",
 )
 
+#: ``data/daily_bars`` 的真实列（15 列）= 上面 17 列 - 这两列（dividend_stocks 特有）。
+DAILY_BARS_DROP_COLUMNS: tuple[str, ...] = ("dividend_yield", "market_cap")
+#: ``daily_bars`` 抽样标的只数。
+#:
+#: ⚠ 为什么只放 1 只：**没有任何门禁读取 ``data/daily_bars``**——它在 fixture 里的唯一用途
+#: 是让 G-REF-1 引用的 ``data/daily_bars/`` 路径在 CI 上真实存在（该门禁直接查文件系统
+#: ``exists()``，不看 ctx）。取最小即可。
+#: ⛔ 内容的来路必须干净：本地 ``data/daily_bars`` **只有 T105 冒烟产物**
+#: （1 只 / 5 行 / ``adjust_mode=HFQ`` / 价格 10.0→12.2 阶梯常量，是合成数据），
+#: ⛔ 不可当作"抽样自真实数据"的来源 ⇒ 此处由**同一真实日线样本**派生（剥离两列）。
+DAILY_BARS_SYMBOL_COUNT = 1
+
+
+def _clean_dir(path: Path) -> None:
+    """清空目录（含子目录）；不存在则无操作。"""
+    if not path.exists():
+        return
+    for child in sorted(path.iterdir(), reverse=True):
+        if child.is_dir():
+            _clean_dir(child)
+            child.rmdir()
+        else:
+            child.unlink()
+
 
 def _pick_symbols(real_dir: Path) -> list[str]:
     """按字典序挑选满足硬条件的 ``SYMBOL_COUNT`` 只标的（⛔ 不做质量筛选）。"""
@@ -146,16 +170,12 @@ def build(real_dir: Path = REAL_DATA_DIR) -> dict[str, Any]:
     if len(symbols) < SYMBOL_COUNT:
         raise SystemExit(f"⛔ 合格标的仅 {len(symbols)} 只 < {SYMBOL_COUNT}，无法生成 fixture。")
 
-    if FIXTURE_DATA_DIR.exists():
-        for child in sorted(FIXTURE_DATA_DIR.iterdir(), reverse=True):
-            if child.is_dir():
-                for f in child.iterdir():
-                    f.unlink()
-                child.rmdir()
-            else:
-                child.unlink()
+    _clean_dir(FIXTURE_DATA_DIR)
     FIXTURE_DATA_DIR.mkdir(parents=True, exist_ok=True)
     (FIXTURE_DATA_DIR / "exdiv").mkdir(parents=True, exist_ok=True)
+    daily_dir = FIXTURE_DIR / "daily_bars"
+    _clean_dir(daily_dir)
+    daily_dir.mkdir(parents=True, exist_ok=True)
 
     real_meta: dict[str, Any] = {}
     meta_path = real_dir / "meta.json"
@@ -191,6 +211,15 @@ def build(real_dir: Path = REAL_DATA_DIR) -> dict[str, Any]:
         if sidecar.exists():
             pd.read_parquet(sidecar).to_parquet(FIXTURE_DATA_DIR / "exdiv" / f"{sym}.parquet", index=False)
 
+        if sym in symbols[:DAILY_BARS_SYMBOL_COUNT]:
+            # 由**同一真实日线样本**派生：剥离 dividend_stocks 特有列 ⇒ 15 列 daily_bars 同构。
+            # ⛔ 不从本地 data/daily_bars 抽样：那里只有 T105 合成冒烟产物（5 行 / HFQ）。
+            daily_out = daily_dir / sym
+            daily_out.mkdir(parents=True, exist_ok=True)
+            df[[c for c in df.columns if c not in DAILY_BARS_DROP_COLUMNS]].to_parquet(
+                daily_out / f"{SOURCE_YEAR}.parquet", index=False
+            )
+
     injected_count = sum(len(v) for v in injected_detail.values())
     manifest: dict[str, Any] = {
         "fixture": True,
@@ -212,6 +241,19 @@ def build(real_dir: Path = REAL_DATA_DIR) -> dict[str, Any]:
         "symbols": symbols,
         "columns": list(EXPECTED_COLUMNS),
         "real_rows_only": True,
+        "daily_bars": {
+            "symbols": symbols[:DAILY_BARS_SYMBOL_COUNT],
+            "days_per_symbol": DAYS_PER_SYMBOL,
+            "columns": [c for c in EXPECTED_COLUMNS if c not in DAILY_BARS_DROP_COLUMNS],
+            "derivation": (
+                f"由同一真实日线样本剥离 {list(DAILY_BARS_DROP_COLUMNS)} 派生（15 列，与 data/daily_bars 同构）"
+            ),
+            "why_not_sampled_from_local": (
+                "本地 data/daily_bars 只有 T105 冒烟产物（1 只 / 5 行 / adjust_mode=HFQ / "
+                "价格 10.0→12.2 阶梯常量）——⛔ 是合成数据，不可冒充真实抽样"
+            ),
+            "purpose": "仅用于让 G-REF-1 引用的 data/daily_bars/ 路径在 CI 上真实存在；无任何门禁读取它",
+        },
         "synthetic_suspension_days": {
             "count": injected_count,
             "symbols": suspension_symbols,
@@ -257,6 +299,10 @@ def build(real_dir: Path = REAL_DATA_DIR) -> dict[str, Any]:
 def _write_provenance_md(manifest: dict[str, Any]) -> None:
     """写出人类可读的出处说明（⛔ 合成成分必须写在最显眼处）。"""
     susp = manifest["synthetic_suspension_days"]
+    db = manifest["daily_bars"]
+    db_n = len(db["symbols"])
+    db_days = db["days_per_symbol"]
+    db_drop = ", ".join(DAILY_BARS_DROP_COLUMNS)
     text = f"""# CI 最小数据 fixture（tests/fixtures/ci_min_data）
 
 ## 它是什么
@@ -279,6 +325,17 @@ G-1 的 `data_hash` 取不到 ⇒ CI 永久红。**红的是"没数据"，不是
 | 每标的交易日 | {manifest['days_per_symbol']}（真实行原样拷贝，未改数值） |
 | 列结构 | 与真实 parquet **逐列一致**（17 列，含 `market_cap`/`dividend_yield`/`tradestatus`） |
 | 除权 sidecar | `exdiv/<symbol>.parquet` 原样拷贝 |
+| `daily_bars/` | {db_n} 只 × {db_days} 天，由**同一真实日线样本**剥离 `{db_drop}` 派生（15 列，与 `data/daily_bars` 同构） |
+
+### 为什么 `daily_bars/` 不从本地 `data/daily_bars` 抽样
+
+本地 `data/daily_bars` **只有 T105 冒烟产物**：1 只标的 / 5 行 / `adjust_mode=HFQ` /
+价格 10.0→12.2 阶梯常量 —— ⛔ **是合成数据**。若把它搬进 fixture，fixture 就会
+「一部分真实、一部分合成」，而 manifest 却写着"抽样自真实数据" ⇒ 自欺。
+故此处由**同一真实日线样本**派生。
+
+`daily_bars/` 的唯一用途：让 G-REF-1 引用的 `data/daily_bars/` 路径在 CI 上真实存在
+（该门禁直接查文件系统 `exists()`，不看 ctx）。**没有任何门禁读取它**，故取最小。
 
 ## ⛔ 合成成分（唯一非真实部分，必须可见）
 
@@ -336,10 +393,47 @@ def check() -> int:
             errors.append(f"{sym.name}: 无年份 parquet")
             continue
         df = pd.read_parquet(parts[-1])
-        if tuple(df.columns) != EXPECTED_COLUMNS:
+        if set(df.columns) != set(EXPECTED_COLUMNS):
             errors.append(f"{sym.name}: 列结构漂移 -> {list(df.columns)}")
         if len(df) < 120:
             errors.append(f"{sym.name}: {len(df)} 天 < 120")
+
+    # daily_bars（G-REF-1 引用该路径；⛔ 必须是真实派生行，不得是 T105 合成冒烟产物）
+    daily_dir = FIXTURE_DIR / "daily_bars"
+    if not daily_dir.exists():
+        errors.append("缺 daily_bars/（G-REF-1 引用 data/daily_bars/）")
+    else:
+        expect_cols = [c for c in EXPECTED_COLUMNS if c not in DAILY_BARS_DROP_COLUMNS]
+        for sym in sorted(p for p in daily_dir.iterdir() if p.is_dir()):
+            parts = sorted(p for p in sym.glob("*.parquet") if p.stem.isdigit())
+            if not parts:
+                errors.append(f"daily_bars/{sym.name}: 无年份 parquet")
+                continue
+            d = pd.read_parquet(parts[-1])
+            if list(d.columns) != expect_cols:
+                errors.append(f"daily_bars/{sym.name}: 列结构漂移 -> {list(d.columns)}")
+            if len(d) < 120:
+                errors.append(f"daily_bars/{sym.name}: {len(d)} 天 < 120（疑似 T105 5 行合成冒烟产物）")
+            if set(d["adjust_mode"].astype(str).unique()) != {"RAW"}:
+                errors.append(f"daily_bars/{sym.name}: adjust_mode 非 RAW -> {d['adjust_mode'].unique().tolist()}")
+            # ⛔ 反合成校验（精确，非启发式）：daily_bars 的 (date, close) 必须与
+            # dividend_stocks 同标的**逐行相同** —— 证明它是从同真实样本派生，
+            # ⛔ 不是 T105 那种 5 行等距常量的合成冒烟产物。
+            # （⛔ 不用"close 是否重复"做判据：低价股真实日线本就频繁重复收盘价。）
+            src_parts = sorted(
+                p for p in (FIXTURE_DATA_DIR / sym.name).glob("*.parquet") if p.stem.isdigit()
+            )
+            if not src_parts:
+                errors.append(f"daily_bars/{sym.name}: dividend_stocks 无同源标的，无法校验派生关系")
+                continue
+            src = pd.read_parquet(src_parts[-1])
+            left = list(zip(d["date"].astype(str), d["close"].astype(float).round(6)))
+            right = list(zip(src["date"].astype(str), src["close"].astype(float).round(6)))
+            if left != right:
+                errors.append(
+                    f"daily_bars/{sym.name}: (date, close) 与 dividend_stocks 同源标的不一致 "
+                    f"（{len(left)} vs {len(right)} 行）—— ⛔ 疑似非真实派生"
+                )
 
     # 用**门禁自己**的抽样逻辑 + 门禁本体做一次端到端自检
     if str(REPO_ROOT) not in sys.path:

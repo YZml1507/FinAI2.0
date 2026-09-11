@@ -20,6 +20,17 @@ G-1 的 `data_hash` 取不到 ⇒ CI 永久红。**红的是"没数据"，不是
 | 每标的交易日 | 130（真实行原样拷贝，未改数值） |
 | 列结构 | 与真实 parquet **逐列一致**（17 列，含 `market_cap`/`dividend_yield`/`tradestatus`） |
 | 除权 sidecar | `exdiv/<symbol>.parquet` 原样拷贝 |
+| `daily_bars/` | 1 只 × 130 天，由**同一真实日线样本**剥离 `dividend_yield, market_cap` 派生（15 列，与 `data/daily_bars` 同构） |
+
+### 为什么 `daily_bars/` 不从本地 `data/daily_bars` 抽样
+
+本地 `data/daily_bars` **只有 T105 冒烟产物**：1 只标的 / 5 行 / `adjust_mode=HFQ` /
+价格 10.0→12.2 阶梯常量 —— ⛔ **是合成数据**。若把它搬进 fixture，fixture 就会
+「一部分真实、一部分合成」，而 manifest 却写着"抽样自真实数据" ⇒ 自欺。
+故此处由**同一真实日线样本**派生。
+
+`daily_bars/` 的唯一用途：让 G-REF-1 引用的 `data/daily_bars/` 路径在 CI 上真实存在
+（该门禁直接查文件系统 `exists()`，不看 ctx）。**没有任何门禁读取它**，故取最小。
 
 ## ⛔ 合成成分（唯一非真实部分，必须可见）
 

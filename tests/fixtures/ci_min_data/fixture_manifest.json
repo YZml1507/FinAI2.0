@@ -2,7 +2,7 @@
   "fixture": true,
   "purpose": "CI 最小数据 fixture：data/** 被 .gitignore 排除，CI 无真实数据，供 D-1~D-4 与 G-1 data_hash 真检",
   "generated_by": "scripts/build_ci_fixture_data.py",
-  "generated_at": "2026-09-11T16:02:12.648104+00:00",
+  "generated_at": "2026-09-11T16:35:20.428661+00:00",
   "source_data_dir": "data/dividend_stocks",
   "source_collection_date": "2026-09-07T14:41:30.163266",
   "source_adjust_mode": "RAW",
@@ -95,6 +95,32 @@
     "market_cap"
   ],
   "real_rows_only": true,
+  "daily_bars": {
+    "symbols": [
+      "sh.600000"
+    ],
+    "days_per_symbol": 130,
+    "columns": [
+      "date",
+      "open",
+      "high",
+      "low",
+      "close",
+      "preclose",
+      "volume",
+      "amount",
+      "turn",
+      "pctChg",
+      "tradestatus",
+      "isST",
+      "code",
+      "source",
+      "adjust_mode"
+    ],
+    "derivation": "由同一真实日线样本剥离 ['dividend_yield', 'market_cap'] 派生（15 列，与 data/daily_bars 同构）",
+    "why_not_sampled_from_local": "本地 data/daily_bars 只有 T105 冒烟产物（1 只 / 5 行 / adjust_mode=HFQ / 价格 10.0→12.2 阶梯常量）——⛔ 是合成数据，不可冒充真实抽样",
+    "purpose": "仅用于让 G-REF-1 引用的 data/daily_bars/ 路径在 CI 上真实存在；无任何门禁读取它"
+  },
   "synthetic_suspension_days": {
     "count": 9,
     "symbols": [
