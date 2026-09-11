@@ -118,7 +118,42 @@ cd7738c fix(gates): 同步单测基线常量 876→914（M6 新增 38 测试致�
 ## 8. 下一步
 
 1. **待用户裁决**：D-4 SKIP 逃逸（`ci_policy` 对 SKIP 既不阻断也不告警）。
-2. 门禁债务（本轮范围）已清零 → 可启动 **M6 归因实验**（设计文档 `docs/audit/m6_attribution_design.md` 已就绪未执行）。
+2. 门禁债务（本轮范围）已清零、CI 已转绿 → 可启动 **M6 归因实验**（设计文档 `docs/audit/m6_attribution_design.md` 已就绪未执行）。
+
+---
+
+## 10. 补记：GitHub Actions 红灯（Run #13~#17）的修复
+
+> 与 §9 并列的第二个高价值事件：**门禁长期红会遮蔽后续步骤**，修好门禁后测试问题才浮出。
+
+### 10.1 现象与定位
+- 推送**是成功的**（远端 `532228b` = 本地 HEAD）；红的是 **GitHub Actions**。
+- 失败点 **step 8「`gate_master_audit --ci`」exit 1**；Run #9–#12 success，**#13（a8928b2）首次 failure**。
+  ⇒ `--ci` 参数在那批提交才引入（在 #12 上实测 `unrecognized arguments: --ci`），**#13 是历史上第一次真正执行新门禁策略的运行**。
+- **根因**：`data/**` 被 gitignore ⇒ **CI 上完全没有数据**（本地 490 个文件）。
+  **复现方法**（可复用）：`git clone` 一份到临时目录，克隆体天然无数据，精确等于 CI 文件集。
+- 6 项阻断同一根因：D-1~D-4 INCONCLUSIVE、G-1 `data_hash` 失效、G-REF-1 报 3 处路径不存在。
+
+### 10.2 处置（用户裁定：提交最小 fixture 让 CI 真检；不加豁免、不改判据、不改文档）
+1. `scripts/build_ci_fixture_data.py` —— 确定性生成 CI 最小数据样本（真实数据**逐行原样拷贝**：30 只 × 130 交易日）
+2. `tests/fixtures/ci_min_data/`（745 KB）入库
+3. `context_builder.resolve_data_root()` —— 真实数据优先、无数据回退 fixture、皆无则报「数据缺失」
+4. **`ci.yml` 新增「Materialize CI minimal data sample」步骤** —— ⚠ 这是 G-REF-1 转绿的**必要条件**（G-REF-1 直接查文件系统 `exists()`，不看 ctx）
+
+### 10.3 ⭐ 连撞三次「修好一处暴露下一处」
+| # | 暴露出的新问题 | 处置 |
+|---|---|---|
+| 1 | 物化后 Gate Check 4 转绿 ⇒ **pytest 步骤首次被执行**，暴露 2 条失败（要 ≥300 只 / 2015-2016 分区，而小样只有 30 只 × 2024） | ci.yml 复制 `fixture_manifest.json` 作**显式小样标记**；`_skip_if_no_data()` 增加小样守卫 ⇒ skip 并打印「非全量，⛔ 这不是通过」 |
+| 2 | 上述注释写出「数据区/子目录/清单名」**字面量** ⇒ ⭐ **G-REF-1 也会扫 `.yml`（不只 md）**，该路径仅 CI 物化后存在 ⇒ **本地 pre-push 被判幽灵引用并阻断推送** | 改用变量拼接（`DATA_AREA="data"` + `$DATA_AREA/...`），注释记录该坑 |
+| 3 | Windows CRLF 用例 `test_on_disk_artifact_matches_build_result` | CRLF 敏感性是**刻意设计**（docstring 明写「连 CRLF 改写也能检出」）；仓库内产物提交为 LF ⇒ ubuntu 不触发，实测确未触发 |
+
+### 10.4 结果
+**Run #18 = success**（物化 / Gate Check 1~5 / **pytest** 全绿），#13~#17 全 failure 的历史终结。
+
+### 10.5 两条必须记住的边界与教训
+- **唯一非真实成分**：合成停牌日 9 天。真实数据 **2015–2024 全池 `tradestatus` 恒为 `'1'`、0 个停牌日可抽样**；不含则 D-4 判 SKIP（CI 上等于没判）。已逐日登记并在三处可见。
+- ⛔ **CI 上的数据门禁校验的是抽样小样，不等于校验全量真实数据质量**；全量校验仍须在本地 `data/` 上跑同一条命令。
+- ⭐ **「门禁通过」≠「测试跑过」**：门禁长期红会**遮蔽**后续步骤（pytest 被 skip）。排查 CI 红时要想到——**后面可能还有几步从未被执行过**。
 
 ---
 
