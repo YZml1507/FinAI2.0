@@ -200,13 +200,22 @@ def test_resolve_data_root_reports_missing_when_both_absent(tmp_path: Path) -> N
 
 def test_local_repo_prefers_real_data_when_present() -> None:
     """本地仓库若有真实数据，取证来源必须是真实数据（回归守卫）。"""
-    from scripts.gates.context_builder import resolve_data_root
+    from scripts.gates.context_builder import is_ci_sample, resolve_data_root
 
     real = REPO_ROOT / "data" / "dividend_stocks"
     if not real.exists() or not any(
         p.is_dir() and p.name.startswith(("sh.", "sz.")) for p in real.iterdir()
     ):
         pytest.skip("本地无真实数据 data/dividend_stocks，跳过（CI 场景不适用本守卫）")
+    # ⚠ CI 物化出的「CI 小样」同样带 sh./sz. 目录 ⇒ 上面的守卫**挡不住它**，
+    #   但本用例语义是「有**全量**真实数据时必须优先用真实数据」，
+    #   在小样环境下该语义不适用 ⇒ 必须显式 skip，⛔ 不得让它伪装成通过。
+    #   （2026-09-12 实测：少了这一句，CI #21 的 pytest 步骤因此红。）
+    if is_ci_sample(real):
+        pytest.skip(
+            "数据区是 CI 最小数据样本（非全量真实数据）⇒ 本守卫不适用；"
+            "⛔ 这不是通过，全量校验须在本地 data/ 上运行"
+        )
     data_root, label = resolve_data_root(REPO_ROOT)
     assert data_root == real
     assert "真实数据" in label
