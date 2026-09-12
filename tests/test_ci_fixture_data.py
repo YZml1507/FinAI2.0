@@ -236,8 +236,8 @@ def test_materialized_sample_is_flagged_as_ci_sample(tmp_path: Path) -> None:
     assert is_ci_sample(root / "data" / "dividend_stocks") is True
     data_root, label = resolve_data_root(root)
     assert data_root == root / "data" / "dividend_stocks"
-    assert "CI 小样" in label
-    assert "真实数据" not in label
+    assert label.startswith("CI 小样"), f"⛔ 小样被标成了全量真实数据: {label}"
+    assert not label.startswith("真实数据"), f"⛔ 小样被标成了全量真实数据: {label}"
     assert "30 只标的" in label, f"取证来源必须自述规模（一眼看出是小样）: {label}"
 
 
