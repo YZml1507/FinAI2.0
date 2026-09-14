@@ -207,6 +207,9 @@ class DividendConfig:
     index_symbol: str = "sh.000300"                     # 沪深 300 作为市场基准
     rebalance_days: int = 20                            # 调仓频率（交易日）
     warmup_bars: int = 210                              # 冷启动期（≥200 + 缓冲）
+    timing_breach_buffer: Decimal = Decimal("0.01")     # MA200 破位缓冲带（1%）：收盘 < MA200×(1-1%) 才算有效破位
+    timing_breach_confirm_days: int = 2                 # 连续 N 日有效破位才确认清仓（抗震荡市假破位）
+    timing_rebuild_confirm_days: int = 1                # 已避险后站回 MA200 当日即解除（不对称：破位 2 日确认防假破，重建 1 日抓 V 型反转起点，证据见 2024-09-26 踏空诊断）
     portfolio: PortfolioConfig = field(default_factory=PortfolioConfig)
 
     def __post_init__(self) -> None:
@@ -243,6 +246,19 @@ class DividendConfig:
             raise ValueError(f"rebalance_days 须 >= 1: {self.rebalance_days}")
         if self.warmup_bars < 200:
             raise ValueError(f"warmup_bars 须 >= 200（MA200 最小需求）: {self.warmup_bars}")
+        # 择时确认期 / 缓冲带
+        if not isinstance(self.timing_breach_buffer, Decimal):
+            raise TypeError(f"timing_breach_buffer 须为 Decimal（⛔ 禁 float）: "
+                            f"{type(self.timing_breach_buffer).__name__}")
+        if self.timing_breach_buffer < _ZERO_ or self.timing_breach_buffer > Decimal("0.10"):
+            raise ValueError(f"timing_breach_buffer 须在 [0, 0.10] 范围内: "
+                             f"{self.timing_breach_buffer}")
+        for name in ("timing_breach_confirm_days", "timing_rebuild_confirm_days"):
+            v = getattr(self, name)
+            if not isinstance(v, int) or isinstance(v, bool):
+                raise TypeError(f"{name} 须为 int: {v!r}")
+            if v < 1:
+                raise ValueError(f"{name} 须 >= 1: {v}")
 
 
 @dataclass(frozen=True)
@@ -284,6 +300,10 @@ class DividendStrategy:
         self._last_rebalance_bar = -1
         self._ma200_buffer: deque[Decimal] = deque(maxlen=200)
         self._pending_ids: dict[str, int] = {}           # symbol → 已下单计数（幂等）
+        # MA200 择时状态机：缓冲带 + 双向确认期（抗震荡市假破位反复止损）
+        self._breach_streak = 0                          # 连续有效破位（收在缓冲带之下）天数
+        self._timing_avoid = False                       # True = 已确认破位、处于避险状态
+        self._rebuild_streak = 0                         # 避险中连续站回 MA200 天数
 
     # ------------------------------------------------------------------
     # 引擎契约
@@ -326,31 +346,59 @@ class DividendStrategy:
                 raise ValueError(f"指数 {cfg.index_symbol} 数据缺失（MA200 择时必需）")
             self._ma200_buffer.append(index_bar.close)
 
-        # ③ 非调仓日：保持现持仓
+        # ③ 每日 MA200 择时（缓冲带 + 双向确认期；信号日 T 下单、T+1 成交）
+        #    有效破位：收盘 < MA200 × (1 − 缓冲带)；连续 N 日有效破位才确认清仓。
+        #    避险期间：连续 M 日收盘 ≥ MA200 才解除避险、允许调仓重建（对称确认）。
+        #    缓冲带内（MA200×(1−buf) ≤ 收盘 < MA200）：维持现状，不清仓不重建。
+        if cfg.use_ma200_timing:
+            if len(self._ma200_buffer) < 200:
+                # MA200 未凑够 → 不交易（冷启动延长期）
+                return
+            ma200 = sum(self._ma200_buffer) / len(self._ma200_buffer)
+            breach_line = ma200 * (Decimal("1") - cfg.timing_breach_buffer)
+
+            if self._timing_avoid:
+                # 避险状态：等待站回 MA200 的对称确认
+                if index_bar.close >= ma200:
+                    self._rebuild_streak += 1
+                    if self._rebuild_streak >= cfg.timing_rebuild_confirm_days:
+                        self._timing_avoid = False
+                        self._rebuild_streak = 0
+                        self._breach_streak = 0
+                else:
+                    self._rebuild_streak = 0
+                # 无论是否解除避险，当日均不重建（解除后待下一调仓节拍）
+                if self._timing_avoid:
+                    return
+                return  # 解除避险当日也不立即建仓，等下一调仓节拍
+
+            # 正常持仓状态
+            if index_bar.close < breach_line:
+                self._breach_streak += 1
+                if self._breach_streak >= cfg.timing_breach_confirm_days:
+                    # 确认破位 → 空目标计划 ⇒ 现持仓全部清仓（plan 外持仓 SELL 全清）
+                    self._timing_avoid = True
+                    self._breach_streak = 0
+                    self._rebuild_streak = 0
+                    held_symbols = list(book.positions.keys()) if hasattr(book, "positions") else []
+                    current = {s: int(book.positions[s].volume) for s in held_symbols}
+                    report = diff_to_orders(current, {}, bars, cfg.portfolio)
+                    self._submit(broker, report.intents, day)
+                    return
+                # 确认期内：不清仓、不调仓（等待确认）
+                return
+            elif index_bar.close >= ma200:
+                # 站回 MA200 之上：破位序列中断，重置计数
+                self._breach_streak = 0
+            # else：缓冲带内（breach_line ≤ close < ma200）→ 保留破位计数，维持现状
+
+        # ④ 非调仓日：保持现持仓
         if self._bar_count - self._last_rebalance_bar < cfg.rebalance_days:
             return
 
-        # ④ 调仓日标记
+        # ⑤ 调仓日：标记 + 选股（启用择时时，能走到这里即未触发确认破位）
         self._last_rebalance_bar = self._bar_count
-
-        # ⑤ MA200 择时检查
-        signals: list[Signal] = []
-        if cfg.use_ma200_timing:
-            if len(self._ma200_buffer) >= 200:
-                ma200 = sum(self._ma200_buffer) / len(self._ma200_buffer)
-
-                # 指数 < MA200 → 空仓（不产信号 → 组合层全部清仓）
-                if index_bar.close < ma200:
-                    signals = []
-                else:
-                    # 指数 >= MA200 → 正常选股
-                    signals = self._select_stocks(bars, cfg)
-            else:
-                # MA200 未凑够 → 不交易（冷启动延长期）
-                return
-        else:
-            # 不使用择时 → 直接选股
-            signals = self._select_stocks(bars, cfg)
+        signals = self._select_stocks(bars, cfg)
 
         # ⑥ 组合计划（复用 portfolio.py 三段链，传入市值权重）
         scores = {s.symbol: s.score for s in signals}

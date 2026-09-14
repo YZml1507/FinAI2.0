@@ -148,9 +148,19 @@ def _compute_data_hash(data_path: Path) -> str | None:
 
 
 def _compute_index_below_ma200(
-    index_frame: "pd.DataFrame | None", cal_days: list[_date]
+    index_frame: "pd.DataFrame | None",
+    cal_days: list[_date],
+    breach_buffer: float = 0.01,
+    confirm_days: int = 2,
+    rebuild_confirm_days: int = 1,
 ) -> list[str]:
-    """指数收盘 < MA200 的交易日（ISO 字符串，限定 [start, end] 日历）。"""
+    """确认破位日集合（ISO 字符串，限定 [start, end] 日历）。
+
+    与 DividendStrategy 择时状态机同口径：先走双向确认状态机，确认破位点后，
+    仅把『有效破位日』（收盘 < MA200 × (1 - 缓冲带)）计入 S-2 检视集合；
+    缓冲带内观望日不计入，从口径上对齐『S-2 只盯真正深度破位的日子』。
+    不对称确认：破位 confirm_days=2 防假破，重建 rebuild_confirm_days=1 抓 V 型反转。
+    """
     if index_frame is None or index_frame.empty:
         return []
     closes = [float(c) for c in index_frame["close"].tolist()]
@@ -158,13 +168,63 @@ def _compute_index_below_ma200(
     allowed = set(cal_days)
     below: list[str] = []
     window = 200
+    streak = 0          # 连续有效破位天数（收盘 < MA200×(1-buffer)）
+    timing_avoid = False  # True = 已确认破位，处于避险状态
+    rebuild_streak = 0  # 避险中连续站回 MA200 天数
     for i, (d, c) in enumerate(zip(dates, closes)):
         if i < window - 1 or d is None or d not in allowed:
             continue
         ma = sum(closes[i - window + 1: i + 1]) / window
-        if c < ma:
-            below.append(d.isoformat())
+        breach_line = ma * (1.0 - breach_buffer)
+        if timing_avoid:
+            if c >= ma:
+                rebuild_streak += 1
+                if rebuild_streak >= rebuild_confirm_days:
+                    timing_avoid = False
+                    rebuild_streak = 0
+                    streak = 0
+            else:
+                rebuild_streak = 0
+            if timing_avoid:
+                below.append(d.isoformat())
+            continue
+        # 正常持仓状态
+        if c < breach_line:
+            streak += 1
+            if streak >= confirm_days:
+                timing_avoid = True
+                streak = 0
+                rebuild_streak = 0
+                below.append(d.isoformat())
+            # 确认期内（streak < confirm_days）：当日不计入破位集合
+        elif c >= ma:
+            streak = 0
+        # else：breach_line ≤ c < ma：缓冲带内，保留破位计数，维持现状
     return below
+
+
+def _compute_timing_grace_dates(below_dates: list[str], cal_days: list[_date]) -> list[str]:
+    """每个破位段首日起连续 2 个交易日（按真实交易日历），供 S-2 T+1 成交宽限豁免。
+
+    破位信号日 T 下单、最快 T+1 成交，段首日及其后 1 个交易日的盘中持仓
+    均属真实成交滞后（S-2 文档语义：跌破超过 1 个调仓日后才要求 ≤5%）。
+    段首日定义：前一交易日（按 cal_days 历）不在破位集合中，即该日为新一轮破位的起点。
+    """
+    below_set = set(below_dates)
+    cal_idx = {d.isoformat(): i for i, d in enumerate(cal_days)}
+    grace: list[str] = []
+    for dt in below_dates:
+        i = cal_idx.get(dt)
+        if i is None or i == 0:
+            continue
+        prev_trading = cal_days[i - 1].isoformat()
+        if prev_trading not in below_set:
+            # 段首日 → 宽限该日起连续 2 个交易日（在破位集合内才豁免）
+            grace.append(dt)
+            nxt = cal_days[i + 1].isoformat() if i + 1 < len(cal_days) else None
+            if nxt is not None and nxt in below_set:
+                grace.append(nxt)
+    return grace
 
 
 def _compute_daily_positions_ratio(result: Any, cal_days: list[_date]) -> dict[str, float]:
@@ -229,13 +289,15 @@ def _build_post_run_gate_context(
     }
     signed_record = sign_run_record(record)
 
+    below_dates = _compute_index_below_ma200(index_frame, cal_days)
     ctx: dict[str, Any] = {
         "run_record": signed_record,
         "git_commit": _git_head(),
         "data_hash": _compute_data_hash(data_path),
         "timestamp": record["timestamp"],
         "code_evidence": "scripts/run_dividend_backtest.py + backtest/metrics.py (T205 PerformanceReport)",
-        "index_below_ma200_dates": _compute_index_below_ma200(index_frame, cal_days),
+        "index_below_ma200_dates": below_dates,
+        "timing_grace_dates": _compute_timing_grace_dates(below_dates, cal_days),
         "daily_positions_ratio": _compute_daily_positions_ratio(result, cal_days),
         "must_fail_results": must_fail,
         "failed_cases": [k for k, v in must_fail.items() if not v],

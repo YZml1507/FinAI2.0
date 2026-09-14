@@ -349,6 +349,151 @@ def test_warmup_period_no_trading():
     assert len(broker.orders) == 0
 
 
+def test_ma200_breach_confirmation_requires_two_days():
+    """缓冲带 + 2 日确认：单日假破位/缓冲带内震荡不清仓，确认破位才清仓"""
+    cfg = DividendConfig(
+        min_dividend_yield=Decimal("0.03"),
+        use_ma200_timing=True,
+        index_symbol="sh.000300",
+        warmup_bars=210,
+        rebalance_days=10,
+    )
+    strategy = DividendStrategy(config=cfg)
+    strategy.watchlist = ["sh.600000", "sh.000300"]
+
+    # 预填 MA200 缓存（199 天，均值 100），留 1 个空位让策略当日加入第 200 个收盘价
+    for _ in range(199):
+        strategy._ma200_buffer.append(Decimal("100"))
+    strategy._bar_count = cfg.warmup_bars
+    strategy._last_rebalance_bar = strategy._bar_count  # 避免改造初期触发调仓
+
+    class _Pos:
+        volume = 100
+
+    book = MockBook(nav=Decimal("100000"))
+    book.positions = {"sh.600000": _Pos()}
+    broker = MockBroker()
+
+    day = date(2020, 1, 1)
+
+    def _bars(index_close: str) -> dict:
+        return {
+            "sh.000300": Bar(
+                date=day, symbol="sh.000300",
+                open=Decimal(index_close), high=Decimal(index_close), low=Decimal(index_close),
+                close=Decimal(index_close), preclose=Decimal(index_close),
+                volume=Decimal("1000000"), amount=Decimal("80000000"),
+            ),
+            "sh.600000": Bar(
+                date=day, symbol="sh.600000",
+                open=Decimal("10"), high=Decimal("10"), low=Decimal("10"),
+                close=Decimal("10"), preclose=Decimal("10"),
+                volume=Decimal("1000000"), amount=Decimal("100000000"),
+                dividend_yield=Decimal("0.05"), market_cap=Decimal("1000000000"),
+            ),
+        }
+
+    def _feed(close: str) -> None:
+        nonlocal day
+        day = day + timedelta(days=1)
+        strategy.on_bar(day, _bars(close), book, broker)
+
+    # D1：99.5 落在缓冲带内（breach_line=99.0）→ 不清仓、破位计数不增
+    _feed("99.5")
+    assert len(broker.orders) == 0
+    assert strategy._breach_streak == 0
+
+    # D2：98.5 有效破位第 1 日 → 未确认，不清仓
+    _feed("98.5")
+    assert len(broker.orders) == 0
+    assert strategy._breach_streak == 1
+
+    # D3：101 站回 MA200 → 破位序列中断，计数重置
+    _feed("101")
+    assert len(broker.orders) == 0
+    assert strategy._breach_streak == 0
+
+    # D4+D5：连续 2 日有效破位 → 确认清仓（提交 SELL 并进入避险状态）
+    _feed("98.5")
+    assert len(broker.orders) == 0
+    _feed("98.5")
+    assert len(broker.orders) == 1
+    assert broker.orders[0].side == OrderSide.SELL
+    assert strategy._timing_avoid is True
+
+    # D6：站回 1 日即解除避险（不对称确认），当日仍不下单（待下一调仓节拍）
+    _feed("101")
+    assert len(broker.orders) == 1
+    assert strategy._timing_avoid is False
+
+
+def test_ma200_rebuild_after_one_day_above():
+    """不对称重建：避险中站回 MA200 当日即解除，下一调仓节拍恢复选股建仓"""
+    cfg = DividendConfig(
+        min_dividend_yield=Decimal("0.03"),
+        use_ma200_timing=True,
+        index_symbol="sh.000300",
+        warmup_bars=210,
+        rebalance_days=1,  # 解除避险后下一交易日即可调仓，便于验证
+    )
+    strategy = DividendStrategy(config=cfg)
+    strategy.watchlist = ["sh.600000", "sh.000300"]
+
+    # 预填 199 天（均值 100），留 1 个空位给策略当日加入，保持 MA200≈100
+    for _ in range(199):
+        strategy._ma200_buffer.append(Decimal("100"))
+    strategy._bar_count = cfg.warmup_bars
+    strategy._last_rebalance_bar = strategy._bar_count  # 锚定调仓节拍
+
+    class _Pos:
+        volume = 100
+
+    book = MockBook(nav=Decimal("100000"))
+    book.positions = {"sh.600000": _Pos()}
+    broker = MockBroker()
+
+    day = date(2020, 1, 1)
+
+    def _bars(index_close: str) -> dict:
+        return {
+            "sh.000300": Bar(
+                date=day, symbol="sh.000300",
+                open=Decimal(index_close), high=Decimal(index_close), low=Decimal(index_close),
+                close=Decimal(index_close), preclose=Decimal(index_close),
+                volume=Decimal("1000000"), amount=Decimal("80000000"),
+            ),
+            "sh.600000": Bar(
+                date=day, symbol="sh.600000",
+                open=Decimal("10"), high=Decimal("10"), low=Decimal("10"),
+                close=Decimal("10"), preclose=Decimal("10"),
+                volume=Decimal("1000000"), amount=Decimal("100000000"),
+                dividend_yield=Decimal("0.05"), market_cap=Decimal("1000000000"),
+            ),
+        }
+
+    def _feed(close: str) -> None:
+        nonlocal day
+        day = day + timedelta(days=1)
+        strategy.on_bar(day, _bars(close), book, broker)
+
+    # 连续 2 日有效破位 → 确认清仓进入避险
+    _feed("98.5")
+    _feed("98.5")
+    assert len(broker.orders) == 1  # 清仓单
+    assert strategy._timing_avoid is True
+
+    # 站回 1 日即解除避险（不对称确认），当日仍不动（待下一调仓节拍）
+    _feed("101")
+    assert len(broker.orders) == 1
+    assert strategy._timing_avoid is False
+
+    # 下一 bar 为调仓节拍：恢复选股
+    book.positions = {}
+    _feed("101")
+    assert len(broker.orders) > 1
+    assert any(o.side == OrderSide.BUY for o in broker.orders[1:])
+
+
 # ==============================================================================
 # 调仓频率（2 例）
 # ==============================================================================
