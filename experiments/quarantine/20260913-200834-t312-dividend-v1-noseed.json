@@ -1,0 +1,155 @@
+{
+  "calendar_hash": "e2cd6b40731d62fe",
+  "code_hash": "d89fd84+dirty",
+  "code_version": "t312-dividend-v1",
+  "data_hash": "d2da9bfe5f2a1575",
+  "data_version": "dividend-stocks-2015-2024",
+  "error": null,
+  "gate_statuses": {
+    "A-1": {
+      "message": "七科目费用逐笔分厘平衡检验通过 (共校验 128 笔成交，差额严格为 0.00)",
+      "severity": "BLOCKER",
+      "status": "PASS"
+    },
+    "A-2": {
+      "message": "每日资产现金流守恒检验通过 (共对账 2431 个交易日，未解释差额 0.00)",
+      "severity": "BLOCKER",
+      "status": "PASS"
+    },
+    "A-4": {
+      "message": "历史分段费率时序穿透检验通过 (历史印花税率无穿越)",
+      "severity": "BLOCKER",
+      "status": "PASS"
+    },
+    "D-1": {
+      "message": "全部股票原始日线跳变率检验（487 个样本）：状态汇总 {'PASS': 487}；最严重[PASS] [sh.600000] 连续 2399 根日线跳变率正常 (最大跳变 16.4%)",
+      "severity": "BLOCKER",
+      "status": "PASS"
+    },
+    "D-3": {
+      "message": "[2024] PIT 动态股息率检验通过 (年内变异值种类: 428 种)",
+      "severity": "BLOCKER",
+      "status": "PASS"
+    },
+    "D-4": {
+      "message": "全部股票停牌日成交量检验（487 个样本）：状态汇总 {'SKIP': 487}；最严重[SKIP] 样本内 2399 根日线无任何停牌交易日（tradestatus != '1'），停牌日成交量检验不适用（有证据表明不适用）",
+      "severity": "BLOCKER",
+      "status": "SKIP"
+    },
+    "E-1": {
+      "message": "5 必挂极限用例全部检验通过 (通过率 100%)",
+      "severity": "BLOCKER",
+      "status": "PASS"
+    },
+    "E-3": {
+      "message": "有 128 笔成交但均未提供可校验的涨跌停价（limit_up/limit_down），无法判定滑点是否突破板价（证据不足 ≠ 通过）",
+      "severity": "BLOCKER",
+      "status": "INCONCLUSIVE"
+    },
+    "G-1": {
+      "message": "交付出处三件套完整性检验通过",
+      "severity": "BLOCKER",
+      "status": "PASS"
+    },
+    "G-3": {
+      "message": "母库只读区 FINDING- 守卫行数严格吻合 370 行铁律 (实际: 370 行)",
+      "severity": "BLOCKER",
+      "status": "PASS"
+    },
+    "G-4": {
+      "message": "签名与出处三件套检验全部通过 (Signature: 70e1f2159bd727f2...)",
+      "severity": "BLOCKER",
+      "status": "PASS"
+    },
+    "G-MDD-1": {
+      "message": "检出 1 份产物最大回撤超限：<inline> MDD=0.4308 > 0.35 （43.08%，往返 78 笔）",
+      "severity": "BLOCKER",
+      "status": "FAIL"
+    },
+    "L-1": {
+      "message": "前置特性配置存活检验通过 (已启用: ['DIVIDEND_TAX'])",
+      "severity": "BLOCKER",
+      "status": "PASS"
+    },
+    "S-1": {
+      "message": "换手率硬顶检验通过 (年化单边换手率 201.1% <= 400%)",
+      "severity": "BLOCKER",
+      "status": "PASS"
+    },
+    "S-2": {
+      "message": "检出 104 个基准破 MA200 交易日策略未空仓避险，存在熊市死扛重大违规！",
+      "severity": "BLOCKER",
+      "status": "FAIL"
+    },
+    "S-3": {
+      "message": "滑点 +50% 压力测试失败：压力情景收益率 -46.82% <= 0，不满足'扰动后年化收益率仍必须保持为正 (> 0)'的阈值",
+      "severity": "CRITICAL",
+      "status": "FAIL"
+    },
+    "S-5": {
+      "message": "收益归因证据链与费率真实性检验通过",
+      "severity": "BLOCKER",
+      "status": "PASS"
+    }
+  },
+  "metrics": {
+    "annual_turnover": "2.011435",
+    "annual_volatility": "0.131806",
+    "cagr": "-0.031979",
+    "calendar_days": 3648,
+    "end": "2024-12-31",
+    "fees_sum": "9738.26",
+    "fees_total": {
+      "COMMISSION": "1556.18",
+      "DIVIDEND_TAX": "5043.75",
+      "HANDLING_FEE": "270.97",
+      "MANAGEMENT_FEE": "114.56",
+      "SLIPPAGE": "0",
+      "STAMP_TAX": "2651.94",
+      "TRANSFER_FEE": "100.86"
+    },
+    "final_nav": "108421.14",
+    "initial_nav": "150000",
+    "max_dd_peak": "2018-01-29",
+    "max_dd_recovery": null,
+    "max_dd_trough": "2024-10-11",
+    "max_drawdown": "0.4307653722557783501291325324",
+    "risk_free_annual": "0.025",
+    "round_trips": 78,
+    "sharpe_ratio": "-0.379071",
+    "start": "2015-01-05",
+    "total_return": "-0.2771924",
+    "trading_days": 2431,
+    "win_rate": "0.282051"
+  },
+  "params": {
+    "candidate_pool_size": 50,
+    "default_positions": 5,
+    "index_symbol": "sh.000300",
+    "max_positions": 8,
+    "min_dividend_yield": "0.03",
+    "min_positions": 5,
+    "portfolio": {
+      "hard_limit": 10,
+      "lot_size": 100,
+      "max_participation_rate": "0.05",
+      "max_positions": 8,
+      "max_price": "300",
+      "min_daily_amount": "50000000",
+      "min_position_value": "20000",
+      "min_positions": 3,
+      "target_count": 5
+    },
+    "rebalance_days": 20,
+    "use_ma200_timing": true,
+    "warmup_bars": 210
+  },
+  "params_hash": "f54c298d5168eac5",
+  "repro_fingerprint": "d92e38c0058e8cb458e680fdaf72e064",
+  "run_id": "20260913-200834-t312-dividend-v1-noseed",
+  "schema_version": 2,
+  "seed": null,
+  "status": "FINISHED",
+  "timestamp": "2026-09-13T20:08:34+08:00",
+  "universe_hash": "ac50e9da4fdf2942"
+}

@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+from datetime import date as _date, timedelta as _timedelta
 from decimal import Decimal
 from typing import Any, Sequence
 
@@ -171,9 +172,16 @@ class TimingExitSurvivalGate(BaseGate):
                 evidence=self.evidence,
             )
 
+        # T+1 成交宽限：破位信号日 T 下单、最快 T+1 成交，故每个**破位段首日**
+        # 的盘中持仓属真实成交滞后而非死扛。段首日认定依赖完整交易日历（跨周末/长假
+        # 判邻接），由产出侧（run 脚本）按日历计算后经 ``timing_grace_dates`` 传入；
+        # 缺省时不再豁免（fail-closed，不误放）。
+        grace_raw = context.get("timing_grace_dates", []) if isinstance(context, dict) else getattr(context, "timing_grace_dates", [])
+        grace_set = set(grace_raw) if grace_raw else set()
+        violations = []
         for dt in below_dates:
             ratio = pos_ratios.get(dt, 0.0)
-            if ratio > 0.05:  # 持仓大于 5% 视为未空仓避险
+            if ratio > 0.05 and dt not in grace_set:  # 持仓大于 5% 且超出宽限日 ⇒ 违规
                 violations.append({
                     "date": dt,
                     "position_ratio": round(ratio * 100, 2),
