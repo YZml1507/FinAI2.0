@@ -33,12 +33,61 @@ verify_repo() {
   echo "文档门禁: $g"
 }
 
+DIAG_STATE="$LOGDIR/reported_diag.txt"
+touch "$DIAG_STATE"
+
+report_diag() {
+  # 诊断类任务完成汇报（诊断不写榜单，靠 DIAGNOSIS_REPORT.md 标志发现）
+  local f="$1" rel="$2" dir tag stats_f metrics verify hermes_out
+  dir=$(dirname "$rel")
+  tag=$(basename "$dir")
+  stats_f="${f%DIAGNOSIS_REPORT.md}DIAGNOSIS_STATS.json"
+  echo "$(ts) 检测到诊断完成: $dir，开始验证流程" >> "$LOG"
+  metrics=$(.venv/bin/python -c "
+import json
+d = json.load(open('$stats_f'))
+m = d.get('metrics', {})
+s = d.get('stats', {})
+print('指标: ' + ' '.join(f'{k}={v}' for k, v in m.items()))
+print('档位天数: ' + str(s.get('zone_days')))
+print('Q1 警戒区持仓>=3 天数: %s/%s' % (s.get('q1_mid_holding_ge3_days'), s.get('q1_mid_total_days')))
+print('Q2 冰点确认期回撤事件: %s' % s.get('q2_ice_pending_dd_events'))
+" 2>/dev/null)
+  verify=$(verify_repo)
+  echo "$(ts) 诊断验证结果: $verify" >> "$LOG"
+  hermes_out=$(timeout "$HERMES_TIMEOUT" sudo hermes -z "$(printf '你是 FinAI2.0 监工，禁止编造数字，只能照抄。请把以下诊断结果按模板整理成一条飞书汇报（不要多余的话）：\n模板: [FinAI2.0 诊断完成] <诊断名> / <指标行> / <验证行> / 轨迹: experiments/lab/<诊断目录>/\n诊断名: %s\n%s\n%s' "$tag" "$metrics" "$verify")" --safe-mode 2>/dev/null)
+  if [ -n "$hermes_out" ] && ! printf '%s' "$hermes_out" | grep -qiE 'error|sorry|无法'; then
+    send_feishu "$hermes_out"
+    echo "$(ts) $dir 诊断汇报已签发（Hermes 拟稿）" >> "$LOG"
+  else
+    send_feishu "[FinAI2.0 诊断完成] $tag
+$metrics
+$verify
+轨迹: experiments/lab/$dir/
+（本条由监工脚本降级直发，AI 复核未通过）"
+    echo "$(ts) $dir 诊断汇报已签发（降级直发）" >> "$LOG"
+  fi
+}
+
+check_diag() {
+  # 扫描诊断产物标志（深度 3：experiments/lab/<诊断名>/<tag>/DIAGNOSIS_REPORT.md）
+  local f rel
+  find experiments/lab -maxdepth 3 -name 'DIAGNOSIS_REPORT.md' 2>/dev/null | while read -r f; do
+    rel="${f#experiments/lab/}"
+    if ! grep -qxF "$rel" "$DIAG_STATE" 2>/dev/null; then
+      echo "$rel" >> "$DIAG_STATE"
+      report_diag "$f" "$rel"
+    fi
+  done
+}
+
 last_count=0
 [ -f "$BOARD" ] && last_count=$(wc -l < "$BOARD")
 echo "$(ts) supervisor 启动，初始榜单行数=$last_count" >> "$LOG"
 
 while true; do
   sleep "$INTERVAL"
+  check_diag
   count=0
   [ -f "$BOARD" ] && count=$(wc -l < "$BOARD")
   [ "$count" -le "$last_count" ] && continue

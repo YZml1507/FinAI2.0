@@ -87,16 +87,28 @@ class TurnoverCeilingGate(BaseGate):
 
 
 class TimingExitSurvivalGate(BaseGate):
-    """S-2: 沪深 300 破 MA200 择时空仓生存检验（纯多头避险生命线）"""
+    """S-2: 择时空仓生存检验（纯多头避险生命线）
+
+    双口径支持（向后兼容）：
+      - 宽度口径（方案 D，优先）：context 含 ``use_breadth_timing=True`` 与
+        ``breadth_series`` 时，按『市场宽度 < 防守线（默认 0.20）的冰点日期』判定；
+      - MA200 口径（旧基线）：按『基准指数跌破 MA200 的日期』判定。
+    """
     gate_id = "S-2"
-    name = "破 MA200 择时空仓生存检验"
+    name = "择时空仓生存检验"
     category = GateCategory.S_GATE
     severity = GateSeverity.BLOCKER
-    evidence = "17 号报告 §3.3 + §4.5: 散户无做空与对冲工具，防深幅回撤唯一有效方式为大盘破 MA200 空仓避险"
-    threshold_desc = "当基准指数跌破 MA200 超过 1 个调仓日后，策略持仓比例必须 <= 5%"
+    evidence = "17 号报告 §3.3 + §4.5（MA200 口径）；19/22 号报告（宽度口径：宽度<20% 冰点普跌须空仓避险）"
+    threshold_desc = "避险区间（宽度<防守线 或 指数破MA200）超过宽限期后，策略持仓比例必须 <= 5%"
 
     def evaluate(self, context: Any = None) -> GateResult:
-        """context 包含:
+        """context 包含（两口径二选一，宽度优先）:
+        宽度口径（方案 D）:
+        - use_breadth_timing: bool 且为 True
+        - breadth_series: dict[str, float|Decimal] 日期 -> 市场宽度值
+        - breadth_defense_threshold: float|Decimal 防守线（缺省 0.20）
+        - daily_positions_ratio: dict[str, float] 日期 -> 策略持仓比例 (0.0 ~ 1.0)
+        MA200 口径（旧基线）:
         - index_below_ma200_dates: list[str] 指数处于 MA200 下方的日期
         - daily_positions_ratio: dict[str, float] 日期 -> 策略持仓比例 (0.0 ~ 1.0)
         """
@@ -112,51 +124,83 @@ class TimingExitSurvivalGate(BaseGate):
                 evidence=self.evidence,
             )
 
-        below_dates = context.get("index_below_ma200_dates", []) if isinstance(context, dict) else getattr(context, "index_below_ma200_dates", [])
-        pos_ratios = context.get("daily_positions_ratio", {}) if isinstance(context, dict) else getattr(context, "daily_positions_ratio", {})
+        def _get(key, default=None):
+            return context.get(key, default) if isinstance(context, dict) else getattr(context, key, default)
+
+        pos_ratios = _get("daily_positions_ratio", {})
+
+        # ---- 口径判定：宽度优先，其次 MA200 ----
+        use_breadth = bool(_get("use_breadth_timing", False))
+        breadth_series = _get("breadth_series") if use_breadth else None
+        criterion = "ma200"  # 默认旧口径
+        if use_breadth:
+            if breadth_series:
+                thr = _get("breadth_defense_threshold", 0.20)
+                thr_f = float(thr)
+                below_dates = sorted(d for d, b in breadth_series.items() if float(b) < thr_f)
+                criterion = "breadth"
+            else:
+                # 宽度模式开启但缺宽度数据 ⇒ Fail-Closed，不得退回 MA200 口径
+                return GateResult(
+                    gate_id=self.gate_id,
+                    name=self.name,
+                    category=self.category,
+                    status=GateStatus.INCONCLUSIVE,
+                    severity=self.severity,
+                    message="宽度择时模式已开启，但缺少市场宽度序列（breadth_series），无法判定冰点避险（无证据 ≠ 通过）",
+                    threshold=self.threshold_desc,
+                    evidence=self.evidence,
+                )
+        else:
+            below_dates = _get("index_below_ma200_dates", [])
 
         # ⛔ Fail-Closed：数据缺失 ≠ 通过。缺证据 ⇒ INCONCLUSIVE；有证据表明不适用 ⇒ SKIP。
-        have_below = isinstance(context, dict) and "index_below_ma200_dates" in context
-        if not have_below:
-            return GateResult(
-                gate_id=self.gate_id,
-                name=self.name,
-                category=self.category,
-                status=GateStatus.INCONCLUSIVE,
-                severity=self.severity,
-                message="缺少破 MA200 日期证据（index_below_ma200_dates），无法判定择时空仓生存（无证据 ≠ 通过）",
-                threshold=self.threshold_desc,
-                evidence=self.evidence,
-            )
+        if criterion == "ma200":
+            have_below = isinstance(context, dict) and "index_below_ma200_dates" in context
+            if not have_below:
+                return GateResult(
+                    gate_id=self.gate_id,
+                    name=self.name,
+                    category=self.category,
+                    status=GateStatus.INCONCLUSIVE,
+                    severity=self.severity,
+                    message="缺少破 MA200 日期证据（index_below_ma200_dates），无法判定择时空仓生存（无证据 ≠ 通过）",
+                    threshold=self.threshold_desc,
+                    evidence=self.evidence,
+                )
         if not below_dates:
+            msg = ("回测区间内市场宽度未跌入冰点防守线（有证据表明该门禁不适用）"
+                   if criterion == "breadth"
+                   else "回测区间内基准指数未跌破 MA200（有证据表明该门禁不适用）")
             return GateResult(
                 gate_id=self.gate_id,
                 name=self.name,
                 category=self.category,
                 status=GateStatus.SKIP,
                 severity=self.severity,
-                message="回测区间内基准指数未跌破 MA200（有证据表明该门禁不适用）",
+                message=msg,
                 threshold=self.threshold_desc,
                 evidence=self.evidence,
             )
         if not pos_ratios:
+            seg = "宽度冰点" if criterion == "breadth" else "破 MA200"
             return GateResult(
                 gate_id=self.gate_id,
                 name=self.name,
                 category=self.category,
                 status=GateStatus.INCONCLUSIVE,
                 severity=self.severity,
-                message="存在破 MA200 交易日，但缺少逐日仓位比例数据，无法判定是否已空仓避险（证据不足 ≠ 通过）",
-                metrics={"below_dates_count": len(below_dates)},
+                message=f"存在{seg}交易日，但缺少逐日仓位比例数据，无法判定是否已空仓避险（证据不足 ≠ 通过）",
+                metrics={"below_dates_count": len(below_dates), "criterion": criterion},
                 threshold=self.threshold_desc,
                 evidence=self.evidence,
             )
 
-        violations = []
-        # ⛔ Fail-Closed：破 MA200 交易日必须**逐日**提供仓位比例；缺失日不得被默认 0.0
+        # ⛔ Fail-Closed：避险交易日必须**逐日**提供仓位比例；缺失日不得被默认 0.0
         # 顶替成"已空仓避险"（否则缺证据即 PASS，正是假通过）。
         missing_dates = [dt for dt in below_dates if dt not in pos_ratios]
         if missing_dates:
+            seg = "宽度冰点" if criterion == "breadth" else "破 MA200"
             return GateResult(
                 gate_id=self.gate_id,
                 name=self.name,
@@ -164,19 +208,20 @@ class TimingExitSurvivalGate(BaseGate):
                 status=GateStatus.INCONCLUSIVE,
                 severity=self.severity,
                 message=(
-                    f"存在 {len(missing_dates)} 个破 MA200 交易日缺少逐日仓位比例"
+                    f"存在 {len(missing_dates)} 个{seg}交易日缺少逐日仓位比例"
                     f"（如 {missing_dates[:3]}），无法判定是否已空仓避险（证据不足 ≠ 通过）"
                 ),
-                metrics={"below_dates_count": len(below_dates), "missing_ratio_dates": len(missing_dates)},
+                metrics={"below_dates_count": len(below_dates), "missing_ratio_dates": len(missing_dates),
+                         "criterion": criterion},
                 threshold=self.threshold_desc,
                 evidence=self.evidence,
             )
 
-        # T+1 成交宽限：破位信号日 T 下单、最快 T+1 成交，故每个**破位段首日**
+        # T+1 成交宽限：避险信号日 T 下单、最快 T+1 成交，故每个**避险段首日**
         # 的盘中持仓属真实成交滞后而非死扛。段首日认定依赖完整交易日历（跨周末/长假
         # 判邻接），由产出侧（run 脚本）按日历计算后经 ``timing_grace_dates`` 传入；
         # 缺省时不再豁免（fail-closed，不误放）。
-        grace_raw = context.get("timing_grace_dates", []) if isinstance(context, dict) else getattr(context, "timing_grace_dates", [])
+        grace_raw = _get("timing_grace_dates", [])
         grace_set = set(grace_raw) if grace_raw else set()
         violations = []
         for dt in below_dates:
@@ -188,26 +233,31 @@ class TimingExitSurvivalGate(BaseGate):
                 })
 
         if violations:
+            seg = "宽度冰点" if criterion == "breadth" else "基准破 MA200"
             return GateResult(
                 gate_id=self.gate_id,
                 name=self.name,
                 category=self.category,
                 status=GateStatus.FAIL,
                 severity=self.severity,
-                message=f"检出 {len(violations)} 个基准破 MA200 交易日策略未空仓避险，存在熊市死扛重大违规！",
-                metrics={"violations_count": len(violations), "samples": violations[:3]},
+                message=f"检出 {len(violations)} 个{seg}交易日策略未空仓避险，存在熊市死扛重大违规！",
+                metrics={"violations_count": len(violations), "samples": violations[:3],
+                         "criterion": criterion},
                 threshold=self.threshold_desc,
                 evidence=self.evidence,
             )
 
+        msg = ("宽度冰点择时空仓生存检验通过 (宽度<防守线区间持仓比例严格 <= 5%)"
+               if criterion == "breadth"
+               else "破 MA200 择时空仓生存检验通过 (熊市破位区间持仓比例严格 <= 5%)")
         return GateResult(
             gate_id=self.gate_id,
             name=self.name,
             category=self.category,
             status=GateStatus.PASS,
             severity=self.severity,
-            message="破 MA200 择时空仓生存检验通过 (熊市破位区间持仓比例严格 <= 5%)",
-            metrics={"below_dates_count": len(below_dates)},
+            message=msg,
+            metrics={"below_dates_count": len(below_dates), "criterion": criterion},
             threshold=self.threshold_desc,
             evidence=self.evidence,
         )

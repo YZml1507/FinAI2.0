@@ -42,7 +42,7 @@ _REPO_ROOT = Path(__file__).resolve().parents[1]
 
 #: 权威回测产物（T312 10 年全周期，带 anti_tamper_signature 的唯一事实源）。
 _AUTHORITATIVE_RUN = (
-    _REPO_ROOT / "experiments" / "runs" / "20260907-150402-t312-dividend-v1-noseed.json"
+    _REPO_ROOT / "experiments" / "runs" / "20260914-182726-t312-dividend-v1-noseed.json"
 )
 
 

@@ -56,3 +56,7 @@ Desktop.ini
 
 # Logs
 *.log
+
+# 实验产物本地隔离（大体积/可再生，不入 git；榜单 leaderboard.jsonl 与 runs/ 权威产物除外）
+experiments/lab/*/
+experiments/universe/

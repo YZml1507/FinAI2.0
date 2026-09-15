@@ -325,12 +325,16 @@ def _git_head() -> str:
 
 
 def _git_code_hash() -> str | None:
-    """代码内容指纹：``git rev-parse --short HEAD`` + 工作树脏则 ``+dirty``（M2/PM-1）。
+    """代码内容指纹：``git rev-parse --short HEAD``，工作树脏则并入 dirty 文件内容摘要。
 
     ⛔ 取代常量 ``"t312-dividend-v1"``：只要代码内容（含未提交工作树）变化，指纹即变化。
+    加固（P4）：工作树脏时不再只打 ``+dirty`` 标记（不同 dirty 内容会同指纹），
+    而是把所有 dirty 文件的『路径 + 内容 sha256』汇入摘要，拼为 ``+dirty-<12位摘要>``，
+    使 dirty 内容不同 ⇒ 指纹不同（内容寻址真正生效）。
     离线/无 git 时返回 ``None``（显式缺失，⛔ 不静默兜底——registry 会据此将
     ``repro_fingerprint`` 标为不可复现）。
     """
+    import hashlib
     import subprocess
     try:
         head = subprocess.run(
@@ -339,11 +343,26 @@ def _git_code_hash() -> str | None:
         ).stdout.strip()
         if not head:
             return None
-        dirty = subprocess.run(
+        status = subprocess.run(
             ["git", "status", "--porcelain"],
             capture_output=True, text=True, cwd=str(_root),
-        ).stdout.strip() != ""
-        return head + ("+dirty" if dirty else "")
+        ).stdout.strip()
+        if not status:
+            return head
+        # 工作树脏：汇总每个 dirty 文件的 路径+内容哈希（排序保证确定性）
+        digest = hashlib.sha256()
+        for line in sorted(status.splitlines()):
+            rel = line[3:].strip()          # 前 3 字符是 XY 状态码 + 空格
+            if " -> " in rel:               # rename：取目标路径
+                rel = rel.split(" -> ", 1)[1]
+            digest.update(rel.encode("utf-8"))
+            fp = _root / rel
+            try:
+                if fp.is_file():
+                    digest.update(fp.read_bytes())
+            except OSError:
+                digest.update(b"<unreadable>")   # fail-closed 留痕，不静默跳过
+        return f"{head}+dirty-{digest.hexdigest()[:12]}"
     except Exception:                       # noqa: BLE001
         return None
 
