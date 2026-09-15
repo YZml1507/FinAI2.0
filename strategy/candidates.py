@@ -467,12 +467,20 @@ class DividendStrategy:
         scores = {s.symbol: s.score for s in signals}
         targets = select_targets(scores, cfg.portfolio)
         total_nav = book.total_nav if hasattr(book, "total_nav") else getattr(book, "nav", _ZERO_)
-        # 方案 D 警戒区（宽度 20%~40%）：仓位上限 breadth_mid_cap（默认 50%），停开新仓
-        if (cfg.use_breadth_timing and self._breadth_today is not None
-                and self._breadth_today < cfg.breadth_attack_threshold):
-            total_nav = total_nav * cfg.breadth_mid_cap
-        plan, _plan_dropped = plan_positions(
-            targets, total_nav, bars, cfg.portfolio, weights=scores)
+        # 方案 D 警戒区（defense ≤ 宽度 < attack）：仓位上限 breadth_mid_cap（默认 50%）。
+        # ⛔ 上限语义而非资金缩放：mid_cap 是『目标仓位占净值比例上限』，调仓日据此
+        #   生成目标计划并由 diff 出清超出部分；mid_cap=0 表示警戒区目标零仓（合法
+        #   配置，区别于『拿 0 资金做计划』——后者会触发 plan_positions 的 total_nav>0
+        #   守卫而崩溃）。
+        in_mid_zone = (cfg.use_breadth_timing and self._breadth_today is not None
+                       and self._breadth_today < cfg.breadth_attack_threshold)
+        if in_mid_zone and cfg.breadth_mid_cap == _ZERO_:
+            plan, _plan_dropped = {}, ()          # 警戒区目标零仓：diff 将出清全部持仓
+        else:
+            if in_mid_zone:
+                total_nav = total_nav * cfg.breadth_mid_cap
+            plan, _plan_dropped = plan_positions(
+                targets, total_nav, bars, cfg.portfolio, weights=scores)
 
         # ⑦ 出意图
         held_symbols = list(book.positions.keys()) if hasattr(book, "positions") else []

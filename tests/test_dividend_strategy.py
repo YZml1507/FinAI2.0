@@ -566,3 +566,82 @@ def test_non_rebalance_day_no_action():
         # D211-D220（非调仓日）不产生新订单
         if 210 < i < 230:
             assert len(broker.orders) == orders_before
+
+
+# ==============================================================================
+# 市场宽度择时：警戒区仓位上限语义（P1 修复，2 例）
+# ==============================================================================
+
+
+def _breadth_cfg(mid_cap: str) -> DividendConfig:
+    """宽度择时配置（警戒区上限可调）；宽度序列覆盖测试首日，值 0.30 处于警戒区"""
+    return DividendConfig(
+        min_dividend_yield=Decimal("0.03"),
+        use_breadth_timing=True,
+        use_ma200_timing=False,
+        breadth_series={"2020-01-01": Decimal("0.30")},
+        breadth_attack_threshold=Decimal("0.40"),
+        breadth_defense_threshold=Decimal("0.20"),
+        breadth_mid_cap=Decimal(mid_cap),
+        breadth_ice_confirm_days=2,
+        index_symbol="sh.000300",
+        warmup_bars=210,
+        rebalance_days=10,
+        min_positions=1,
+        max_positions=5,
+        default_positions=1,
+    )
+
+
+def _breadth_bars(day: date) -> dict:
+    return {
+        "sh.600000": Bar(
+            date=day, symbol="sh.600000",
+            open=Decimal("10"), high=Decimal("10"), low=Decimal("10"),
+            close=Decimal("10"), preclose=Decimal("10"),
+            volume=Decimal("1000000"), amount=Decimal("100000000"),
+            dividend_yield=Decimal("0.05"),
+            market_cap=Decimal("1000000000"),
+        ),
+    }
+
+
+def test_breadth_mid_cap_zero_no_crash_and_liquidates():
+    """警戒区 mid_cap=0（目标零仓）：不得触发 total_nav>0 守卫崩溃，且存量持仓被出清"""
+    cfg = _breadth_cfg("0.0")
+    strategy = DividendStrategy(config=cfg)
+    strategy.watchlist = ["sh.600000"]
+    strategy._bar_count = cfg.warmup_bars
+    strategy._last_rebalance_bar = strategy._bar_count - cfg.rebalance_days  # 当日即调仓
+
+    class _Pos:
+        volume = 100
+
+    book = MockBook(nav=Decimal("100000"))
+    book.positions = {"sh.600000": _Pos()}
+    broker = MockBroker()
+
+    day = date(2020, 1, 1)
+
+    # 不抛 PortfolioError 即通过第一层；随后应产生 SELL 出清订单
+    strategy.on_bar(day, _breadth_bars(day), book, broker)
+    assert len(broker.orders) >= 1
+    assert any(o.side == OrderSide.SELL for o in broker.orders)
+
+
+def test_breadth_mid_cap_nonzero_still_builds():
+    """警戒区 mid_cap=0.3：按 30% 资金建仓（回归保护：非零上限不受零值短路影响）"""
+    cfg = _breadth_cfg("0.3")
+    strategy = DividendStrategy(config=cfg)
+    strategy.watchlist = ["sh.600000"]
+    strategy._bar_count = cfg.warmup_bars
+    strategy._last_rebalance_bar = strategy._bar_count - cfg.rebalance_days
+
+    book = MockBook(nav=Decimal("100000"))
+    broker = MockBroker()
+
+    day = date(2020, 1, 1)
+    strategy.on_bar(day, _breadth_bars(day), book, broker)
+
+    # 应产生 BUY 建仓订单（30% 上限下资金充足，可建 1 仓）
+    assert any(o.side == OrderSide.BUY for o in broker.orders)
