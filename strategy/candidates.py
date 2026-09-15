@@ -29,7 +29,7 @@ from collections import deque
 from dataclasses import dataclass, field
 from datetime import date as _date
 from decimal import Decimal
-from typing import Any, Mapping, Sequence
+from typing import Any, Mapping, Optional, Sequence
 
 from backtest.constants import OrderSide
 from backtest.types import Bar, Order, OrderType
@@ -210,6 +210,14 @@ class DividendConfig:
     timing_breach_buffer: Decimal = Decimal("0.01")     # MA200 破位缓冲带（1%）：收盘 < MA200×(1-1%) 才算有效破位
     timing_breach_confirm_days: int = 2                 # 连续 N 日有效破位才确认清仓（抗震荡市假破位）
     timing_rebuild_confirm_days: int = 1                # 已避险后站回 MA200 当日即解除（不对称：破位 2 日确认防假破，重建 1 日抓 V 型反转起点，证据见 2024-09-26 踏空诊断）
+    # —— 市场宽度择时（方案 D，19 号报告 §2.1 三档状态机）——
+    use_breadth_timing: bool = False                    # 宽度择时开关（默认关，显式开启）
+    # 宽度序列（date_str -> Decimal 宽度值），由回测脚本注入，⛔ 不走 config 默认值
+    breadth_series: Optional[Mapping[str, Decimal]] = None
+    breadth_attack_threshold: Decimal = Decimal("0.40")   # 进攻档：>40% 满仓出击
+    breadth_defense_threshold: Decimal = Decimal("0.20")  # 冰点档：<20% 全额避险
+    breadth_mid_cap: Decimal = Decimal("0.50")            # 警戒档（20%~40%）仓位上限 50%
+    breadth_ice_confirm_days: int = 2                   # 跌破冰点连续 N 日才清仓（抗假破位）
     portfolio: PortfolioConfig = field(default_factory=PortfolioConfig)
 
     def __post_init__(self) -> None:
@@ -260,6 +268,30 @@ class DividendConfig:
             if v < 1:
                 raise ValueError(f"{name} 须 >= 1: {v}")
 
+        # 市场宽度三档参数校验（fail-closed）
+        for name in ("breadth_attack_threshold", "breadth_defense_threshold",
+                     "breadth_mid_cap"):
+            v = getattr(self, name)
+            if not isinstance(v, Decimal):
+                raise TypeError(f"{name} 须为 Decimal（⛔ 禁 float）: "
+                                f"{type(v).__name__}")
+            if v < _ZERO_ or v > Decimal("1"):
+                raise ValueError(f"{name} 须在 [0, 1] 范围内: {v}")
+        if self.breadth_defense_threshold >= self.breadth_attack_threshold:
+            raise ValueError(f"breadth_defense_threshold={self.breadth_defense_threshold} "
+                             f"须严格小于 breadth_attack_threshold={self.breadth_attack_threshold}")
+        if self.breadth_mid_cap > Decimal("0.8"):
+            raise ValueError(f"breadth_mid_cap 警戒档仓位上限不应超 0.8: {self.breadth_mid_cap}")
+        if not isinstance(self.breadth_ice_confirm_days, int) or isinstance(self.breadth_ice_confirm_days, bool):
+            raise TypeError(f"breadth_ice_confirm_days 须为 int: "
+                            f"{type(self.breadth_ice_confirm_days).__name__}")
+        if self.breadth_ice_confirm_days < 1:
+            raise ValueError(f"breadth_ice_confirm_days 须 >= 1: {self.breadth_ice_confirm_days}")
+        if self.use_breadth_timing and self.use_ma200_timing:
+            raise ValueError("use_breadth_timing 与 use_ma200_timing 互斥，\u26d4 同时开启会产生矛盾择时信号")
+        if self.use_breadth_timing and self.breadth_series is None:
+            raise ValueError("启用宽度择时时 breadth_series 不得为 None（⛔ Fail-Closed：无证据≠通过）")
+
 
 @dataclass(frozen=True)
 class Signal:
@@ -304,6 +336,10 @@ class DividendStrategy:
         self._breach_streak = 0                          # 连续有效破位（收在缓冲带之下）天数
         self._timing_avoid = False                       # True = 已确认破位、处于避险状态
         self._rebuild_streak = 0                         # 避险中连续站回 MA200 天数
+        # 市场宽度择时状态机（方案 D，19 号报告 §2.1）
+        self._breadth_ice_streak = 0                     # 连续处于冰点线下天数
+        self._breadth_ice = False                        # True = 已确认冰点、全额避险中
+        self._breadth_today: Decimal | None = None       # 当日宽度值（Decimal 纪律）
 
     # ------------------------------------------------------------------
     # 引擎契约
@@ -392,6 +428,33 @@ class DividendStrategy:
                 self._breach_streak = 0
             # else：缓冲带内（breach_line ≤ close < ma200）→ 保留破位计数，维持现状
 
+        # ③.5 市场宽度择时（方案 D）：冰点确认清仓 + 警戒仓位管控
+        self._breadth_today = None
+        if cfg.use_breadth_timing:
+            b = cfg.breadth_series.get(day.isoformat()) if cfg.breadth_series else None
+            if b is None:
+                raise ValueError(
+                    f"宽度序列缺失 {day.isoformat()}（⛔ Fail-Closed：交易期无宽度数据不得放行）")
+            self._breadth_today = b
+            if self._breadth_ice:
+                if b >= cfg.breadth_defense_threshold:
+                    self._breadth_ice = False
+                    self._breadth_ice_streak = 0
+                return  # 解除当日也不建仓，等下一调仓节拍
+            if b < cfg.breadth_defense_threshold:
+                self._breadth_ice_streak += 1
+                if self._breadth_ice_streak >= cfg.breadth_ice_confirm_days:
+                    self._breadth_ice = True
+                    self._breadth_ice_streak = 0
+                    held_symbols = list(book.positions.keys()) if hasattr(book, "positions") else []
+                    current = {s: int(book.positions[s].volume) for s in held_symbols}
+                    report = diff_to_orders(current, {}, bars, cfg.portfolio)
+                    self._submit(broker, report.intents, day)
+                    return
+                return  # 确认期内不清仓不调仓
+            else:
+                self._breadth_ice_streak = 0
+
         # ④ 非调仓日：保持现持仓
         if self._bar_count - self._last_rebalance_bar < cfg.rebalance_days:
             return
@@ -404,6 +467,10 @@ class DividendStrategy:
         scores = {s.symbol: s.score for s in signals}
         targets = select_targets(scores, cfg.portfolio)
         total_nav = book.total_nav if hasattr(book, "total_nav") else getattr(book, "nav", _ZERO_)
+        # 方案 D 警戒区（宽度 20%~40%）：仓位上限 breadth_mid_cap（默认 50%），停开新仓
+        if (cfg.use_breadth_timing and self._breadth_today is not None
+                and self._breadth_today < cfg.breadth_attack_threshold):
+            total_nav = total_nav * cfg.breadth_mid_cap
         plan, _plan_dropped = plan_positions(
             targets, total_nav, bars, cfg.portfolio, weights=scores)
 

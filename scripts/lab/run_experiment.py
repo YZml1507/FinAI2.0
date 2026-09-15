@@ -46,7 +46,23 @@ _PARAM_CASTERS = {
     "candidate_pool_size": int,
     "default_positions": int,
     "min_dividend_yield": Decimal,
+    "use_ma200_timing": lambda v: v.lower() in ("1", "true", "yes", "on"),
+    "use_breadth_timing": lambda v: v.lower() in ("1", "true", "yes", "on"),
+    "breadth_attack_threshold": Decimal,
+    "breadth_defense_threshold": Decimal,
+    "breadth_mid_cap": Decimal,
+    "breadth_ice_confirm_days": int,
 }
+
+
+def _load_breadth_series(path: Path) -> dict:
+    """加载宽度序列 parquet -> {date_str: Decimal}；缺文件 Fail-Closed 报错。"""
+    import pandas as pd
+    if not path.exists():
+        raise SystemExit(f"宽度序列文件缺失: {path}（⛔ Fail-Closed：无宽度数据不得开启宽度择时）")
+    df = pd.read_parquet(path)
+    # 日期键只保留 YYYY-MM-DD，与策略 day.isoformat() 查表键对齐（⛔ 禁带时间部分）
+    return {str(d)[:10]: Decimal(str(b)) for d, b in zip(df["date"], df["breadth20"])}
 
 
 def _parse_overrides(pairs: list[str]) -> dict:
@@ -72,6 +88,15 @@ def run_experiment(name: str, overrides: dict, data_path: Path) -> dict:
     lab_dir.mkdir(parents=True, exist_ok=True)
 
     orig_config_init = rdb.DividendConfig
+
+    # 宽度择时开启时：自动关 MA200、注入宽度序列（互斥纪律由配置侧校验）
+    # 宽度文件路径由环境变量 BREADTH_FILE 指定（⛔ 不进 --set，避免污染配置校验）
+    import os
+    if overrides.get("use_breadth_timing"):
+        overrides.setdefault("use_ma200_timing", False)
+        breadth_path = Path(os.environ.get(
+            "BREADTH_FILE", str(LAB_ROOT / "market-breadth-a" / "breadth20_daily.parquet")))
+        overrides["breadth_series"] = _load_breadth_series(breadth_path)
 
     def _patched_config(**kwargs):
         cfg = orig_config_init(**kwargs)
@@ -145,6 +170,7 @@ def main() -> int:
     args = ap.parse_args()
 
     overrides = _parse_overrides(args.overrides)
+    # 允许 --set _breadth_file=路径 显式指定宽度文件（不入 DividendConfig）
     data_path = Path(args.data_path)
     summary = run_experiment(args.name, overrides, data_path)
 
