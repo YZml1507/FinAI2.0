@@ -49,10 +49,10 @@ d=json.loads(sys.stdin.read())
 ov=d.get('overrides',{})
 print('%s | 参数 %s | CAGR %s MDD %s 胜率 %s | 轨迹 %s' % (
   d['experiment'],
-  ' '.join(f'{k}={v}' for k,v in ov.items()),
+  ' '.join(f'{k}={str(v)[:40]}' for k,v in ov.items() if k != 'breadth_series'),
   d['cagr'][:7], d['max_drawdown'][:7], d['win_rate'][:7],
   d['lab_dir']))
-" 2>/dev/null || echo "$line")
+" 2>/dev/null || printf '%s' "$line" | head -c 200)
       notify "[FinAI2.0 实验完成] $summary"
     done <<< "$new_lines"
     last_count=$count
