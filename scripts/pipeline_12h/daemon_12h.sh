@@ -36,7 +36,7 @@ launch_grid_batch() {
     a=${as[$(( (GRID_ROUND * 2 + idx) % 4 ))]}
     local n="autoR${GRID_ROUND}D${d/./}A${a/./}"
     tmux new-session -d -s "${POOL_SESSION_PREFIX}${n}" \
-      "$PY $RUNNER --name '$n' --breadth-series '$BS' \
+      "$PY $RUNNER --name '$n' \
         --set use_breadth_timing=true --set use_ma200_timing=false \
         --set breadth_mid_cap=0.0 --set breadth_ice_confirm_days=1 \
         --set breadth_defense_threshold='$d' --set breadth_attack_threshold='$a' \

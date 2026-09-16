@@ -278,7 +278,115 @@ def _build_post_run_gate_context(
     # 使门禁与下游审计可从 ctx 直接读取宽度档位序列，不再依赖侧带文件。
     # B1 宽度口径注入（P2-b）：把宽度择时上下文显式纳入后置门禁 ctx，
     # 使门禁与下游审计可从 ctx 直接读取宽度档位序列，不再依赖侧带文件。
+    # B1 宽度口径注入（P2-b）：把宽度择时上下文显式纳入后置门禁 ctx，
+    # 使门禁与下游审计可从 ctx 直接读取宽度档位序列，不再依赖侧带文件。
+    # B1 宽度口径注入（P2-b）：把宽度择时上下文显式纳入后置门禁 ctx，
+    # 使门禁与下游审计可从 ctx 直接读取宽度档位序列，不再依赖侧带文件。
+    # B1 宽度口径注入（P2-b）：把宽度择时上下文显式纳入后置门禁 ctx，
+    # 使门禁与下游审计可从 ctx 直接读取宽度档位序列，不再依赖侧带文件。
+    # B1 宽度口径注入（P2-b）：把宽度择时上下文显式纳入后置门禁 ctx，
+    # 使门禁与下游审计可从 ctx 直接读取宽度档位序列，不再依赖侧带文件。
+    # B1 宽度口径注入（P2-b）：把宽度择时上下文显式纳入后置门禁 ctx，
+    # 使门禁与下游审计可从 ctx 直接读取宽度档位序列，不再依赖侧带文件。
+    # B1 宽度口径注入（P2-b）：把宽度择时上下文显式纳入后置门禁 ctx，
+    # 使门禁与下游审计可从 ctx 直接读取宽度档位序列，不再依赖侧带文件。
+    # B1 宽度口径注入（P2-b）：把宽度择时上下文显式纳入后置门禁 ctx，
+    # 使门禁与下游审计可从 ctx 直接读取宽度档位序列，不再依赖侧带文件。
+    # B1 宽度口径注入（P2-b）：把宽度择时上下文显式纳入后置门禁 ctx，
+    # 使门禁与下游审计可从 ctx 直接读取宽度档位序列，不再依赖侧带文件。
+    # B1 宽度口径注入（P2-b）：把宽度择时上下文显式纳入后置门禁 ctx，
+    # 使门禁与下游审计可从 ctx 直接读取宽度档位序列，不再依赖侧带文件。
+    # B1 宽度口径注入（P2-b）：把宽度择时上下文显式纳入后置门禁 ctx，
+    # 使门禁与下游审计可从 ctx 直接读取宽度档位序列，不再依赖侧带文件。
+    # B1 宽度口径注入（P2-b）：把宽度择时上下文显式纳入后置门禁 ctx，
+    # 使门禁与下游审计可从 ctx 直接读取宽度档位序列，不再依赖侧带文件。
+    # B1 宽度口径注入（P2-b）：把宽度择时上下文显式纳入后置门禁 ctx，
+    # 使门禁与下游审计可从 ctx 直接读取宽度档位序列，不再依赖侧带文件。
     params = _asdict(strategy_config)
+    gate_ctx_breadth = {}
+    for _k in ("use_breadth_timing", "breadth_defense_threshold",
+               "breadth_attack_threshold", "breadth_mid_cap",
+               "breadth_ice_confirm_days"):
+        if _k in params:
+            gate_ctx_breadth[_k] = params[_k]
+
+    gate_ctx_breadth = {}
+    for _k in ("use_breadth_timing", "breadth_defense_threshold",
+               "breadth_attack_threshold", "breadth_mid_cap",
+               "breadth_ice_confirm_days"):
+        if _k in params:
+            gate_ctx_breadth[_k] = params[_k]
+
+    gate_ctx_breadth = {}
+    for _k in ("use_breadth_timing", "breadth_defense_threshold",
+               "breadth_attack_threshold", "breadth_mid_cap",
+               "breadth_ice_confirm_days"):
+        if _k in params:
+            gate_ctx_breadth[_k] = params[_k]
+
+    gate_ctx_breadth = {}
+    for _k in ("use_breadth_timing", "breadth_defense_threshold",
+               "breadth_attack_threshold", "breadth_mid_cap",
+               "breadth_ice_confirm_days"):
+        if _k in params:
+            gate_ctx_breadth[_k] = params[_k]
+
+    gate_ctx_breadth = {}
+    for _k in ("use_breadth_timing", "breadth_defense_threshold",
+               "breadth_attack_threshold", "breadth_mid_cap",
+               "breadth_ice_confirm_days"):
+        if _k in params:
+            gate_ctx_breadth[_k] = params[_k]
+
+    gate_ctx_breadth = {}
+    for _k in ("use_breadth_timing", "breadth_defense_threshold",
+               "breadth_attack_threshold", "breadth_mid_cap",
+               "breadth_ice_confirm_days"):
+        if _k in params:
+            gate_ctx_breadth[_k] = params[_k]
+
+    gate_ctx_breadth = {}
+    for _k in ("use_breadth_timing", "breadth_defense_threshold",
+               "breadth_attack_threshold", "breadth_mid_cap",
+               "breadth_ice_confirm_days"):
+        if _k in params:
+            gate_ctx_breadth[_k] = params[_k]
+
+    gate_ctx_breadth = {}
+    for _k in ("use_breadth_timing", "breadth_defense_threshold",
+               "breadth_attack_threshold", "breadth_mid_cap",
+               "breadth_ice_confirm_days"):
+        if _k in params:
+            gate_ctx_breadth[_k] = params[_k]
+
+    gate_ctx_breadth = {}
+    for _k in ("use_breadth_timing", "breadth_defense_threshold",
+               "breadth_attack_threshold", "breadth_mid_cap",
+               "breadth_ice_confirm_days"):
+        if _k in params:
+            gate_ctx_breadth[_k] = params[_k]
+
+    gate_ctx_breadth = {}
+    for _k in ("use_breadth_timing", "breadth_defense_threshold",
+               "breadth_attack_threshold", "breadth_mid_cap",
+               "breadth_ice_confirm_days"):
+        if _k in params:
+            gate_ctx_breadth[_k] = params[_k]
+
+    gate_ctx_breadth = {}
+    for _k in ("use_breadth_timing", "breadth_defense_threshold",
+               "breadth_attack_threshold", "breadth_mid_cap",
+               "breadth_ice_confirm_days"):
+        if _k in params:
+            gate_ctx_breadth[_k] = params[_k]
+
+    gate_ctx_breadth = {}
+    for _k in ("use_breadth_timing", "breadth_defense_threshold",
+               "breadth_attack_threshold", "breadth_mid_cap",
+               "breadth_ice_confirm_days"):
+        if _k in params:
+            gate_ctx_breadth[_k] = params[_k]
+
     gate_ctx_breadth = {}
     for _k in ("use_breadth_timing", "breadth_defense_threshold",
                "breadth_attack_threshold", "breadth_mid_cap",
@@ -302,6 +410,18 @@ def _build_post_run_gate_context(
         "seed": None,
         "params_hash": _params_hash(params),
         "params": params,
+        "breadth_gate_context": gate_ctx_breadth,
+        "breadth_gate_context": gate_ctx_breadth,
+        "breadth_gate_context": gate_ctx_breadth,
+        "breadth_gate_context": gate_ctx_breadth,
+        "breadth_gate_context": gate_ctx_breadth,
+        "breadth_gate_context": gate_ctx_breadth,
+        "breadth_gate_context": gate_ctx_breadth,
+        "breadth_gate_context": gate_ctx_breadth,
+        "breadth_gate_context": gate_ctx_breadth,
+        "breadth_gate_context": gate_ctx_breadth,
+        "breadth_gate_context": gate_ctx_breadth,
+        "breadth_gate_context": gate_ctx_breadth,
         "breadth_gate_context": gate_ctx_breadth,
         "breadth_gate_context": gate_ctx_breadth,
         "metrics": _metrics_summary(report),

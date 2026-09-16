@@ -91,7 +91,7 @@ BS=experiments/lab/market-breadth-a/breadth20_daily.parquet
 run_grid() {
   local name="$1"; shift
   tmux new-session -d -s "finai-pool-$name" \
-    "$PY $RUNNER --name '$name' --breadth-series '$BS' $* >> '$LOGDIR/pool_$name.log' 2>&1"
+    "$PY $RUNNER --name '$name' $* >> '$LOGDIR/pool_$name.log' 2>&1"
   echo "$(ts) ▸ 回测 $name 已启动" >> "$PLOG"
 }
 wait_all() {
