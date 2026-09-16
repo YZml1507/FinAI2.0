@@ -18,7 +18,10 @@ case "$cmd" in
       exit 0
     fi
     mkdir -p "$LOGDIR"
-    tmux new-session -d -s "$SESSION" "bash $DAEMON"
+    # 运行副本隔离：守护读的是同目录临时副本，避免阶段 E 固化改写工作区脚本导致 bash 按偏移错位执行（9/16 事故根因）；副本与原文件同目录以保持 cd 定位正确，守护退出时自删
+    RUN_COPY="$(dirname "$DAEMON")/.daemon_12h.run.$.sh"
+    cp "$DAEMON" "$RUN_COPY"
+    tmux new-session -d -s "$SESSION" "bash $RUN_COPY; rm -f $RUN_COPY"
     echo "已启动：tmux 会话 $SESSION 连续运行 12 小时（主线自动重试 + 回测间隙填满）。"
     echo "  查看状态：bash $0 status"
     echo "  跟踪日志：bash $0 log"
