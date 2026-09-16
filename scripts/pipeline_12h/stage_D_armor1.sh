@@ -7,6 +7,11 @@ TS=$(date '+%F %T')
 
 [ -f "$DOC" ] || { echo 'FAIL: 装甲一设计文档不存在'; exit 1; }
 
+# 幂等守卫：结论块已存在则不再追加（流水线每小时重跑，原实现曾把同一段
+# 落重复追加 17 次）。判定锚=章节标题，与下方 cat 块严格同串。
+if grep -q '## 去留评估结论' "$DOC"; then
+  echo '装甲一撤销结论已存在，跳过追加（幂等）'
+else
 cat >> "$DOC" <<EOF
 
 ---
@@ -25,6 +30,7 @@ cat >> "$DOC" <<EOF
 处置：P7 从主线任务清单关闭，设计文档与调研工具保留备查。
 EOF
 echo '装甲一撤销结论已写入设计文档'
+fi
 
 .venv/bin/python /dev/stdin <<'PYEOF'
 p = 'docs/TASK_TRACKER.md'
@@ -35,6 +41,8 @@ if old in s:
     s = s.replace(old, new, 1)
     open(p, 'w', encoding='utf-8').write(s)
     print('任务跟踪 P7 已关闭')
+elif '- [x] P7 装甲一' in s:
+    print('P7 已是勾选态，无需重复勾选')
 else:
     print('P7 行格式不匹配，跳过自动勾选')
 PYEOF

@@ -564,12 +564,26 @@ def run_post_run_gates(
     # 9. S-2: TimingExitSurvivalGate —— ⛔ 不再用 [] / {} 空数据喂进（门禁内部已 fail-closed）
     s2_gate = TimingExitSurvivalGate()
     s2_ctx: dict[str, Any] = {}
-    if "index_below_ma200_dates" in ctx:
-        s2_ctx["index_below_ma200_dates"] = ctx["index_below_ma200_dates"]
-    if "daily_positions_ratio" in ctx:
-        s2_ctx["daily_positions_ratio"] = ctx["daily_positions_ratio"]
+    if ctx.get("use_breadth_timing"):
+        # 宽度口径（方案 D）：策略以市场宽度冰点为避险触发 ⇒ S-2 按同一口径判
+        s2_ctx["use_breadth_timing"] = True
+        if "breadth_series" in ctx:
+            s2_ctx["breadth_series"] = ctx["breadth_series"]
+        if "breadth_defense_threshold" in ctx:
+            s2_ctx["breadth_defense_threshold"] = ctx["breadth_defense_threshold"]
+        if "daily_positions_ratio" in ctx:
+            s2_ctx["daily_positions_ratio"] = ctx["daily_positions_ratio"]
+        if "breadth_timing_grace_dates" in ctx:
+            s2_ctx["timing_grace_dates"] = ctx["breadth_timing_grace_dates"]
+    else:
+        if "index_below_ma200_dates" in ctx:
+            s2_ctx["index_below_ma200_dates"] = ctx["index_below_ma200_dates"]
+        if "daily_positions_ratio" in ctx:
+            s2_ctx["daily_positions_ratio"] = ctx["daily_positions_ratio"]
+        if "timing_grace_dates" in ctx:
+            s2_ctx["timing_grace_dates"] = ctx["timing_grace_dates"]
     if not s2_ctx:
-        _check_result(_inconclusive(s2_gate, "缺少破 MA200 日期与逐日仓位比例数据，无法判定择时空仓生存（无证据 ≠ 通过）"))
+        _check_result(_inconclusive(s2_gate, "缺少破位日期（MA200/宽度冰点）与逐日仓位比例数据，无法判定择时空仓生存（无证据 ≠ 通过）"))
     else:
         _check_result(s2_gate.evaluate(s2_ctx))
 

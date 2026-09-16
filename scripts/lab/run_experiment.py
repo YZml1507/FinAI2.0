@@ -25,6 +25,7 @@ import json
 import sys
 import time
 from dataclasses import replace
+from datetime import date as _date
 from decimal import Decimal
 from pathlib import Path
 
@@ -52,7 +53,13 @@ _PARAM_CASTERS = {
     "breadth_defense_threshold": Decimal,
     "breadth_mid_cap": Decimal,
     "breadth_ice_confirm_days": int,
+    # 回测区间覆盖（非 DividendConfig 字段，run_experiment 单独提取传给 runner）
+    "backtest_start": lambda v: _date.fromisoformat(v),
+    "backtest_end": lambda v: _date.fromisoformat(v),
 }
+
+#: 非策略配置字段——传给 ``run_dividend_backtest_*`` 的回测区间参数。
+_RUN_LEVEL_KEYS = ("backtest_start", "backtest_end")
 
 
 def _load_breadth_series(path: Path) -> dict:
@@ -87,6 +94,10 @@ def run_experiment(name: str, overrides: dict, data_path: Path) -> dict:
     lab_dir = LAB_ROOT / name
     lab_dir.mkdir(parents=True, exist_ok=True)
 
+    # 运行级参数（回测区间）不进 DividendConfig——``dataclasses.replace`` 只认字段名。
+    bt_start = overrides.pop("backtest_start", None)
+    bt_end = overrides.pop("backtest_end", None)
+
     orig_config_init = rdb.DividendConfig
 
     # 宽度择时开启时：自动关 MA200、注入宽度序列（互斥纪律由配置侧校验）
@@ -114,6 +125,8 @@ def run_experiment(name: str, overrides: dict, data_path: Path) -> dict:
             initial_capital=Decimal("150000"),
             risk_free_annual=Decimal("0.025"),
             enable_gates=True,
+            start_date=bt_start,
+            end_date=bt_end,
             registry_root=lab_dir,
         )
     finally:

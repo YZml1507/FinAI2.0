@@ -113,7 +113,13 @@ for d in 0.23 0.24 0.26 0.27; do
 done
 wait_all
 $PY scripts/lab/analyze_breadth_grid.py > /dev/null 2>&1
-notify "[FinAI2.0 任务完成] POOL-1：最优点邻域 16 组细扫完成，最新推荐参数见 grid_analysis.txt"
+# 验收后汇报：数本轮 pool 实验实际落盘的 run 产物（⛔ 不再无条件报成功）
+pool_ok=$(ls experiments/lab/poolD*/runs/*.json 2>/dev/null | wc -l)
+if [ "$pool_ok" -gt 0 ]; then
+  notify "[FinAI2.0 任务完成] POOL-1：最优点邻域细扫完成，落盘 run 产物 ${pool_ok} 份，最新推荐参数见 grid_analysis.txt"
+else
+  notify "[FinAI2.0 任务失败] POOL-1：邻域细扫无任何 run 产物落盘（疑似全部失败），需人工复核"
+fi
 
 # POOL-3：跨周期稳健性对照（四子区间验证不是单周期运气）
 for seg in '2015 2018 S1' '2019 2021 S2' '2022 2024 S3' '2024 2026 S4'; do
@@ -123,7 +129,12 @@ for seg in '2015 2018 S1' '2019 2021 S2' '2022 2024 S3' '2024 2026 S4'; do
   sleep 2
 done
 wait_all
-notify "[FinAI2.0 任务完成] POOL-3：跨四周期稳健性对照完成，验证最优参数非单周期运气"
+seg_ok=$(ls experiments/lab/poolSeg*/runs/*.json 2>/dev/null | wc -l)
+if [ "$seg_ok" -ge 4 ]; then
+  notify "[FinAI2.0 任务完成] POOL-3：跨四周期稳健性对照完成（${seg_ok}/4 段产物），验证最优参数非单周期运气"
+else
+  notify "[FinAI2.0 任务失败] POOL-3：跨周期对照仅 ${seg_ok}/4 段产出生效（不足判读），需人工复核"
+fi
 
 # ---- 总结 ----
 done_count=$(grep -c '✔' "$PLOG" 2>/dev/null || echo 0)

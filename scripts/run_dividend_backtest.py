@@ -278,164 +278,15 @@ def _build_post_run_gate_context(
     # 使门禁与下游审计可从 ctx 直接读取宽度档位序列，不再依赖侧带文件。
     # B1 宽度口径注入（P2-b）：把宽度择时上下文显式纳入后置门禁 ctx，
     # 使门禁与下游审计可从 ctx 直接读取宽度档位序列，不再依赖侧带文件。
-    # B1 宽度口径注入（P2-b）：把宽度择时上下文显式纳入后置门禁 ctx，
-    # 使门禁与下游审计可从 ctx 直接读取宽度档位序列，不再依赖侧带文件。
-    # B1 宽度口径注入（P2-b）：把宽度择时上下文显式纳入后置门禁 ctx，
-    # 使门禁与下游审计可从 ctx 直接读取宽度档位序列，不再依赖侧带文件。
-    # B1 宽度口径注入（P2-b）：把宽度择时上下文显式纳入后置门禁 ctx，
-    # 使门禁与下游审计可从 ctx 直接读取宽度档位序列，不再依赖侧带文件。
-    # B1 宽度口径注入（P2-b）：把宽度择时上下文显式纳入后置门禁 ctx，
-    # 使门禁与下游审计可从 ctx 直接读取宽度档位序列，不再依赖侧带文件。
-    # B1 宽度口径注入（P2-b）：把宽度择时上下文显式纳入后置门禁 ctx，
-    # 使门禁与下游审计可从 ctx 直接读取宽度档位序列，不再依赖侧带文件。
-    # B1 宽度口径注入（P2-b）：把宽度择时上下文显式纳入后置门禁 ctx，
-    # 使门禁与下游审计可从 ctx 直接读取宽度档位序列，不再依赖侧带文件。
-    # B1 宽度口径注入（P2-b）：把宽度择时上下文显式纳入后置门禁 ctx，
-    # 使门禁与下游审计可从 ctx 直接读取宽度档位序列，不再依赖侧带文件。
-    # B1 宽度口径注入（P2-b）：把宽度择时上下文显式纳入后置门禁 ctx，
-    # 使门禁与下游审计可从 ctx 直接读取宽度档位序列，不再依赖侧带文件。
-    # B1 宽度口径注入（P2-b）：把宽度择时上下文显式纳入后置门禁 ctx，
-    # 使门禁与下游审计可从 ctx 直接读取宽度档位序列，不再依赖侧带文件。
-    # B1 宽度口径注入（P2-b）：把宽度择时上下文显式纳入后置门禁 ctx，
-    # 使门禁与下游审计可从 ctx 直接读取宽度档位序列，不再依赖侧带文件。
-    # B1 宽度口径注入（P2-b）：把宽度择时上下文显式纳入后置门禁 ctx，
-    # 使门禁与下游审计可从 ctx 直接读取宽度档位序列，不再依赖侧带文件。
-    # B1 宽度口径注入（P2-b）：把宽度择时上下文显式纳入后置门禁 ctx，
-    # 使门禁与下游审计可从 ctx 直接读取宽度档位序列，不再依赖侧带文件。
-    # B1 宽度口径注入（P2-b）：把宽度择时上下文显式纳入后置门禁 ctx，
-    # 使门禁与下游审计可从 ctx 直接读取宽度档位序列，不再依赖侧带文件。
-    # B1 宽度口径注入（P2-b）：把宽度择时上下文显式纳入后置门禁 ctx，
-    # 使门禁与下游审计可从 ctx 直接读取宽度档位序列，不再依赖侧带文件。
-    # B1 宽度口径注入（P2-b）：把宽度择时上下文显式纳入后置门禁 ctx，
-    # 使门禁与下游审计可从 ctx 直接读取宽度档位序列，不再依赖侧带文件。
-    # B1 宽度口径注入（P2-b）：把宽度择时上下文显式纳入后置门禁 ctx，
-    # 使门禁与下游审计可从 ctx 直接读取宽度档位序列，不再依赖侧带文件。
     params = _asdict(strategy_config)
-    gate_ctx_breadth = {}
-    for _k in ("use_breadth_timing", "breadth_defense_threshold",
-               "breadth_attack_threshold", "breadth_mid_cap",
-               "breadth_ice_confirm_days"):
-        if _k in params:
-            gate_ctx_breadth[_k] = params[_k]
-
-    gate_ctx_breadth = {}
-    for _k in ("use_breadth_timing", "breadth_defense_threshold",
-               "breadth_attack_threshold", "breadth_mid_cap",
-               "breadth_ice_confirm_days"):
-        if _k in params:
-            gate_ctx_breadth[_k] = params[_k]
-
-    gate_ctx_breadth = {}
-    for _k in ("use_breadth_timing", "breadth_defense_threshold",
-               "breadth_attack_threshold", "breadth_mid_cap",
-               "breadth_ice_confirm_days"):
-        if _k in params:
-            gate_ctx_breadth[_k] = params[_k]
-
-    gate_ctx_breadth = {}
-    for _k in ("use_breadth_timing", "breadth_defense_threshold",
-               "breadth_attack_threshold", "breadth_mid_cap",
-               "breadth_ice_confirm_days"):
-        if _k in params:
-            gate_ctx_breadth[_k] = params[_k]
-
-    gate_ctx_breadth = {}
-    for _k in ("use_breadth_timing", "breadth_defense_threshold",
-               "breadth_attack_threshold", "breadth_mid_cap",
-               "breadth_ice_confirm_days"):
-        if _k in params:
-            gate_ctx_breadth[_k] = params[_k]
-
-    gate_ctx_breadth = {}
-    for _k in ("use_breadth_timing", "breadth_defense_threshold",
-               "breadth_attack_threshold", "breadth_mid_cap",
-               "breadth_ice_confirm_days"):
-        if _k in params:
-            gate_ctx_breadth[_k] = params[_k]
-
-    gate_ctx_breadth = {}
-    for _k in ("use_breadth_timing", "breadth_defense_threshold",
-               "breadth_attack_threshold", "breadth_mid_cap",
-               "breadth_ice_confirm_days"):
-        if _k in params:
-            gate_ctx_breadth[_k] = params[_k]
-
-    gate_ctx_breadth = {}
-    for _k in ("use_breadth_timing", "breadth_defense_threshold",
-               "breadth_attack_threshold", "breadth_mid_cap",
-               "breadth_ice_confirm_days"):
-        if _k in params:
-            gate_ctx_breadth[_k] = params[_k]
-
-    gate_ctx_breadth = {}
-    for _k in ("use_breadth_timing", "breadth_defense_threshold",
-               "breadth_attack_threshold", "breadth_mid_cap",
-               "breadth_ice_confirm_days"):
-        if _k in params:
-            gate_ctx_breadth[_k] = params[_k]
-
-    gate_ctx_breadth = {}
-    for _k in ("use_breadth_timing", "breadth_defense_threshold",
-               "breadth_attack_threshold", "breadth_mid_cap",
-               "breadth_ice_confirm_days"):
-        if _k in params:
-            gate_ctx_breadth[_k] = params[_k]
-
-    gate_ctx_breadth = {}
-    for _k in ("use_breadth_timing", "breadth_defense_threshold",
-               "breadth_attack_threshold", "breadth_mid_cap",
-               "breadth_ice_confirm_days"):
-        if _k in params:
-            gate_ctx_breadth[_k] = params[_k]
-
-    gate_ctx_breadth = {}
-    for _k in ("use_breadth_timing", "breadth_defense_threshold",
-               "breadth_attack_threshold", "breadth_mid_cap",
-               "breadth_ice_confirm_days"):
-        if _k in params:
-            gate_ctx_breadth[_k] = params[_k]
-
-    gate_ctx_breadth = {}
-    for _k in ("use_breadth_timing", "breadth_defense_threshold",
-               "breadth_attack_threshold", "breadth_mid_cap",
-               "breadth_ice_confirm_days"):
-        if _k in params:
-            gate_ctx_breadth[_k] = params[_k]
-
-    gate_ctx_breadth = {}
-    for _k in ("use_breadth_timing", "breadth_defense_threshold",
-               "breadth_attack_threshold", "breadth_mid_cap",
-               "breadth_ice_confirm_days"):
-        if _k in params:
-            gate_ctx_breadth[_k] = params[_k]
-
-    gate_ctx_breadth = {}
-    for _k in ("use_breadth_timing", "breadth_defense_threshold",
-               "breadth_attack_threshold", "breadth_mid_cap",
-               "breadth_ice_confirm_days"):
-        if _k in params:
-            gate_ctx_breadth[_k] = params[_k]
-
-    gate_ctx_breadth = {}
-    for _k in ("use_breadth_timing", "breadth_defense_threshold",
-               "breadth_attack_threshold", "breadth_mid_cap",
-               "breadth_ice_confirm_days"):
-        if _k in params:
-            gate_ctx_breadth[_k] = params[_k]
-
-    gate_ctx_breadth = {}
-    for _k in ("use_breadth_timing", "breadth_defense_threshold",
-               "breadth_attack_threshold", "breadth_mid_cap",
-               "breadth_ice_confirm_days"):
-        if _k in params:
-            gate_ctx_breadth[_k] = params[_k]
-
-    gate_ctx_breadth = {}
-    for _k in ("use_breadth_timing", "breadth_defense_threshold",
-               "breadth_attack_threshold", "breadth_mid_cap",
-               "breadth_ice_confirm_days"):
-        if _k in params:
-            gate_ctx_breadth[_k] = params[_k]
+    # 宽度择时口径（方案 D）：供 S-2 门禁宽度判据与审计直接读取（P2-b 接线版）。
+    gate_ctx_breadth = {
+        _k: params[_k]
+        for _k in ("use_breadth_timing", "breadth_defense_threshold",
+                   "breadth_attack_threshold", "breadth_mid_cap",
+                   "breadth_ice_confirm_days")
+        if _k in params
+    }
 
     record: dict[str, Any] = {
         "run_id": "pending-registry",
@@ -446,23 +297,6 @@ def _build_post_run_gate_context(
         "seed": None,
         "params_hash": _params_hash(params),
         "params": params,
-        "breadth_gate_context": gate_ctx_breadth,
-        "breadth_gate_context": gate_ctx_breadth,
-        "breadth_gate_context": gate_ctx_breadth,
-        "breadth_gate_context": gate_ctx_breadth,
-        "breadth_gate_context": gate_ctx_breadth,
-        "breadth_gate_context": gate_ctx_breadth,
-        "breadth_gate_context": gate_ctx_breadth,
-        "breadth_gate_context": gate_ctx_breadth,
-        "breadth_gate_context": gate_ctx_breadth,
-        "breadth_gate_context": gate_ctx_breadth,
-        "breadth_gate_context": gate_ctx_breadth,
-        "breadth_gate_context": gate_ctx_breadth,
-        "breadth_gate_context": gate_ctx_breadth,
-        "breadth_gate_context": gate_ctx_breadth,
-        "breadth_gate_context": gate_ctx_breadth,
-        "breadth_gate_context": gate_ctx_breadth,
-        "breadth_gate_context": gate_ctx_breadth,
         "breadth_gate_context": gate_ctx_breadth,
         "metrics": _metrics_summary(report),
         "error": None,
@@ -497,6 +331,22 @@ def _build_post_run_gate_context(
     }
     if breadth_gate_context:
         ctx["breadth_gate_context"] = breadth_gate_context
+
+    # S-2 宽度口径接线（P2-b 修复）：宽度择时启用时，把 S-2 判据所需证据升到
+    # ctx 顶层——此前仅置于嵌套 breadth_gate_context，runner 的 s2_ctx 只取
+    # MA200 字段，宽度口径实际成死代码。⛔ 宽度序列缺失时不上报开关字段，
+    # 让 S-2 走 fail-closed 的 INCONCLUSIVE 而非静默回退 MA200 口径。
+    if params.get("use_breadth_timing"):
+        ctx["use_breadth_timing"] = True
+        if params.get("breadth_defense_threshold") is not None:
+            ctx["breadth_defense_threshold"] = params["breadth_defense_threshold"]
+        bser = params.get("breadth_series")
+        if bser:
+            ctx["breadth_series"] = bser
+            thr = float(params.get("breadth_defense_threshold") or 0.20)
+            b_below = sorted(d for d, b in bser.items() if float(b) < thr)
+            ctx["breadth_timing_grace_dates"] = _compute_timing_grace_dates(
+                b_below, cal_days)
 
     if getattr(report, "annual_turnover", None) is not None:
         ctx["annualized_turnover"] = float(report.annual_turnover)
@@ -550,8 +400,21 @@ def _git_code_hash() -> str | None:
             rel = line[3:].strip()          # 前 3 字符是 XY 状态码 + 空格
             if " -> " in rel:               # rename：取目标路径
                 rel = rel.split(" -> ", 1)[1]
-            # dirty 哈希只覆盖代码路径（榜单与文档追加不污染指纹，C2 修复）
-            if not rel.startswith(("strategy/", "scripts/", "backtest/", "tests/")):
+            # dirty 哈希覆盖全部代码路径（榜单与文档追加不污染指纹，C2 修复）。
+            # 白名单加固（2026-09-16）：原清单漏掉 finai/、data/、reporting/、
+            # paper_trading/、accounting/、ops/ 等代码目录——改这些目录的代码
+            # 曾不进 dirty 指纹（可能撞指纹），现补齐并按数据资产后缀排除。
+            _CODE_DIRS = ("strategy/", "scripts/", "backtest/", "tests/", "finai/",
+                          "data/", "reporting/", "paper_trading/", "accounting/",
+                          "ops/", ".github/", ".githooks/")
+            _DATA_SUFFIX = (".parquet", ".zip", ".jsonl", ".md", ".html", ".svg",
+                            ".log", ".csv")
+            _in_code_dir = rel.startswith(_CODE_DIRS)
+            _root_code = "/" not in rel and (
+                rel.endswith((".py", ".sh", ".toml", ".cfg", ".ini", ".yml", ".yaml"))
+                or rel == "requirements.txt")
+            if (_in_code_dir and rel.endswith(_DATA_SUFFIX)) or not (
+                    _in_code_dir or _root_code):
                 continue
             digest.update(rel.encode("utf-8"))
             fp = _root / rel

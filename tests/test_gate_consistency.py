@@ -1301,6 +1301,14 @@ class TestAcceptanceGate:
             "code_version": "healthy-code", "data_version": "healthy-data",
             "timestamp": "2026-09-10T00:00:00+08:00",
             "params_hash": "healthy-params",
+            "gate_statuses": {
+                "S-2": {"status": "PASS", "severity": "BLOCKER",
+                        "message": "择时空仓生存检验通过"},
+                "A-1": {"status": "PASS", "severity": "BLOCKER",
+                        "message": "费用分厘平衡"},
+                "D-4": {"status": "SKIP", "severity": "BLOCKER",
+                        "message": "有证据表明不适用"},
+            },
             "metrics": {"max_drawdown": "0.12", "win_rate": "0.55",
                         "annual_turnover": "2.0", "round_trips": 40},
         }), ensure_ascii=False), encoding="utf-8")

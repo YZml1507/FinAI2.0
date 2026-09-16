@@ -128,6 +128,31 @@ def evaluate_acceptance(
     _add("NO-ERROR", "终态无 error", err, "error is None", err is None,
          "FINISHED 却带 error 字段（状态自相矛盾）" if err is not None else "无 error")
 
+    # ③' 内嵌六维门禁复核（TASK_TRACKER 晋级判据『通过全部六维门禁后晋级为基线』的
+    # 机读化——此前晋级层只验签名与指标，S-2 FAIL 的产物照样晋级）：产物须携带
+    # 产出期记录的 ``gate_statuses``；severity ∈ {BLOCKER, CRITICAL} 的门禁只允许
+    # PASS / SKIP（有证据的不适用），FAIL / INCONCLUSIVE / 整体缺失一律阻断晋升。
+    gate_statuses = record.get("gate_statuses")
+    if not isinstance(gate_statuses, dict) or not gate_statuses:
+        _add("GATE-EMBED", "内嵌六维门禁复核", None,
+             "BLOCKER/CRITICAL 门禁全 PASS/SKIP", False,
+             "产物未携带 gate_statuses，无法证明六维门禁已评估（无证据 ≠ 通过）")
+    else:
+        offenders = []
+        for gid, g in sorted(gate_statuses.items()):
+            if not isinstance(g, dict):
+                offenders.append(f"{gid}:非法结构")
+                continue
+            sev = str(g.get("severity", "")).upper()
+            st = str(g.get("status", "")).upper()
+            if sev in ("BLOCKER", "CRITICAL") and st not in ("PASS", "SKIP"):
+                offenders.append(f"{gid}:{st}")
+        _add("GATE-EMBED", "内嵌六维门禁复核", len(gate_statuses),
+             "BLOCKER/CRITICAL 门禁全 PASS/SKIP", not offenders,
+             (f"全部高严重度门禁已评估且通过/不适用（{len(gate_statuses)} 项）"
+              if not offenders else
+              f"检出未通过门禁：{', '.join(offenders)}（FAIL/INCONCLUSIVE 不得晋级）"))
+
     # ④ 回撤数值健全性（堵 mdd=-0.30 / >1 / null / bool / 字符串）
     mdd_raw = metrics.get("max_drawdown")
     mdd = _to_decimal(mdd_raw)
