@@ -13,6 +13,8 @@ MAINLINE_SUCCESS_INTERVAL=$((60 * 60)) # 主线成功后下一轮完整流水线
 POOL_SESSION_PREFIX='finai-pool-'
 RUNNER=scripts/lab/run_experiment.py
 BS=experiments/lab/market-breadth-a/breadth20_daily.parquet
+MAX_PARALLEL=2                 # 并行回测路上限（8G 内存机器，单回测峰值约 500MB+，2 路留足余量）
+BACKTEST_MEM_KB=$((3 * 1024 * 1024))   # 单回测进程虚拟内存上限 3GB，超限即被内核终止防爆仓
 mkdir -p "$LOGDIR"
 
 ts() { date '+%F %T'; }
@@ -26,17 +28,17 @@ grid_running() { tmux ls 2>/dev/null | grep -q "^$POOL_SESSION_PREFIX"; }
 grid_running_count() { tmux ls 2>/dev/null | grep -c "^$POOL_SESSION_PREFIX" || true; }
 
 launch_grid_batch() {
-  # 在最优点邻域递进扩展参数面，每批 4 组、最多 4 路并行，避免打满导致系统卡死
+  # 在最优点邻域递进扩展参数面，最多 MAX_PARALLEL 路并行 + 单进程内存上限，防打满卡死
   GRID_ROUND=$((GRID_ROUND + 1))
   local d a idx=0
   local ds=(0.23 0.24 0.26 0.27)
   local as=(0.43 0.44 0.46 0.47)
-  while [ "$(grid_running_count)" -lt 4 ] && [ "$idx" -lt 4 ]; do
+  while [ "$(grid_running_count)" -lt "$MAX_PARALLEL" ] && [ "$idx" -lt "$MAX_PARALLEL" ]; do
     d=${ds[$(( (GRID_ROUND + idx) % 4 ))]}
     a=${as[$(( (GRID_ROUND * 2 + idx) % 4 ))]}
     local n="autoR${GRID_ROUND}D${d/./}A${a/./}"
     tmux new-session -d -s "${POOL_SESSION_PREFIX}${n}" \
-      "$PY $RUNNER --name '$n' \
+      "ulimit -v $BACKTEST_MEM_KB; exec $PY $RUNNER --name '$n' \
         --set use_breadth_timing=true --set use_ma200_timing=false \
         --set breadth_mid_cap=0.0 --set breadth_ice_confirm_days=1 \
         --set breadth_defense_threshold='$d' --set breadth_attack_threshold='$a' \
@@ -83,7 +85,7 @@ while [ "$(date +%s)" -lt "$DEADLINE" ]; do
   fi
 
   # 间隙：回测网格喂满（保持并行 4 路，吃完一批补一批）
-  if [ "$(grid_running_count)" -lt 4 ]; then
+  if [ "$(grid_running_count)" -lt "$MAX_PARALLEL" ]; then
     launch_grid_batch
   fi
   sleep 60

@@ -100,10 +100,10 @@ def test_resolve_adjustflag_maps_three_modes() -> None:
     assert col._resolve_adjustflag(AdjustmentMode.QFQ) == "2"
 
 
-def test_collector_passes_explicit_adjustflag_not_default(monkeypatch) -> None:
+def test_collector_passes_explicit_adjustflag_not_default(monkeypatch, tmp_path) -> None:
     """⛔ 禁止默认调用：sent 的 params 里必须有显式 adjustflag（HFQ→'3'），
     且字段清单含 tradestatus（R1 停牌过滤列）。"""
-    collector = col.DailyCollector()
+    collector = col.DailyCollector(root=tmp_path)
     seen: dict = {}
 
     def fake_fetch(kind, **params):
