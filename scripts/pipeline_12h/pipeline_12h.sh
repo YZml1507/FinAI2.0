@@ -88,8 +88,12 @@ notify "[FinAI2.0 任务完成] 主线 A/C/D/E 全部走完${FAILED:+，跳过/�
 # ================= 填充算力池（主线完成后启动） =================
 RUNNER=scripts/lab/run_experiment.py
 BS=experiments/lab/market-breadth-a/breadth20_daily.parquet
+grid_running_count() { tmux ls 2>/dev/null | grep -c '^finai-pool-' || true; }
+MAX_GRID_PARALLEL=2   # 网格回测并发上限（8G 机器，与守护侧一致，防批量派单打满内存）
 run_grid() {
   local name="$1"; shift
+  # 并发闸门：等待直到网格会话数低于上限再派单（POOL-1 原一次并发 16 路打满 8G 内存的事故根因）
+  while [ "$(grid_running_count)" -ge "$MAX_GRID_PARALLEL" ]; do sleep 15; done
   tmux new-session -d -s "finai-pool-$name" \
     "ulimit -v $((3 * 1024 * 1024)); exec $PY $RUNNER --name '$name' $* >> '$LOGDIR/pool_$name.log' 2>&1"
   echo "$(ts) ▸ 回测 $name 已启动" >> "$PLOG"

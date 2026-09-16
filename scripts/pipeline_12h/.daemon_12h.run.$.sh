@@ -58,10 +58,15 @@ collect_grid_results() {
 
 run_mainline() {
   log "▶ 主线流水线启动（A→C→D→E + 填充 POOL）"
-  if bash scripts/pipeline_12h/pipeline_12h.sh >> "$LOGDIR/pipeline_12h_retry.out" 2>&1; then
+  # 主线脚本副本隔离：阶段 E 固化可能改写 pipeline_12h.sh，流式读运行中脚本会按偏移错位（9/16 事故同类根因）
+  local MCOPY="scripts/pipeline_12h/.pipeline_12h.run.$.sh"
+  cp scripts/pipeline_12h/pipeline_12h.sh "$MCOPY"
+  if bash "$MCOPY" >> "$LOGDIR/pipeline_12h_retry.out" 2>&1; then
+    rm -f "$MCOPY"
     log "✔ 主线流水线本轮成功收尾"
     return 0
   fi
+  rm -f "$MCOPY"
   log "✘ 主线流水线本轮失败（详见 pipeline_12h_retry.out 与 pipeline_12h.log），进入回测填充等待重试"
   return 1
 }
