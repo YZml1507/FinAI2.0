@@ -669,3 +669,35 @@ def test_cash_interest_default_zero_noop():
     assert ledger.cash == D("100000")
     assert not any(e.entry_type == JournalType.CASH_INTEREST
                    for e in ledger.entries)
+
+
+def test_cash_interest_series_mode():
+    """e6b GC001 利率序列：当日利率优先，缺日 ffill（≤5 自然日）；
+    与固定年化互斥；断档 >5 日 raise。"""
+    from datetime import date as _d
+    # ① 序列模式按当日利率计息（2024-01-04=2.0%，01-05=3.0%）
+    series = {"2024-01-04": D("0.02"), "2024-01-05": D("0.03")}
+    ledger = Ledger(D("100000"), date=_D1, cash_yield_series=series)
+    ledger.settle(_D1, {})
+    assert ledger.cash == D("100000") + D("100000") * D("0.02") / D(244)
+    ledger.settle(_D2, {})
+    c1 = D("100000") + D("100000") * D("0.02") / D(244)
+    assert ledger.cash == c1 + c1 * D("0.03") / D(244)
+    # ② ffill：2024-01-08（周一）序列缺 → 用 01-05 的 3.0%（间隔 3 日 ≤5）
+    ledger.settle(_d(2024, 1, 8), {})
+    c2 = ledger.cash
+    assert abs(c2 - (c1 + c1 * D("0.03") / D(244))
+               - (c1 + c1 * D("0.03") / D(244)) * D("0.03") / D(244)) < D("0.001")
+    # ③ 互斥
+    with pytest.raises(ValueError):
+        Ledger(D("100000"), date=_D1, cash_yield_annual=D("0.02"),
+               cash_yield_series=series)
+    # ④ 断档 >5 自然日 raise
+    ledger2 = Ledger(D("100000"), date=_D1, cash_yield_series=series)
+    with pytest.raises(ValueError):
+        ledger2.settle(_d(2024, 1, 20), {})
+    # ⑤ 序列起点之前 raise（无前值可填）
+    ledger3 = Ledger(D("100000"), date=_D1,
+                     cash_yield_series={"2024-06-01": D("0.02")})
+    with pytest.raises(ValueError):
+        ledger3.settle(_D1, {})

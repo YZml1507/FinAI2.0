@@ -561,6 +561,7 @@ class Ledger:
         *,
         date: _date,
         cash_yield_annual: Decimal = _ZERO,
+        cash_yield_series: dict[str, Decimal] | None = None,
         journal: Journal | None = None,
     ) -> None:
         self.journal = journal or Journal()
@@ -568,7 +569,15 @@ class Ledger:
         self._start_date = date
         # 空仓现金日化利率（e6 防御资产近似）：settle 时按 cash×rate/244 计息，
         # 写 CASH_INTEREST 流水（门禁现金流守恒归 other_in，不破 A-2）。
+        # ⛔ 两种模式互斥：固定年化 cash_yield_annual 或日度利率序列
+        # cash_yield_series（iso日期→年化小数，如 '0.0253'；GC001 e6b）。
+        if cash_yield_series is not None and Decimal(cash_yield_annual) != 0:
+            raise ValueError(
+                "cash_yield_annual 与 cash_yield_series 互斥（⛔ 双利率源歧义）")
         self._cash_daily_rate = Decimal(cash_yield_annual) / Decimal(244)
+        # 序列模式：预排序 iso 日期键供二分前向填充（ffill≤5 自然日，超窗 raise）。
+        self._cash_rate_series = cash_yield_series or {}
+        self._cash_rate_dates = sorted(self._cash_rate_series)
         if Decimal(initial_cash) != 0:
             self.deposit(Decimal(initial_cash), date=date, ref_id="INITIAL_CAPITAL")
 
@@ -662,18 +671,9 @@ class Ledger:
     def settle(self, date: _date, bars: Mapping[str, Bar]) -> set[str]:
         """日终结算 + 写 SETTLE 快照流水。返回被刷新的 symbol 集合。"""
         refreshed = self.book.settle(date, bars)
-        # 现金利息：先计息再写 SETTLE 快照（快照 nav 含当日利息）
-        if self._cash_daily_rate > _ZERO and self.book.cash > _ZERO:
-            interest = self.book.cash * self._cash_daily_rate
-            entry_i = JournalEntry.create(
-                date=date,
-                entry_type=JournalType.CASH_INTEREST,
-                amount=interest,
-                ref_id=f"CASH_INTEREST:{date.isoformat()}",
-            )
-            if self.journal.append(entry_i):
-                self.book.cash += interest
-                self.book.recompute_nav()
+        # 现金利息：先计息再写 SETTLE 快照（快照 nav 含当日利息）；
+        # 统一走 accrue_cash_interest（固定年化/利率序列两种模式同源）。
+        self.accrue_cash_interest(date)
         entry = JournalEntry.create(
             date=date,
             entry_type=JournalType.SETTLE,
@@ -689,14 +689,37 @@ class Ledger:
         self.journal.append(entry)
         return refreshed
 
+    def _cash_rate_for(self, date: _date) -> Decimal:
+        """当日现金日化利率：固定模式返回 cash_yield_annual/244；序列模式
+        查当日 GC001 年化，缺日按最近前值 ffill（间隔 >5 自然日 raise——
+        ⛔ 不许静默用陈旧利率）。"""
+        if not self._cash_rate_dates:
+            return self._cash_daily_rate
+        import bisect
+        iso = date.isoformat()
+        i = bisect.bisect_right(self._cash_rate_dates, iso)
+        if i == 0:
+            raise ValueError(
+                f"GC001 利率序列无 {iso} 及之前的数据（⛔ Fail-Closed）")
+        prev_iso = self._cash_rate_dates[i - 1]
+        gap = (date - _date.fromisoformat(prev_iso)).days
+        if gap > 5:
+            raise ValueError(
+                f"GC001 利率序列断档：{prev_iso} → {iso} 间隔 {gap} 日 >5 "
+                "（⛔ Fail-Closed：不许用陈旧利率计息）")
+        return self._cash_rate_series[prev_iso] / Decimal(244)
+
     def accrue_cash_interest(self, date: _date) -> Decimal:
         """空仓现金日化计息（e6）：``cash × 年化/244``，写 CASH_INTEREST
         流水并同步 NAV。供本类 settle 与 BacktestBroker.settle 共用——
         ⛔ Broker 日终不走 ledger.settle（防二次刷市值），必须显式调本方法。
         """
-        if self._cash_daily_rate <= _ZERO or self.book.cash <= _ZERO:
+        if self.book.cash <= _ZERO:
             return _ZERO
-        interest = self.book.cash * self._cash_daily_rate
+        rate = self._cash_rate_for(date)
+        if rate <= _ZERO:
+            return _ZERO
+        interest = self.book.cash * rate
         entry = JournalEntry.create(
             date=date,
             entry_type=JournalType.CASH_INTEREST,

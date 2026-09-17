@@ -233,6 +233,7 @@ class DividendConfig:
     pead_reserve_pct: Decimal = Decimal("0.40")       # event 模式：进攻档为 PEAD 预留资金比例（2 槽×~20%净值≈常规单票量级，低于单票下限会永远买不进）
     cash_yield_annual: Decimal = Decimal("0")         # 空仓现金年化收益（e6 防御资产近似：货基/逆回购 ~0.02；0=不计息）
     breadth_demote_liquidate: bool = False            # e7 降档即出清：宽度由 attack 跌入 <attack 当日向 mid_cap 收敛（⛔ 默认关——须开关隔离，否则无条件生效污染消融实验）
+    cash_yield_series: str = ""                       # e6b GC001 日度利率 parquet 路径（date,rate_annual%）；与 cash_yield_annual 互斥
     pead_entry_mode: str = "rebalance"                # 'event'=公告日事件驱动建仓（需 reserve）；'rebalance'=调仓日并入候选源（软叠加，零闲置现金）
     portfolio: PortfolioConfig = field(default_factory=PortfolioConfig)
 
@@ -298,6 +299,9 @@ class DividendConfig:
                              f"须严格小于 breadth_attack_threshold={self.breadth_attack_threshold}")
         if self.breadth_mid_cap > Decimal("0.8"):
             raise ValueError(f"breadth_mid_cap 警戒档仓位上限不应超 0.8: {self.breadth_mid_cap}")
+        if self.cash_yield_series and Decimal(self.cash_yield_annual) != 0:
+            raise ValueError(
+                "cash_yield_annual 与 cash_yield_series 互斥（⛔ 双利率源歧义）")
         if not isinstance(self.breadth_ice_confirm_days, int) or isinstance(self.breadth_ice_confirm_days, bool):
             raise TypeError(f"breadth_ice_confirm_days 须为 int: "
                             f"{type(self.breadth_ice_confirm_days).__name__}")

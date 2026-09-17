@@ -640,9 +640,23 @@ def run_dividend_backtest_2015_2024(
 
     # ⑤ 引擎组装（T201 契约：资金进 Ledger，Engine 只收 broker+feed；
     #    策略经 run(strategy, start, end) 传入）
+    # e6b：GC001 日度利率序列（parquet: date,rate_annual%）→ iso→年化小数
+    cash_yield_series = None
+    _series_path = getattr(strategy_config, "cash_yield_series", "")
+    if _series_path:
+        import pandas as pd
+        _sp = Path(_series_path)
+        if not _sp.exists():
+            raise SystemExit(
+                f"GC001 利率序列文件缺失: {_sp}（⛔ Fail-Closed：不静默降级）")
+        _sdf = pd.read_parquet(_sp)
+        cash_yield_series = {
+            str(d)[:10]: Decimal(str(r)) / Decimal(100)
+            for d, r in zip(_sdf["date"], _sdf["rate_annual"])}
     ledger = Ledger(initial_cash=initial_capital, date=start,
                     cash_yield_annual=getattr(strategy_config,
-                                              "cash_yield_annual", Decimal("0")))
+                                              "cash_yield_annual", Decimal("0")),
+                    cash_yield_series=cash_yield_series)
     matcher = MatchEngine(fee_model=make_fee_model(), price_model=make_price_model())
     broker = BacktestBroker(
         matcher=matcher, ledger=ledger, feed=feed, enable_dividend_tax=True
