@@ -1,0 +1,326 @@
+{
+  "probe": "e4-risk-audit/v2 ghost-registration 2019-2020",
+  "run_id": "20260917-102929-t312-dividend-v1-noseed",
+  "registered_symbols": 11,
+  "ghost_symbols": {
+    "sz.000014": {
+      "register_events": 1,
+      "days_on_book": 34,
+      "days_with_position": 0,
+      "buy_intents": [],
+      "sell_intents": []
+    },
+    "sz.002801": {
+      "register_events": 1,
+      "days_on_book": 30,
+      "days_with_position": 0,
+      "buy_intents": [],
+      "sell_intents": []
+    }
+  },
+  "per_symbol": {
+    "sh.600267": {
+      "register_events": 1,
+      "days_on_book": 34,
+      "days_with_position": 7,
+      "buy_intents": [
+        "2019-12-18",
+        "2020-01-16"
+      ],
+      "sell_intents": [
+        "2019-12-19",
+        "2020-02-03"
+      ]
+    },
+    "sh.600446": {
+      "register_events": 1,
+      "days_on_book": 19,
+      "days_with_position": 1,
+      "buy_intents": [
+        "2020-12-07"
+      ],
+      "sell_intents": [
+        "2020-12-08"
+      ]
+    },
+    "sz.000014": {
+      "register_events": 1,
+      "days_on_book": 34,
+      "days_with_position": 0,
+      "buy_intents": [],
+      "sell_intents": []
+    },
+    "sz.002064": {
+      "register_events": 1,
+      "days_on_book": 32,
+      "days_with_position": 7,
+      "buy_intents": [
+        "2020-08-05",
+        "2020-09-02"
+      ],
+      "sell_intents": [
+        "2020-08-06",
+        "2020-09-10"
+      ]
+    },
+    "sz.002548": {
+      "register_events": 1,
+      "days_on_book": 30,
+      "days_with_position": 10,
+      "buy_intents": [
+        "2020-10-12",
+        "2020-11-09"
+      ],
+      "sell_intents": [
+        "2020-10-13",
+        "2020-11-23"
+      ]
+    },
+    "sz.002801": {
+      "register_events": 1,
+      "days_on_book": 30,
+      "days_with_position": 0,
+      "buy_intents": [],
+      "sell_intents": []
+    },
+    "sz.300246": {
+      "register_events": 2,
+      "days_on_book": 49,
+      "days_with_position": 14,
+      "buy_intents": [
+        "2020-10-12",
+        "2020-11-09",
+        "2020-12-07"
+      ],
+      "sell_intents": [
+        "2020-10-13",
+        "2020-11-23",
+        "2020-12-11"
+      ]
+    },
+    "sz.300433": {
+      "register_events": 1,
+      "days_on_book": 30,
+      "days_with_position": 10,
+      "buy_intents": [
+        "2020-06-08",
+        "2020-07-08"
+      ],
+      "sell_intents": [
+        "2020-06-09",
+        "2020-07-22"
+      ]
+    },
+    "sz.300443": {
+      "register_events": 1,
+      "days_on_book": 30,
+      "days_with_position": 10,
+      "buy_intents": [
+        "2020-04-08",
+        "2020-05-11"
+      ],
+      "sell_intents": [
+        "2020-04-09",
+        "2020-05-25"
+      ]
+    },
+    "sz.300552": {
+      "register_events": 1,
+      "days_on_book": 30,
+      "days_with_position": 10,
+      "buy_intents": [
+        "2020-06-08",
+        "2020-07-08"
+      ],
+      "sell_intents": [
+        "2020-06-09",
+        "2020-07-22"
+      ]
+    },
+    "sz.300701": {
+      "register_events": 1,
+      "days_on_book": 32,
+      "days_with_position": 26,
+      "buy_intents": [
+        "2020-08-05"
+      ],
+      "sell_intents": [
+        "2020-09-10"
+      ]
+    }
+  },
+  "ice_day_ghost_overlap": [
+    {
+      "day": "2020-02-03",
+      "holds": [
+        "sh.600267",
+        "sz.000014"
+      ],
+      "ghost_holds": [
+        "sz.000014"
+      ]
+    },
+    {
+      "day": "2020-02-04",
+      "holds": [
+        "sh.600267",
+        "sz.000014"
+      ],
+      "ghost_holds": [
+        "sz.000014"
+      ]
+    },
+    {
+      "day": "2020-02-05",
+      "holds": [
+        "sh.600267",
+        "sz.000014"
+      ],
+      "ghost_holds": [
+        "sz.000014"
+      ]
+    },
+    {
+      "day": "2020-02-06",
+      "holds": [
+        "sh.600267",
+        "sz.000014"
+      ],
+      "ghost_holds": [
+        "sz.000014"
+      ]
+    },
+    {
+      "day": "2020-02-07",
+      "holds": [
+        "sh.600267",
+        "sz.000014"
+      ],
+      "ghost_holds": [
+        "sz.000014"
+      ]
+    },
+    {
+      "day": "2020-02-11",
+      "holds": [
+        "sh.600267",
+        "sz.000014"
+      ],
+      "ghost_holds": [
+        "sz.000014"
+      ]
+    },
+    {
+      "day": "2020-09-10",
+      "holds": [
+        "sz.002064",
+        "sz.300701"
+      ],
+      "ghost_holds": []
+    },
+    {
+      "day": "2020-09-11",
+      "holds": [
+        "sz.002064",
+        "sz.300701"
+      ],
+      "ghost_holds": []
+    },
+    {
+      "day": "2020-09-14",
+      "holds": [
+        "sz.002064",
+        "sz.300701"
+      ],
+      "ghost_holds": []
+    },
+    {
+      "day": "2020-09-16",
+      "holds": [
+        "sz.002064",
+        "sz.300701"
+      ],
+      "ghost_holds": []
+    },
+    {
+      "day": "2020-10-30",
+      "holds": [
+        "sz.002548",
+        "sz.300246"
+      ],
+      "ghost_holds": []
+    },
+    {
+      "day": "2020-12-11",
+      "holds": [
+        "sh.600446",
+        "sz.300246"
+      ],
+      "ghost_holds": []
+    },
+    {
+      "day": "2020-12-14",
+      "holds": [
+        "sh.600446",
+        "sz.300246"
+      ],
+      "ghost_holds": []
+    },
+    {
+      "day": "2020-12-15",
+      "holds": [
+        "sh.600446",
+        "sz.300246"
+      ],
+      "ghost_holds": []
+    },
+    {
+      "day": "2020-12-16",
+      "holds": [
+        "sh.600446",
+        "sz.300246"
+      ],
+      "ghost_holds": []
+    },
+    {
+      "day": "2020-12-17",
+      "holds": [
+        "sh.600446",
+        "sz.300246"
+      ],
+      "ghost_holds": []
+    },
+    {
+      "day": "2020-12-18",
+      "holds": [
+        "sh.600446",
+        "sz.300246"
+      ],
+      "ghost_holds": []
+    },
+    {
+      "day": "2020-12-22",
+      "holds": [
+        "sh.600446",
+        "sz.300246"
+      ],
+      "ghost_holds": []
+    },
+    {
+      "day": "2020-12-24",
+      "holds": [
+        "sh.600446",
+        "sz.300246"
+      ],
+      "ghost_holds": []
+    },
+    {
+      "day": "2020-12-29",
+      "holds": [
+        "sh.600446",
+        "sz.300246"
+      ],
+      "ghost_holds": []
+    }
+  ]
+}
