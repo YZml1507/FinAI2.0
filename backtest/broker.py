@@ -350,6 +350,10 @@ class BacktestBroker:
         # ③ 刷市值 + NAV（settle.py：停牌市值冻结）。
         report = settle_day_detail(self.book, date, day_bars, events or None)
 
+        # ③.5 空仓现金计息（e6）：Broker 日终不走 ledger.settle，须显式计息
+        #     （快照 nav 含当日利息）。
+        self.ledger.accrue_cash_interest(date)
+
         # ④ 写 SETTLE 快照流水。⛔ 不调 ledger.settle —— 那会二次刷市值。
         self.ledger.journal.append(
             JournalEntry.create(

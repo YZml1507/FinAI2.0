@@ -689,6 +689,26 @@ class Ledger:
         self.journal.append(entry)
         return refreshed
 
+    def accrue_cash_interest(self, date: _date) -> Decimal:
+        """空仓现金日化计息（e6）：``cash × 年化/244``，写 CASH_INTEREST
+        流水并同步 NAV。供本类 settle 与 BacktestBroker.settle 共用——
+        ⛔ Broker 日终不走 ledger.settle（防二次刷市值），必须显式调本方法。
+        """
+        if self._cash_daily_rate <= _ZERO or self.book.cash <= _ZERO:
+            return _ZERO
+        interest = self.book.cash * self._cash_daily_rate
+        entry = JournalEntry.create(
+            date=date,
+            entry_type=JournalType.CASH_INTEREST,
+            amount=interest,
+            ref_id=f"CASH_INTEREST:{date.isoformat()}",
+        )
+        if self.journal.append(entry):
+            self.book.cash += interest
+            self.book.recompute_nav()
+            return interest
+        return _ZERO
+
     def advance_sellable(self, today: _date) -> dict[str, int]:
         """T+1 推进（见 ``BookView.advance_sellable``）。"""
         return self.book.advance_sellable(today)
