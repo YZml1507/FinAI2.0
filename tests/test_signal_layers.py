@@ -740,7 +740,7 @@ class TestStrategyLayersIntegration:
                              min_position_value=Decimal("10000"),
                              min_daily_amount=Decimal("1000"),
                              max_participation_rate=Decimal("1"))
-        cfg = _cfg(use_breadth_timing=True,
+        cfg = _cfg(use_breadth_timing=True, breadth_demote_liquidate=True,
                    breadth_series={"2020-06-01": Decimal("0.5"),
                                    "2020-06-02": Decimal("0.3")},
                    rebalance_days=20, breadth_mid_cap=Decimal("0"),
@@ -771,6 +771,31 @@ class TestStrategyLayersIntegration:
                              max_participation_rate=Decimal("1"))
         cfg = _cfg(use_breadth_timing=True,
                    breadth_series={"2020-06-01": Decimal("0.3"),
+                                   "2020-06-02": Decimal("0.3")},
+                   rebalance_days=20, breadth_mid_cap=Decimal("0"),
+                   portfolio=pc)
+        st = DividendStrategy(config=cfg, signal_layers=SignalLayers())
+        st._bar_count = 200
+        st._last_rebalance_bar = 200
+        book = _Book(Decimal("150000"),
+                     positions={"sh.600001": _Pos(1000)})
+        brk = _Broker()
+        bars = {"sh.600001": _bar("sh.600001")}
+        st.on_bar(date(2020, 6, 1), bars, book, brk)
+        st._bar_count = 201
+        st.on_bar(date(2020, 6, 2), bars, book, brk)
+        assert not brk.orders
+
+    def test_no_demote_when_flag_off(self):
+        """开关默认关：同样的 attack→mid 跨界不触发降档出清（消融隔离，
+        e6-v2 教训：无开关的默认生效行为会污染并行实验的归因）。"""
+        pc = PortfolioConfig(min_positions=2, max_positions=5,
+                             target_count=2, hard_limit=5,
+                             min_position_value=Decimal("10000"),
+                             min_daily_amount=Decimal("1000"),
+                             max_participation_rate=Decimal("1"))
+        cfg = _cfg(use_breadth_timing=True,   # breadth_demote_liquidate 默认 False
+                   breadth_series={"2020-06-01": Decimal("0.5"),
                                    "2020-06-02": Decimal("0.3")},
                    rebalance_days=20, breadth_mid_cap=Decimal("0"),
                    portfolio=pc)

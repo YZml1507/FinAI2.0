@@ -232,6 +232,7 @@ class DividendConfig:
     pead_hold_days: int = 30                          # PEAD 持有上限（交易日，20-40 窗口内）
     pead_reserve_pct: Decimal = Decimal("0.40")       # event 模式：进攻档为 PEAD 预留资金比例（2 槽×~20%净值≈常规单票量级，低于单票下限会永远买不进）
     cash_yield_annual: Decimal = Decimal("0")         # 空仓现金年化收益（e6 防御资产近似：货基/逆回购 ~0.02；0=不计息）
+    breadth_demote_liquidate: bool = False            # e7 降档即出清：宽度由 attack 跌入 <attack 当日向 mid_cap 收敛（⛔ 默认关——须开关隔离，否则无条件生效污染消融实验）
     pead_entry_mode: str = "rebalance"                # 'event'=公告日事件驱动建仓（需 reserve）；'rebalance'=调仓日并入候选源（软叠加，零闲置现金）
     portfolio: PortfolioConfig = field(default_factory=PortfolioConfig)
 
@@ -531,7 +532,8 @@ class DividendStrategy:
         #    ⛔ 降档只出清不重置调仓时钟：_last_rebalance_bar 仅在常规
         #    节拍日更新，防出清事件挤占/推迟后续正常调仓。
         demote_due = (
-            cfg.use_breadth_timing and not self._breadth_ice
+            cfg.breadth_demote_liquidate
+            and cfg.use_breadth_timing and not self._breadth_ice
             and self._breadth_today is not None
             and self._breadth_today < cfg.breadth_attack_threshold
             and prev_b is not None and prev_b >= cfg.breadth_attack_threshold)
