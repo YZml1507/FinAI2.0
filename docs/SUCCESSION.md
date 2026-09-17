@@ -49,7 +49,7 @@ python3 -c "import json; d=json.load(open('experiments/lab/<NAME>/experiment.jso
 `experiments/lab/e4-risk-audit/probe_replay.py` 模式）。探针过 →
 临时裁决升终局；不过 → 记「该实现下证负」，⛔ 不许升级路线判负。
 
-### Q3【L1】e6b-gc001（代码已就绪，纯执行）⏳ 已在跑
+### Q3【L1】e6b-gc001 ✅ 已收单（有效：vs b-repro +1.81pp，优于固定2%版，见 tracker）
 
 前置已满足：e6-v3 抬升成立。e6b 已于 14:21 发车（命令同下，已在后台）。
 注意：GC001 ffill 阈值 45 自然日（腾讯 kline 跳零成交 bar，春节断档 17 日实证）。
@@ -73,8 +73,8 @@ e7 结果出来后直接读 `probe_summary.json` 的 violations 字段。
 
 `--set cash_yield_annual=0.02 --set breadth_demote_liquidate=True`
 （若两者各自有效；e6b 出了则用 cash_yield_series 替代固定年化）。
-⏳ 状态：e8-e6e7-combo（固定 2%+demote）已于 14:51 发车；
-e6b 出来后追加 `e8b-e6be7-combo`（cash_yield_series 版）对照。
+⏳ 状态：e8（固定2%+demote）与 `e8b-gc001-e7-combo`（GC001+demote）均已收单，
+e8b 双优 → 晋级候选锁定为 e8b 构型（见 tracker/PLAYBOOK 台账）。
 ⛔ 晋级前必须过六维门禁（独立留出/±20% 扰动/成本复核/基准对比）。
 扰动矩阵预案（±20%）：cash_yield {0.016, 0.02, 0.024}（或 GC001 序列
 ±20% 平移）、attack {0.28, 0.35, 0.42}、defense {0.20, 0.25, 0.30}——
