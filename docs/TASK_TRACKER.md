@@ -79,7 +79,7 @@
 - tmux：finai-sentinel（巡检）、finai-supervisor（监工）、finai-breadth-grid（24 组宽度网格，20:15 启动，预计约 23:45 跑完）
 - ⚠️ 已知问题（网格结束后修）：_git_code_hash 的 dirty 哈希会吃到 leaderboard.jsonl 的追加（它是跟踪文件），批间哈希标签会漂移（代码本体同为 c944917，结果可比性不受影响）；修复方向=dirty 哈希只覆盖代码路径（strategy/scripts/backtest/tests）
 - ⚠️ Hermes 提到的两组旧结果（bd20a35m30i1/i2：CAGR -2.05%/-1.51%、MDD 41%/36%）是修复前旧代码产物，已从榜单剔除、将在新网格重跑，勿引用 <!-- gate-doc-ignore: 修复前旧代码被剔除结果的历史快照登记，非基线声明，不改史 -->
-- 服务器：114.67.65.24（本机）；数据源新浪 akshare；腾讯接口对本机封禁待探测
+- 服务器：114.67.65.24（本机）；数据源新浪 akshare；腾讯接口对本机封禁待探测（但 Hermes 实测腾讯 kline 取 GC001 序列可用——封禁范围待复核）
 - 测试命令：`cd /home/ubuntu/FinAI2.0 && .venv/bin/pytest <目标> -v`
 
 ## 六、决策记录（用户授权 AI 全权执行 2026-09-15 17:43）
