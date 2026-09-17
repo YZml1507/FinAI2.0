@@ -73,6 +73,7 @@ class JournalType(str, Enum):
     DIVIDEND_TAX = "DIVIDEND_TAX"    # 红利税（T309：股息红利差别化个人所得税）
     EXDIV_ADJUST = "EXDIV_ADJUST"    # 除权调整（送股 / 转增 / 拆股）
     CASH_IN = "CASH_IN"              # 出入金（含期初本金）
+    CASH_INTEREST = "CASH_INTEREST"  # 空仓现金利息（防御期资产近似：货基/逆回购日化）
     SETTLE = "SETTLE"                # 日终结算快照
 
 
@@ -271,7 +272,8 @@ class Journal:
     def replay(self, *, initial_date: _date | None = None) -> "BookView":
         """从头重放构建 BookView（验证性：与在线视图逐字段比对可查账本漂移）。
 
-        只重放**可推导**的条目：CASH_IN / TRADE / DIVIDEND / FEE / EXDIV_ADJUST。
+        只重放**可推导**的条目：CASH_IN / TRADE / DIVIDEND / FEE / EXDIV_ADJUST
+        / CASH_INTEREST。
         SETTLE 只携带快照，不参与推导（市值须由 bars 重新刷新）。
         """
         first_date = initial_date or (
@@ -284,6 +286,7 @@ class Journal:
                 JournalType.CASH_IN,
                 JournalType.DIVIDEND,
                 JournalType.FEE,
+                JournalType.CASH_INTEREST,
             ):
                 book.cash += entry.amount
             elif entry.entry_type is JournalType.TRADE:
@@ -557,11 +560,15 @@ class Ledger:
         initial_cash: Decimal = _ZERO,
         *,
         date: _date,
+        cash_yield_annual: Decimal = _ZERO,
         journal: Journal | None = None,
     ) -> None:
         self.journal = journal or Journal()
         self.book = BookView(cash=_ZERO, date=date)
         self._start_date = date
+        # 空仓现金日化利率（e6 防御资产近似）：settle 时按 cash×rate/244 计息，
+        # 写 CASH_INTEREST 流水（门禁现金流守恒归 other_in，不破 A-2）。
+        self._cash_daily_rate = Decimal(cash_yield_annual) / Decimal(244)
         if Decimal(initial_cash) != 0:
             self.deposit(Decimal(initial_cash), date=date, ref_id="INITIAL_CAPITAL")
 
@@ -655,6 +662,18 @@ class Ledger:
     def settle(self, date: _date, bars: Mapping[str, Bar]) -> set[str]:
         """日终结算 + 写 SETTLE 快照流水。返回被刷新的 symbol 集合。"""
         refreshed = self.book.settle(date, bars)
+        # 现金利息：先计息再写 SETTLE 快照（快照 nav 含当日利息）
+        if self._cash_daily_rate > _ZERO and self.book.cash > _ZERO:
+            interest = self.book.cash * self._cash_daily_rate
+            entry_i = JournalEntry.create(
+                date=date,
+                entry_type=JournalType.CASH_INTEREST,
+                amount=interest,
+                ref_id=f"CASH_INTEREST:{date.isoformat()}",
+            )
+            if self.journal.append(entry_i):
+                self.book.cash += interest
+                self.book.recompute_nav()
         entry = JournalEntry.create(
             date=date,
             entry_type=JournalType.SETTLE,

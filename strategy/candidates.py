@@ -231,6 +231,7 @@ class DividendConfig:
     pead_max_slots: int = 2                           # PEAD 同时持仓上限
     pead_hold_days: int = 30                          # PEAD 持有上限（交易日，20-40 窗口内）
     pead_reserve_pct: Decimal = Decimal("0.40")       # event 模式：进攻档为 PEAD 预留资金比例（2 槽×~20%净值≈常规单票量级，低于单票下限会永远买不进）
+    cash_yield_annual: Decimal = Decimal("0")         # 空仓现金年化收益（e6 防御资产近似：货基/逆回购 ~0.02；0=不计息）
     pead_entry_mode: str = "rebalance"                # 'event'=公告日事件驱动建仓（需 reserve）；'rebalance'=调仓日并入候选源（软叠加，零闲置现金）
     portfolio: PortfolioConfig = field(default_factory=PortfolioConfig)
 

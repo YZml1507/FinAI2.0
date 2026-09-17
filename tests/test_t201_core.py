@@ -637,3 +637,35 @@ def test_journal_replay_reconstructs_cash_and_positions():
     replayed = ledger.journal.replay()
     assert replayed.cash == ledger.cash
     assert replayed.positions["sh.600000"].volume == ledger.positions["sh.600000"].volume
+
+
+def test_cash_interest_accrues_on_settle():
+    """e6 空仓现金计息：settle 按 cash×年化/244 计提，写 CASH_INTEREST
+    流水；回放可完整重建现金（账本不自洽即红）。"""
+    from datetime import date as _d
+    ledger = Ledger(D("100000"), date=_D1,
+                    cash_yield_annual=D("0.02"))
+    ledger.settle(_D1, {})
+    expected = D("100000") * D("0.02") / D(244)
+    assert ledger.cash == D("100000") + expected
+    assert ledger.nav == ledger.cash
+    types = [e.entry_type for e in ledger.entries]
+    assert JournalType.CASH_INTEREST in types
+    # 次日再计息：复利滚动（现金基数含昨日利息）
+    ledger.settle(_D2, {})
+    n_interest = sum(1 for e in ledger.entries
+                     if e.entry_type == JournalType.CASH_INTEREST)
+    assert n_interest == 2
+    day2 = (D("100000") + expected) * D("0.02") / D(244)
+    assert ledger.cash == D("100000") + expected + day2
+    # 回放一致性
+    assert ledger.journal.replay().cash == ledger.cash
+
+
+def test_cash_interest_default_zero_noop():
+    """默认不计息：无 CASH_INTEREST 流水，现金不变。"""
+    ledger = Ledger(D("100000"), date=_D1)
+    ledger.settle(_D1, {})
+    assert ledger.cash == D("100000")
+    assert not any(e.entry_type == JournalType.CASH_INTEREST
+                   for e in ledger.entries)

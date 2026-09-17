@@ -640,7 +640,9 @@ def run_dividend_backtest_2015_2024(
 
     # ⑤ 引擎组装（T201 契约：资金进 Ledger，Engine 只收 broker+feed；
     #    策略经 run(strategy, start, end) 传入）
-    ledger = Ledger(initial_cash=initial_capital, date=start)
+    ledger = Ledger(initial_cash=initial_capital, date=start,
+                    cash_yield_annual=getattr(strategy_config,
+                                              "cash_yield_annual", Decimal("0")))
     matcher = MatchEngine(fee_model=make_fee_model(), price_model=make_price_model())
     broker = BacktestBroker(
         matcher=matcher, ledger=ledger, feed=feed, enable_dividend_tax=True

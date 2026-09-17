@@ -69,6 +69,8 @@ _PARAM_CASTERS = {
     "pead_hold_days": int,
     "pead_reserve_pct": Decimal,
     "pead_entry_mode": str,
+    # 空仓现金收益（e6 防御资产近似，账户级计息）
+    "cash_yield_annual": Decimal,
     # 回测区间覆盖（非 DividendConfig 字段，run_experiment 单独提取传给 runner）
     "backtest_start": lambda v: _date.fromisoformat(v),
     "backtest_end": lambda v: _date.fromisoformat(v),
