@@ -1177,6 +1177,7 @@ class TestGateDocIgnoreScope:
             "docs/TASK_TRACKER.md": (1, None),      # 任务跟踪文档的历史实验实测值快照
             "docs/ALPHA3_PLAYBOOK.md": (1, None),   # 作战手册的消融实验实测值快照
             "docs/STRATEGY.md": (1, None),           # 战略宪章的基线实测值快照
+            "docs/PROJECT_ASSESSMENT.md": (1, None),  # 项目评估的基准实测值快照
         }
         by_file: dict[str, list] = {}
         for h in hits:
