@@ -73,6 +73,8 @@ e7 结果出来后直接读 `probe_summary.json` 的 violations 字段。
 
 `--set cash_yield_annual=0.02 --set breadth_demote_liquidate=True`
 （若两者各自有效；e6b 出了则用 cash_yield_series 替代固定年化）。
+⏳ 状态：e8-e6e7-combo（固定 2%+demote）已于 14:51 发车；
+e6b 出来后追加 `e8b-e6be7-combo`（cash_yield_series 版）对照。
 ⛔ 晋级前必须过六维门禁（独立留出/±20% 扰动/成本复核/基准对比）。
 扰动矩阵预案（±20%）：cash_yield {0.016, 0.02, 0.024}（或 GC001 序列
 ±20% 平移）、attack {0.28, 0.35, 0.42}、defense {0.20, 0.25, 0.30}——
