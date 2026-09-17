@@ -644,7 +644,6 @@ def run_dividend_backtest_2015_2024(
     cash_yield_series = None
     _series_path = getattr(strategy_config, "cash_yield_series", "")
     if _series_path:
-        import pandas as pd
         _sp = Path(_series_path)
         if not _sp.exists():
             raise SystemExit(
