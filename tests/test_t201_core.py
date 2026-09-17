@@ -692,10 +692,12 @@ def test_cash_interest_series_mode():
     with pytest.raises(ValueError):
         Ledger(D("100000"), date=_D1, cash_yield_annual=D("0.02"),
                cash_yield_series=series)
-    # ④ 断档 >5 自然日 raise
+    # ④ 断档 >16 自然日 raise（16 日覆盖春节长假：假期无报价但跨节计息合法）
     ledger2 = Ledger(D("100000"), date=_D1, cash_yield_series=series)
+    ledger2.settle(_d(2024, 1, 20), {})          # 间隔 15 日 ≤16 → 不炸
+    ledger3b = Ledger(D("100000"), date=_D1, cash_yield_series=series)
     with pytest.raises(ValueError):
-        ledger2.settle(_d(2024, 1, 20), {})
+        ledger3b.settle(_d(2024, 1, 25), {})     # 间隔 20 日 >16 → raise
     # ⑤ 序列起点之前 raise（无前值可填）
     ledger3 = Ledger(D("100000"), date=_D1,
                      cash_yield_series={"2024-06-01": D("0.02")})
