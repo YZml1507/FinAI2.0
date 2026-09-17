@@ -575,10 +575,11 @@ class Ledger:
             raise ValueError(
                 "cash_yield_annual 与 cash_yield_series 互斥（⛔ 双利率源歧义）")
         self._cash_daily_rate = Decimal(cash_yield_annual) / Decimal(244)
-        # 序列模式：预排序 iso 日期键供二分前向填充（ffill≤16 自然日，超窗
-        # raise——16 日覆盖春节级长假：GC001 假期无报价但现金实际照计假期利息，
-        # 用节前最后利率跨节是经济正确的而非陈旧数据）。
-        self._FFILL_MAX_GAP_DAYS = 16
+        # 序列模式：预排序 iso 日期键供二分前向填充（ffill≤45 自然日，超窗
+        # raise——长假+零成交日跳帧：腾讯 kline 会跳过无成交 bar，实测 2019
+        # 春节后 01-28→02-14 共 17 日断档；阈值须容忍真实数据缺口，又要在
+        # 序列被截断/错文件时炸出来，45 日≈一个半月的兜底）。
+        self._FFILL_MAX_GAP_DAYS = 45
         self._cash_rate_series = cash_yield_series or {}
         self._cash_rate_dates = sorted(self._cash_rate_series)
         if Decimal(initial_cash) != 0:
@@ -694,7 +695,7 @@ class Ledger:
 
     def _cash_rate_for(self, date: _date) -> Decimal:
         """当日现金日化利率：固定模式返回 cash_yield_annual/244；序列模式
-        查当日 GC001 年化，缺日按最近前值 ffill（间隔 >16 自然日 raise——
+        查当日 GC001 年化，缺日按最近前值 ffill（间隔 >45 自然日 raise——
         ⛔ 不许静默用陈旧利率）。"""
         if not self._cash_rate_dates:
             return self._cash_daily_rate

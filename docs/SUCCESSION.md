@@ -52,7 +52,7 @@ python3 -c "import json; d=json.load(open('experiments/lab/<NAME>/experiment.jso
 ### Q3【L1】e6b-gc001（代码已就绪，纯执行）⏳ 已在跑
 
 前置已满足：e6-v3 抬升成立。e6b 已于 14:21 发车（命令同下，已在后台）。
-注意：GC001 ffill 阈值已放宽至 16 自然日（春节断档实证）。
+注意：GC001 ffill 阈值 45 自然日（腾讯 kline 跳零成交 bar，春节断档 17 日实证）。
 探针 `experiments/lab/e7-demote-audit/probe_replay.py` 已实现并在跑——
 e7 结果出来后直接读 `probe_summary.json` 的 violations 字段。
 
