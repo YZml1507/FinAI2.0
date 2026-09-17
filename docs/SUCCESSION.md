@@ -16,9 +16,11 @@
 
 ## 一、当前队列（按序执行，不许跳号开新方向）
 
-### Q1【L1】三组对照实验收单（已发车，预计 ~14:05 出齐）
+### Q1【L1】三组对照实验收单
 
-等待 `experiments/lab/{b-repro,e6-cash-yield-v3,e7-demote}/experiment.json`。
+⏳ 状态：`b-repro` ✅（与冠军逐值一致，基线重锚完成）、`e6-v3` ✅（**计息有效，+1.45pp/MDD -2.1pp**，终局登记见 TASK_TRACKER）、`e7-demote` 重发中。
+
+等待 `experiments/lab/{e7-demote,e6b-gc001}/experiment.json`。
 
 ```
 cd /home/ubuntu/FinAI2.0
@@ -47,11 +49,15 @@ python3 -c "import json; d=json.load(open('experiments/lab/<NAME>/experiment.jso
 `experiments/lab/e4-risk-audit/probe_replay.py` 模式）。探针过 →
 临时裁决升终局；不过 → 记「该实现下证负」，⛔ 不许升级路线判负。
 
-### Q3【L1】e6b-gc001（代码已就绪，纯执行）
+### Q3【L1】e6b-gc001（代码已就绪，纯执行）⏳ 已在跑
 
-前置：Q1 中 e6-v3 抬升成立（否则本项无意义，直接跳过）。
+前置已满足：e6-v3 抬升成立。e6b 已于 14:21 发车（命令同下，已在后台）。
+注意：GC001 ffill 阈值已放宽至 16 自然日（春节断档实证）。
+探针 `experiments/lab/e7-demote-audit/probe_replay.py` 已实现并在跑——
+e7 结果出来后直接读 `probe_summary.json` 的 violations 字段。
 
 ```
+# （如须重跑）
 .venv/bin/python scripts/lab/run_experiment.py --name e6b-gc001 \
   --set use_breadth_timing=True --set breadth_defense_threshold=0.25 \
   --set breadth_attack_threshold=0.35 --set breadth_mid_cap=0.0 \
