@@ -732,59 +732,6 @@ class TestStrategyLayersIntegration:
         assert "sh.600005" in st._pead_holds
         assert not brk.orders                      # 未到期不卖出
 
-    def test_breadth_reentry_after_ice_clears(self):
-        """回场触发器：冰点解除后宽度已在进攻档 → 次日立即调仓，
-        不等 rebalance_days 周期（利用率探针实测 attack 档均仓仅 54.5%，
-        灾后回场滞后是 CAGR 缺口主因之一）。"""
-        pc = PortfolioConfig(min_positions=2, max_positions=5,
-                             target_count=2, hard_limit=5,
-                             min_position_value=Decimal("10000"),
-                             min_daily_amount=Decimal("1000"),
-                             max_participation_rate=Decimal("1"))
-        cfg = _cfg(use_breadth_timing=True,
-                   breadth_series={"2020-06-01": Decimal("0.5"),
-                                   "2020-06-02": Decimal("0.5")},
-                   rebalance_days=20, portfolio=pc)
-        st = DividendStrategy(config=cfg, signal_layers=SignalLayers())
-        st._bar_count = 200
-        st._last_rebalance_bar = 200        # 常规节拍远未到期
-        st._breadth_ice = True              # 昨日处冰点
-        book = _Book(Decimal("150000"))
-        brk = _Broker()
-        bars = {"sh.600001": _bar("sh.600001", dy="0.06"),
-                "sh.600002": _bar("sh.600002", dy="0.05")}
-        st.on_bar(date(2020, 6, 1), bars, book, brk)   # 解除日：只清旗标
-        assert not brk.orders and not st._breadth_ice
-        st._bar_count = 201
-        st.on_bar(date(2020, 6, 2), bars, book, brk)   # 回场触发→立即调仓
-        buys = [o for o in brk.orders if o.side.value == "BUY"]
-        assert buys, "冰点解除后进攻档应触发回场调仓"
-
-    def test_no_reentry_when_still_below_attack(self):
-        """警戒区（defense≤宽度<attack）不触发回场——mid_cap=0 下建仓
-        无意义，防止误触发。"""
-        pc = PortfolioConfig(min_positions=2, max_positions=5,
-                             target_count=2, hard_limit=5,
-                             min_position_value=Decimal("10000"),
-                             min_daily_amount=Decimal("1000"),
-                             max_participation_rate=Decimal("1"))
-        cfg = _cfg(use_breadth_timing=True,
-                   breadth_series={"2020-06-01": Decimal("0.5"),
-                                   "2020-06-02": Decimal("0.3")},
-                   rebalance_days=20, portfolio=pc)
-        st = DividendStrategy(config=cfg, signal_layers=SignalLayers())
-        st._bar_count = 200
-        st._last_rebalance_bar = 200
-        st._breadth_ice = True
-        book = _Book(Decimal("150000"))
-        brk = _Broker()
-        bars = {"sh.600001": _bar("sh.600001", dy="0.06"),
-                "sh.600002": _bar("sh.600002", dy="0.05")}
-        st.on_bar(date(2020, 6, 1), bars, book, brk)
-        st._bar_count = 201
-        st.on_bar(date(2020, 6, 2), bars, book, brk)   # 0.3 处警戒区
-        assert not [o for o in brk.orders if o.side.value == "BUY"]
-
     def test_layers_required_failclosed(self):
         with pytest.raises(ValueError):
             DividendStrategy(config=_cfg(use_quality_veto=True),

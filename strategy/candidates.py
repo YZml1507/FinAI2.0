@@ -384,7 +384,6 @@ class DividendStrategy:
         # Alpha 三层运行态（全部确定性推进，无随机源）
         self._lm_cursor: dict[str, int] = {}        # symbol → landmine 事件游标
         self._lm_pending: dict[str, list] = {}      # symbol → 已见未了事件队列
-        self._ice_just_cleared = False            # 冰点刚解除→次日回场触发器
         self._pead_holds: dict[str, int] = {}       # symbol → 建仓 bar_count
         self._pead_acted: set = set()               # 已建仓 event_id 幂等集
         self._bar_count = 0
@@ -488,7 +487,6 @@ class DividendStrategy:
             # else：缓冲带内（breach_line ≤ close < ma200）→ 保留破位计数，维持现状
 
         # ③.5 市场宽度择时（方案 D）：冰点确认清仓 + 警戒仓位管控
-        prev_b = self._breadth_today      # 昨日宽度（用于回场触发器判档跃迁）
         self._breadth_today = None
         if cfg.use_breadth_timing:
             b = cfg.breadth_series.get(day.isoformat()) if cfg.breadth_series else None
@@ -500,8 +498,7 @@ class DividendStrategy:
                 if b >= cfg.breadth_defense_threshold:
                     self._breadth_ice = False
                     self._breadth_ice_streak = 0
-                    self._ice_just_cleared = True   # 次日若在进攻档→立即回场
-                return  # 解除当日也不建仓，等下一调仓节拍/回场触发器
+                return  # 解除当日也不建仓，等下一调仓节拍
             if b < cfg.breadth_defense_threshold:
                 self._breadth_ice_streak += 1
                 if self._breadth_ice_streak >= cfg.breadth_ice_confirm_days:
@@ -524,21 +521,8 @@ class DividendStrategy:
         if cfg.use_pead and self._layers is not None:
             self._apply_pead(day, bars, book, broker)
 
-        # ④ 非调仓日：保持现持仓——但「回场触发器」豁免调仓节拍：
-        #    冰点/警戒出清后若傻等下一调仓周期（≤20 交易日），灾后反弹前段
-        #    全程空仓（利用率探针实测：attack 档平均仓位仅 54.5%、54.2%
-        #    交易日仓位<30%）。规则：宽度由 <attack 升入 ≥attack（含冰点
-        #    解除次日）当日立即走正常调仓，T+1 成交——出清快、回场也要快。
-        reentry_due = (
-            cfg.use_breadth_timing and not self._breadth_ice
-            and self._breadth_today is not None
-            and self._breadth_today >= cfg.breadth_attack_threshold
-            and (self._ice_just_cleared
-                 or (prev_b is not None
-                     and prev_b < cfg.breadth_attack_threshold)))
-        self._ice_just_cleared = False
-        if (self._bar_count - self._last_rebalance_bar < cfg.rebalance_days
-                and not reentry_due):
+        # ④ 非调仓日：保持现持仓
+        if self._bar_count - self._last_rebalance_bar < cfg.rebalance_days:
             return
 
         # ⑤ 调仓日：标记 + 选股（启用择时时，能走到这里即未触发确认破位）
