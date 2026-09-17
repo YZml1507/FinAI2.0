@@ -76,10 +76,14 @@ _PARAM_CASTERS = {
     # 回测区间覆盖（非 DividendConfig 字段，run_experiment 单独提取传给 runner）
     "backtest_start": lambda v: _date.fromisoformat(v),
     "backtest_end": lambda v: _date.fromisoformat(v),
+    # 晋级门禁 G-3（成本/成交约束复核）：本金端点与费率敏感性
+    "initial_capital": Decimal,     # 初始本金（默认 150000）
+    "fee_multiplier": Decimal,      # 费率全科目缩放（默认 1；2=佣金/印花/过户/经手/证管 ×2）
 }
 
-#: 非策略配置字段——传给 ``run_dividend_backtest_*`` 的回测区间参数。
-_RUN_LEVEL_KEYS = ("backtest_start", "backtest_end")
+#: 非策略配置字段——传给 ``run_dividend_backtest_*`` 或本 runner 的运行级参数。
+_RUN_LEVEL_KEYS = (
+    "backtest_start", "backtest_end", "initial_capital", "fee_multiplier")
 
 
 def _load_breadth_series(path: Path) -> dict:
@@ -114,11 +118,51 @@ def run_experiment(name: str, overrides: dict, data_path: Path) -> dict:
     lab_dir = LAB_ROOT / name
     lab_dir.mkdir(parents=True, exist_ok=True)
 
-    # 运行级参数（回测区间）不进 DividendConfig——``dataclasses.replace`` 只认字段名。
+    # 运行级参数不进 DividendConfig——``dataclasses.replace`` 只认字段名。
     bt_start = overrides.pop("backtest_start", None)
     bt_end = overrides.pop("backtest_end", None)
+    initial_capital = Decimal(overrides.pop("initial_capital", "150000"))
+    fee_mult = Decimal(overrides.pop("fee_multiplier", "1"))
+    run_params = {
+        "backtest_start": str(bt_start) if bt_start else None,
+        "backtest_end": str(bt_end) if bt_end else None,
+        "initial_capital": str(initial_capital),
+        "fee_multiplier": str(fee_mult),
+    }
 
     orig_config_init = rdb.DividendConfig
+    orig_make_fee_model = rdb.make_fee_model
+
+    # G-3 费率敏感性：全科目费率 ×fee_mult（佣金/印花/过户/经手/证管；
+    # 滑点在价格模型侧不在此重复计）。与 DividendConfig 同款补丁手法，
+    # 仅本进程生效，权威脚本与默认费率装配不变。
+    if fee_mult != 1:
+        from backtest.fees import FeeSchedule, default_fee_config
+
+        def _scaled_schedules(schedules):
+            return tuple(
+                FeeSchedule(effective_from=s.effective_from,
+                            value=s.value * fee_mult)
+                for s in schedules)
+
+        def _make_fee_model_scaled(config=None):
+            cfg = config if config is not None else default_fee_config()
+            cfg = replace(
+                cfg,
+                commission_rate=cfg.commission_rate * fee_mult,
+                min_commission=cfg.min_commission * fee_mult,
+                stamp_tax_schedules=_scaled_schedules(cfg.stamp_tax_schedules),
+                transfer_fee_schedules=_scaled_schedules(
+                    cfg.transfer_fee_schedules),
+                handling_fee_schedules_cn=_scaled_schedules(
+                    cfg.handling_fee_schedules_cn),
+                handling_fee_schedules_bj=_scaled_schedules(
+                    cfg.handling_fee_schedules_bj),
+                management_fee_rate=cfg.management_fee_rate * fee_mult,
+            )
+            return orig_make_fee_model(cfg)
+
+        rdb.make_fee_model = _make_fee_model_scaled  # type: ignore[assignment]
 
     # 宽度择时开启时：自动关 MA200、注入宽度序列（互斥纪律由配置侧校验）
     # 宽度文件路径由环境变量 BREADTH_FILE 指定（⛔ 不进 --set，避免污染配置校验）
@@ -142,7 +186,7 @@ def run_experiment(name: str, overrides: dict, data_path: Path) -> dict:
     try:
         result = rdb.run_dividend_backtest_2015_2024(
             data_path=data_path,
-            initial_capital=Decimal("150000"),
+            initial_capital=initial_capital,
             risk_free_annual=Decimal("0.025"),
             enable_gates=True,
             start_date=bt_start,
@@ -151,6 +195,7 @@ def run_experiment(name: str, overrides: dict, data_path: Path) -> dict:
         )
     finally:
         rdb.DividendConfig = orig_config_init  # type: ignore[misc]
+        rdb.make_fee_model = orig_make_fee_model  # type: ignore[assignment]
     elapsed = time.time() - t0
 
     report = result["report"]
@@ -159,6 +204,7 @@ def run_experiment(name: str, overrides: dict, data_path: Path) -> dict:
         "started": started,
         "elapsed_min": round(elapsed / 60, 1),
         "overrides": {k: str(v) for k, v in overrides.items()},
+        "run_params": run_params,
         "run_id": result["run_id"],
         "lab_dir": str(lab_dir.relative_to(ROOT)),
         "cagr": str(report.cagr),
