@@ -732,6 +732,60 @@ class TestStrategyLayersIntegration:
         assert "sh.600005" in st._pead_holds
         assert not brk.orders                      # 未到期不卖出
 
+    def test_breadth_demote_liquidates_midzone_same_day(self):
+        """降档即出清（e7）：宽度由 attack 跌入 mid 当日立即向 mid_cap
+        收敛出清，不等调仓节拍（归因实证 2020 mid 档空窗贡献 -4.7%）。"""
+        pc = PortfolioConfig(min_positions=2, max_positions=5,
+                             target_count=2, hard_limit=5,
+                             min_position_value=Decimal("10000"),
+                             min_daily_amount=Decimal("1000"),
+                             max_participation_rate=Decimal("1"))
+        cfg = _cfg(use_breadth_timing=True,
+                   breadth_series={"2020-06-01": Decimal("0.5"),
+                                   "2020-06-02": Decimal("0.3")},
+                   rebalance_days=20, breadth_mid_cap=Decimal("0"),
+                   portfolio=pc)
+        st = DividendStrategy(config=cfg, signal_layers=SignalLayers())
+        st._bar_count = 200
+        st._last_rebalance_bar = 200        # 常规节拍远未到期
+        book = _Book(Decimal("150000"),
+                     positions={"sh.600001": _Pos(1000),
+                                "sh.600002": _Pos(1000)})
+        brk = _Broker()
+        bars = {"sh.600001": _bar("sh.600001", dy="0.06"),
+                "sh.600002": _bar("sh.600002", dy="0.05")}
+        st.on_bar(date(2020, 6, 1), bars, book, brk)   # attack 日，非调仓
+        assert not brk.orders
+        st._bar_count = 201
+        st.on_bar(date(2020, 6, 2), bars, book, brk)   # 跌入 mid → 即出清
+        sells = [o for o in brk.orders if o.side.value == "SELL"]
+        assert {o.symbol for o in sells} == {"sh.600001", "sh.600002"}
+
+    def test_no_demote_when_staying_in_mid(self):
+        """持续处于 mid 区（昨日也 <attack）不触发降档出清——只在
+        「由 attack 跌入」的跨界日生效，防每日重复砸盘。"""
+        pc = PortfolioConfig(min_positions=2, max_positions=5,
+                             target_count=2, hard_limit=5,
+                             min_position_value=Decimal("10000"),
+                             min_daily_amount=Decimal("1000"),
+                             max_participation_rate=Decimal("1"))
+        cfg = _cfg(use_breadth_timing=True,
+                   breadth_series={"2020-06-01": Decimal("0.3"),
+                                   "2020-06-02": Decimal("0.3")},
+                   rebalance_days=20, breadth_mid_cap=Decimal("0"),
+                   portfolio=pc)
+        st = DividendStrategy(config=cfg, signal_layers=SignalLayers())
+        st._bar_count = 200
+        st._last_rebalance_bar = 200
+        book = _Book(Decimal("150000"),
+                     positions={"sh.600001": _Pos(1000)})
+        brk = _Broker()
+        bars = {"sh.600001": _bar("sh.600001")}
+        st.on_bar(date(2020, 6, 1), bars, book, brk)
+        st._bar_count = 201
+        st.on_bar(date(2020, 6, 2), bars, book, brk)
+        assert not brk.orders
+
     def test_layers_required_failclosed(self):
         with pytest.raises(ValueError):
             DividendStrategy(config=_cfg(use_quality_veto=True),

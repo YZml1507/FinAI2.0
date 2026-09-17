@@ -488,6 +488,7 @@ class DividendStrategy:
             # else：缓冲带内（breach_line ≤ close < ma200）→ 保留破位计数，维持现状
 
         # ③.5 市场宽度择时（方案 D）：冰点确认清仓 + 警戒仓位管控
+        prev_b = self._breadth_today      # 昨日宽度（降档出清判跨界用）
         self._breadth_today = None
         if cfg.use_breadth_timing:
             b = cfg.breadth_series.get(day.isoformat()) if cfg.breadth_series else None
@@ -522,12 +523,26 @@ class DividendStrategy:
         if cfg.use_pead and self._layers is not None:
             self._apply_pead(day, bars, book, broker)
 
-        # ④ 非调仓日：保持现持仓
-        if self._bar_count - self._last_rebalance_bar < cfg.rebalance_days:
+        # ④ 非调仓日：保持现持仓——但「降档即出清」豁免调仓节拍：
+        #    mid_cap=0 语义是警戒区零仓，但此前只在调仓日生效——跌入警戒
+        #    区后的非调仓日持仓继续挨跌（归因实证：2020 mid 档 34 天 @31%
+        #    仓位贡献 -4.7%）。规则：宽度由 ≥attack 跌入 <attack 当日立即
+        #    走正常调仓流程（in_mid_zone 路径会按计划收敛到 mid_cap 上限）。
+        #    ⛔ 降档只出清不重置调仓时钟：_last_rebalance_bar 仅在常规
+        #    节拍日更新，防出清事件挤占/推迟后续正常调仓。
+        demote_due = (
+            cfg.use_breadth_timing and not self._breadth_ice
+            and self._breadth_today is not None
+            and self._breadth_today < cfg.breadth_attack_threshold
+            and prev_b is not None and prev_b >= cfg.breadth_attack_threshold)
+        scheduled = (self._bar_count - self._last_rebalance_bar
+                     >= cfg.rebalance_days)
+        if not scheduled and not demote_due:
             return
 
         # ⑤ 调仓日：标记 + 选股（启用择时时，能走到这里即未触发确认破位）
-        self._last_rebalance_bar = self._bar_count
+        if scheduled:
+            self._last_rebalance_bar = self._bar_count
         signals = self._select_stocks(bars, cfg, day)
 
         # ⑥ 组合计划（复用 portfolio.py 三段链，传入市值权重）
