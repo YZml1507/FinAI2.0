@@ -1169,11 +1169,13 @@ class TestGateDocIgnoreScope:
         # ① 按文件分组的语义守卫：
         #    - docs/project_status_flowchart.md 恰好 1 处（阶段一历史快照行）
         #    - docs/HANDOFF_20260915.md 允许 >=1 处（过期交接文档的历史快照值，⛔ 不改史）
+        #    - docs/ALPHA3_PLAYBOOK.md 允许 >=1 处（作战手册的消融实验实测值快照）
         #    - 其余文件一律 0 处（新增即报警，须复核是否为真历史快照）
         allowed_counts = {
             "docs/project_status_flowchart.md": (1, 1),
             "docs/HANDOFF_20260915.md": (1, None),  # 至少 1 处，上限不锁（历史快照行数随记录而增）
             "docs/TASK_TRACKER.md": (1, None),      # 任务跟踪文档的历史实验实测值快照
+            "docs/ALPHA3_PLAYBOOK.md": (1, None),   # 作战手册的消融实验实测值快照
         }
         by_file: dict[str, list] = {}
         for h in hits:
