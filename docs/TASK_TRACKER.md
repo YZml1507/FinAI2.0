@@ -16,6 +16,8 @@
 - **E4 终局（修复后重跑终裁）**：原版 4.02%/MDD 37.78% 系 _pead_holds 幽灵/僵尸在册 bug 产物作废；修复后 `e4-rebal-fixed` 实测 **CAGR 0.03%/MDD 45.35%/191 笔** << E2c 4.20% → **③PEAD 路线判负关闭（终局裁决）**。 <!-- gate-doc-ignore: 历史快照（消融实验实测值，非基线声明），⛔ 不改史 -->
 - **利用率归因（已出）**：宽度冠军 2431 日逐日对账——attack 档均仓仅 54.5%、54.2% 交易日仓位<30%、ice 档日均 -0.104%；CAGR 缺口主因=「出清快回场慢」+ 空仓现金零收益。产物 `experiments/lab/utilization-audit/`。
 - **回场触发器（已判负回滚）**：`e5-reentry` 实测 CAGR 3.87%/MDD 34.95% vs 冠军 5.82%/31.28% → 负（宽度在 attack 阈值附近反复穿越→买回后 mid 区不再出清被套）；已 revert（`209bee3`）。教训：「回场快」≠「收益高」，回场时机需要确认条件而非档位穿越即买。 <!-- gate-doc-ignore: 历史快照（消融实验实测值，非基线声明），⛔ 不改史 -->
+- **可复现性已验证**：固定缓存后利用率探针复跑 → universe_hash ac50e9da（2595）+ CAGR 5.82% 与冠军逐值一致；此前的 7.08% 证实为 986 池废数据。
+- **e6 空仓现金计息（已落地，实验中）**：Ledger 新增 `cash_yield_annual`（settle 日化计息，CASH_INTEREST 流水，回放/门禁守恒兼容）；`--set cash_yield_annual=0.02`；对照实验 `e6-cash-yield` 后台运行中，基线 1075。
 - **⚠️ 基建坑（已修）**：`universe_provider` 在线拉 stock_basic 不可复现——同日两跑拿到 2595 vs 986 只 ⇒ 探针/实验互不可比（利用率探针 v2 的 7.08% 即废数据）。已修：`FNAI_STOCK_BASIC_CACHE` 缓存机制 + `data/stock_basic_cache.parquet` 权威缓存（复现 alive@2015-01-05=2595）；run_experiment 与全部探针已接入。
 - **防御资产数据（已落盘）**：5 只 ETF 全历史入 `data/etf_bars/`（meta_defensive.json）：511360 短融 +2.45%/MDD-1.1%（价格口径真实✅）；511880/511990 货基价格口径失真（收益走份额结转，价格钉在~100）；511260 十年国债 +4.3%/MDD-4.6%；511220 疑数据/清盘异常（-90% MDD 待核）。Hermes 调研范围收窄为「规则/费率/逆回购利率序列」。 <!-- gate-doc-ignore: 历史快照（外部 ETF 行情实测值，非本策略基线），⛔ 不改史 -->
 - **E4 风控审计（已出）**：探针实证详见 `experiments/lab/e4-risk-audit/REPORT.md`；修复=in `_apply_pead` 在册对账；新增 3 单测；先例教训「实现存疑的实验不许升级为路线判负」已入 PLAYBOOK。
