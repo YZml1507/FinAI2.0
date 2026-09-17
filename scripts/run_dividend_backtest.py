@@ -595,10 +595,32 @@ def run_dividend_backtest_2015_2024(
         exdiv_events=exdiv_sidecars,
     )
 
+    # ③.9 Alpha 三层信号装载（任一 use_* 开关 ⇒ fail-closed 必须读到 sidecar）
+    signal_layers = None
+    if (getattr(strategy_config, "use_quality_veto", False)
+            or getattr(strategy_config, "use_landmine_overlay", False)
+            or getattr(strategy_config, "use_pead", False)):
+        from strategy.signal_layers import load_signal_layers
+        import os as _os
+        need = []
+        if strategy_config.use_quality_veto:
+            need.append("veto")
+        if strategy_config.use_landmine_overlay:
+            need.append("landmine")
+        if strategy_config.use_pead:
+            need.append("pead")
+        # LAYERS_SUFFIX 环境变量 → 扰动实验旁路目录（与 build_signal_layers 同口径）
+        _suffix = _os.environ.get("LAYERS_SUFFIX", "")
+        signal_layers = load_signal_layers(_root / "data", cal_days,
+                                           require=need, suffix=_suffix)
+        logger.info(f"Alpha 三层已装载: {signal_layers.manifest} "
+                    f"hash={signal_layers.manifest_hash}")
+
     # ④ 策略实例
     strategy = DividendStrategy(
         config=strategy_config,
         universe_provider=universe_provider,
+        signal_layers=signal_layers,
     )
 
     # ⑤ 引擎组装（T201 契约：资金进 Ledger，Engine 只收 broker+feed；
@@ -669,10 +691,14 @@ def run_dividend_backtest_2015_2024(
     logger.info("注册实验记录...")
     universe_codes = _universe_snapshot(universe_provider, cal_days, tables)
     _snapshot_universe_sidecar(registry_root, universe_codes)
+    data_version = "dividend-stocks-2015-2024"
+    if signal_layers is not None:
+        # 信号层 sidecar 内容指纹并入数据出处（G-1 三件套可比性）
+        data_version += f"+layers@{signal_layers.manifest_hash}"
     registry = ExperimentRegistry(
         root=registry_root or (_root / "experiments"),
         code_version="t312-dividend-v1",                       # 人类可读标签（仅供参考）
-        data_version="dividend-stocks-2015-2024",
+        data_version=data_version,
         code_hash=_git_code_hash(),                            # ★ 内容寻址（M2/PM-1）
         data_hash=hash_path_manifest(data_path),               # ★ 数据清单内容哈希
         calendar_hash=hash_sequence(cal_days, label="cal"),    # ★ 实际交易日历

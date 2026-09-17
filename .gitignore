@@ -36,6 +36,13 @@ data/dividend_stocks/
 data/etf_bars/
 data/financial_pit/
 data/macro/
+data/forecast_pit/
+data/statements_pit/
+data/quality_veto/
+data/landmine_events/
+data/pead_signals/
+data/pool_meta/
+data/signal_layers_manifest.json
 data/**/*.parquet
 .workbuddy/
 

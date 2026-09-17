@@ -53,6 +53,15 @@ _PARAM_CASTERS = {
     "breadth_defense_threshold": Decimal,
     "breadth_mid_cap": Decimal,
     "breadth_ice_confirm_days": int,
+    # Alpha 三层（修池子/排雷/PEAD，2026-09-17）
+    "use_quality_veto": lambda v: v.lower() in ("1", "true", "yes", "on"),
+    "use_landmine_overlay": lambda v: v.lower() in ("1", "true", "yes", "on"),
+    "landmine_cooldown_full": int,
+    "landmine_cooldown_half": int,
+    "use_pead": lambda v: v.lower() in ("1", "true", "yes", "on"),
+    "pead_max_slots": int,
+    "pead_hold_days": int,
+    "pead_reserve_pct": Decimal,
     # 回测区间覆盖（非 DividendConfig 字段，run_experiment 单独提取传给 runner）
     "backtest_start": lambda v: _date.fromisoformat(v),
     "backtest_end": lambda v: _date.fromisoformat(v),

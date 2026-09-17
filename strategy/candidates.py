@@ -40,6 +40,7 @@ from strategy.portfolio import (
     plan_positions,
     select_targets,
 )
+from strategy.signal_layers import SignalLayers
 
 __all__ = ["MomentumConfig", "MomentumStrategy", "DividendConfig", "DividendStrategy"]
 
@@ -218,6 +219,16 @@ class DividendConfig:
     breadth_defense_threshold: Decimal = Decimal("0.20")  # 冰点档：<20% 全额避险
     breadth_mid_cap: Decimal = Decimal("0.50")            # 警戒档（20%~40%）仓位上限 50%
     breadth_ice_confirm_days: int = 2                   # 跌破冰点连续 N 日才清仓（抗假破位）
+    # —— Alpha 三层（修池子/排雷/PEAD，2026-09-17 立项；默认关，开启须注入 SignalLayers）——
+    use_quality_veto: bool = False                    # ① 准入端质量否决（连续分红/ROE-TTM/分红现金流/伪高股息）
+    use_landmine_overlay: bool = False                # ② 持仓内排雷一票否决（T+1 清/减半）
+    landmine_cooldown_full: int = 120                 # 全清事件禁买冷却（交易日）
+    landmine_cooldown_half: int = 60                  # 减半事件禁买冷却（交易日）
+    use_pead: bool = False                            # ③ PEAD 进攻档候选源（扣非 SUE 分位≥80%+DEMAX）
+    pead_max_slots: int = 2                           # PEAD 同时持仓上限
+    pead_hold_days: int = 30                          # PEAD 持有上限（交易日，20-40 窗口内）
+    pead_reserve_pct: Decimal = Decimal("0.40")       # event 模式：进攻档为 PEAD 预留资金比例（2 槽×~20%净值≈常规单票量级，低于单票下限会永远买不进）
+    pead_entry_mode: str = "rebalance"                # 'event'=公告日事件驱动建仓（需 reserve）；'rebalance'=调仓日并入候选源（软叠加，零闲置现金）
     portfolio: PortfolioConfig = field(default_factory=PortfolioConfig)
 
     def __post_init__(self) -> None:
@@ -291,6 +302,32 @@ class DividendConfig:
             raise ValueError("use_breadth_timing 与 use_ma200_timing 互斥，\u26d4 同时开启会产生矛盾择时信号")
         if self.use_breadth_timing and self.breadth_series is None:
             raise ValueError("启用宽度择时时 breadth_series 不得为 None（⛔ Fail-Closed：无证据≠通过）")
+        # Alpha 三层参数校验（fail-closed）
+        for name in ("landmine_cooldown_full", "landmine_cooldown_half",
+                     "pead_max_slots", "pead_hold_days"):
+            v = getattr(self, name)
+            if not isinstance(v, int) or isinstance(v, bool):
+                raise TypeError(f"{name} 须为 int: {v!r}")
+            if v < 1:
+                raise ValueError(f"{name} 须 >= 1: {v}")
+        if self.pead_max_slots > self.max_positions:
+            raise ValueError(f"pead_max_slots={self.pead_max_slots} 不应超过 "
+                             f"max_positions={self.max_positions}")
+        if self.pead_hold_days > 60:
+            raise ValueError(f"pead_hold_days={self.pead_hold_days} 超出 20-60 "
+                             f"交易日漂移窗口上限（R5 裁决口径）")
+        if not isinstance(self.pead_reserve_pct, Decimal):
+            raise TypeError(f"pead_reserve_pct 须为 Decimal（⛔ 禁 float）: "
+                            f"{type(self.pead_reserve_pct).__name__}")
+        if self.pead_reserve_pct < _ZERO_ or self.pead_reserve_pct > Decimal("0.5"):
+            raise ValueError(f"pead_reserve_pct 须在 [0, 0.5] 范围内: "
+                             f"{self.pead_reserve_pct}")
+        if self.use_pead and not self.use_breadth_timing:
+            raise ValueError("use_pead 仅在宽度择时进攻档下合法（R5：PEAD 只在进攻档"
+                             "做候选源）——请先开启 use_breadth_timing")
+        if self.pead_entry_mode not in ("event", "rebalance"):
+            raise ValueError(f"pead_entry_mode 须为 'event'|'rebalance': "
+                             f"{self.pead_entry_mode!r}")
 
 
 @dataclass(frozen=True)
@@ -318,16 +355,34 @@ class DividendStrategy:
         self,
         config: DividendConfig | None = None,
         universe_provider: Any | None = None,
+        signal_layers: SignalLayers | None = None,
     ) -> None:
         """
         Args:
             config: 红利策略参数包。
             universe_provider: ``(date) -> Iterable[str]`` 型回调，回测里返回**当日**
                 可交易池（防幸存者偏差）。``None`` = 由调用方手动维护 ``watchlist``。
+            signal_layers: Alpha 三层查询对象（修池子/排雷/PEAD 的只读数据）。
+                任一 ``use_*`` 开关打开而本参数为 ``None`` ⇒ **fail-closed raise**
+                （⛔ 不许静默降级为“无约束”）。
         """
         self.config = config or DividendConfig()
+        cfg = self.config
+        need_layers = (cfg.use_quality_veto or cfg.use_landmine_overlay
+                       or cfg.use_pead)
+        if need_layers and signal_layers is None:
+            raise ValueError(
+                "use_quality_veto/use_landmine_overlay/use_pead 已开启但 "
+                "signal_layers=None —— ⛔ Fail-Closed：先跑 "
+                "scripts/build_signal_layers.py 并由 runner 注入")
+        self._layers = signal_layers
         self.universe_provider = universe_provider
         self.watchlist: list[str] = []
+        # Alpha 三层运行态（全部确定性推进，无随机源）
+        self._lm_cursor: dict[str, int] = {}        # symbol → landmine 事件游标
+        self._lm_pending: dict[str, list] = {}      # symbol → 已见未了事件队列
+        self._pead_holds: dict[str, int] = {}       # symbol → 建仓 bar_count
+        self._pead_acted: set = set()               # 已建仓 event_id 幂等集
         self._bar_count = 0
         self._last_rebalance_bar = -1
         self._ma200_buffer: deque[Decimal] = deque(maxlen=200)
@@ -455,17 +510,28 @@ class DividendStrategy:
             else:
                 self._breadth_ice_streak = 0
 
+        # ③.8 排雷 overlay（每日、先于调仓节拍——事件驱动 T+1 清/减半）
+        if cfg.use_landmine_overlay and self._layers is not None:
+            self._apply_landmine(day, bars, book, broker)
+
+        # ③.9 PEAD 进攻档持仓管理（每日：到期退出；event 模式另加新事件建仓）
+        if cfg.use_pead and self._layers is not None:
+            self._apply_pead(day, bars, book, broker)
+
         # ④ 非调仓日：保持现持仓
         if self._bar_count - self._last_rebalance_bar < cfg.rebalance_days:
             return
 
         # ⑤ 调仓日：标记 + 选股（启用择时时，能走到这里即未触发确认破位）
         self._last_rebalance_bar = self._bar_count
-        signals = self._select_stocks(bars, cfg)
+        signals = self._select_stocks(bars, cfg, day)
 
         # ⑥ 组合计划（复用 portfolio.py 三段链，传入市值权重）
         scores = {s.symbol: s.score for s in signals}
-        targets = select_targets(scores, cfg.portfolio)
+        # PEAD 在册持仓由 reserve 池供资 ⇒ 从红利候选目标中剔除，防双重计价
+        pead_syms = set(self._pead_holds)
+        targets = [t for t in select_targets(scores, cfg.portfolio)
+                   if t not in pead_syms]
         total_nav = book.total_nav if hasattr(book, "total_nav") else getattr(book, "nav", _ZERO_)
         # 方案 D 警戒区（defense ≤ 宽度 < attack）：仓位上限 breadth_mid_cap（默认 50%）。
         # ⛔ 上限语义而非资金缩放：mid_cap 是『目标仓位占净值比例上限』，调仓日据此
@@ -479,8 +545,21 @@ class DividendStrategy:
         else:
             if in_mid_zone:
                 total_nav = total_nav * cfg.breadth_mid_cap
+            # PEAD reserve：披露密集月（1/4/7/8/10，R5 实测公告聚簇）或有
+            # 在册持仓时预留现金池；非聚簇月不预留（避免进攻档长期现金拖累）。
+            reserve = _ZERO_
+            if cfg.use_pead and (day.month in (1, 4, 7, 8, 10)
+                                 or self._pead_holds):
+                reserve = cfg.pead_reserve_pct
             plan, _plan_dropped = plan_positions(
-                targets, total_nav, bars, cfg.portfolio, weights=scores)
+                targets, total_nav * (Decimal("1") - reserve), bars,
+                cfg.portfolio, weights=scores)
+            # PEAD 在册持仓 sticky：reserve 池按槽位等权给目标市值（防被 diff 卖掉）
+            if reserve > _ZERO_ and self._pead_holds:
+                each = total_nav * reserve / Decimal(cfg.pead_max_slots)
+                for s in self._pead_holds:
+                    if bars.get(s) is not None:
+                        plan[s] = each
 
         # ⑦ 出意图
         held_symbols = list(book.positions.keys()) if hasattr(book, "positions") else []
@@ -492,8 +571,15 @@ class DividendStrategy:
     # 内部
     # ------------------------------------------------------------------
 
-    def _select_stocks(self, bars: Mapping[str, Bar], cfg: DividendConfig) -> list[Signal]:
-        """选股：股息率筛选 + 排序 + 市值加权。"""
+    def _select_stocks(self, bars: Mapping[str, Bar], cfg: DividendConfig,
+                       day: _date | None = None) -> list[Signal]:
+        """选股：股息率筛选 + 排序 + 市值加权（+ 准入质量否决 + 排雷冷却）。
+
+        ``day`` 在 ``use_quality_veto`` 开启时必传（质量否决是日频 PIT 表）。
+        """
+        if cfg.use_quality_veto and day is None:
+            raise ValueError("use_quality_veto 开启时 _select_stocks 必须传 day"
+                             "（质量否决是日频 PIT 表，⛔ 不许缺省）")
         candidates = []
         for symbol, bar in bars.items():
             if symbol == cfg.index_symbol:
@@ -504,6 +590,14 @@ class DividendStrategy:
                 continue  # 数据不全，跳过
 
             if bar.dividend_yield >= cfg.min_dividend_yield:
+                # ① 准入端质量否决（连续分红/ROE-TTM/分红现金流/伪高股息）
+                if (cfg.use_quality_veto and self._layers is not None
+                        and self._layers.veto_reason(symbol, day)):
+                    continue
+                # ② 排雷冷却窗禁买（事件窗口语义：pub≤day≤cooldown_until）
+                if (cfg.use_landmine_overlay and self._layers is not None
+                        and self._layers.landmine_block(symbol, day)):
+                    continue
                 candidates.append((symbol, bar.dividend_yield, bar.market_cap))
 
         # 按股息率降序排序，取前 N 只
@@ -537,4 +631,132 @@ class DividendStrategy:
                 client_order_id=oid, symbol=intent.symbol, side=intent.side,
                 order_type=OrderType.MARKET, volume=intent.volume, price=None,
                 created_date=day))
+
+    # ------------------------------------------------------------------
+    # Alpha 三层：排雷 overlay + PEAD 事件驱动（每日调用，先于调仓节拍）
+    # ------------------------------------------------------------------
+
+    def _apply_landmine(self, day: _date, bars: Mapping[str, Bar],
+                        book: Any, broker: Any) -> None:
+        """排雷 overlay：持仓内一票否决（硬约束，T+1 开盘执行）。
+
+        口径：事件 ``pub_date <= day`` 即“新可见”（公告日当晚披露 ⇒ 次日开盘
+        成交，与撮合 FR-BT-6 次一开盘天然对齐）；**同日同票只执行最强一个
+        动作**（L2+L3+L4 连击只减半一次，防级联减到 1/8）；exit_full 在
+        停牌日留 pending 次日重试（跌停卖不出由撮合拒单，次日位置仍在 ⇒
+        再试）；exit_half 只消费一次。block_only 不动仓（仅禁买窗口生效）。
+        冷却窗口由 ``SignalLayers.landmine_block`` 按事件窗语义判定
+        （pub_date+cooldown 自然日），与本处动作解耦——卖出后游标停住也
+        不会因买回而重触发同一事件（事件还在窗口期内继续禁买）。
+        """
+        if not hasattr(book, "positions"):
+            return
+        for symbol in list(book.positions.keys()):
+            vol_now = int(book.positions[symbol].volume)
+            if vol_now <= 0:
+                # 空仓即清陈旧 pending：防「卖出→买回→旧事件对新仓位重触发」空转
+                self._lm_pending.pop(symbol, None)
+                continue
+            pending = self._lm_pending.setdefault(symbol, [])
+            cur = self._lm_cursor.get(symbol, 0)
+            events = self._layers.landmine_list(symbol)
+            while cur < len(events) and events[cur].pub_date <= day:
+                ev = events[cur]
+                # 只接收仍处冷却窗口内的事件——过期事件不重触发（窗口外买回
+                # 的仓位不应被旧事件追杀；窗口语义见 landmine_block）
+                if ev.cooldown_until is None or day <= ev.cooldown_until:
+                    pending.append(ev)
+                cur += 1
+            self._lm_cursor[symbol] = cur
+            if not pending:
+                continue
+            # 同日只执行最强动作：任一 exit_full → 全清；否则任一 exit_half → 减半一次
+            full = any(e.action == "exit_full" for e in pending)
+            half = any(e.action == "exit_half" for e in pending)
+            bar = bars.get(symbol)
+            still: list = []
+            if bar is None:
+                still = [e for e in pending if e.action != "block_only"]
+                still += [e for e in pending if e.action == "block_only"]
+                # 停牌：全部留队明日重试
+            elif full:
+                self._submit(broker, [OrderIntent(
+                    symbol, OrderSide.SELL, vol_now)], day)
+                # exit_full 硬约束重试到出清；exit_half/block_only 已消费
+                still = [e for e in pending if e.action == "exit_full"]
+            elif half:
+                sell_vol = vol_now // 200 * 100
+                if sell_vol <= 0:
+                    sell_vol = vol_now           # 不足两手 → 全清更保守
+                self._submit(broker, [OrderIntent(
+                    symbol, OrderSide.SELL, sell_vol)], day)
+            self._lm_pending[symbol] = still
+
+    def _apply_pead(self, day: _date, bars: Mapping[str, Bar],
+                    book: Any, broker: Any) -> None:
+        """PEAD 进攻档事件驱动持仓（到期退出 + 新事件建仓）。
+
+        口径（R5 §4.2 S4 复合）：只在宽度进攻档建仓；信号源是离线构建的
+        eligible PEAD 事件（扣非 SUE 分位≥80% + DEMAX 条件化 + 未触板）；
+        持有 ``pead_hold_days`` 交易日到期退出（20-40 漂移窗口内）；
+        建仓资金来自进攻档 reserve 池（``pead_reserve_pct``，调仓日预留）。
+        """
+        cfg = self.config
+        # ① 到期退出（每日，不等调仓节拍）
+        for s, entry_bc in list(self._pead_holds.items()):
+            if self._bar_count - entry_bc >= cfg.pead_hold_days:
+                vol = int(book.positions[s].volume) if (
+                    hasattr(book, "positions") and s in book.positions) else 0
+                if vol > 0 and bars.get(s) is not None:
+                    self._submit(broker, [OrderIntent(
+                        s, OrderSide.SELL, vol)], day)
+                self._pead_holds.pop(s, None)
+
+        # ② 非进攻档不建仓（冰点/警戒 PEAD 关闭——宽度择时最高优先级）；
+        #    rebalance 模式下建仓只在调仓日发生（软叠加，不占闲置现金）
+        attack = (self._breadth_today is not None
+                  and self._breadth_today >= cfg.breadth_attack_threshold)
+        if (not attack or cfg.pead_entry_mode != "event"
+                or len(self._pead_holds) >= cfg.pead_max_slots):
+            return
+
+        nav = book.total_nav if hasattr(book, "total_nav") else getattr(
+            book, "nav", _ZERO_)
+        cash = getattr(book, "cash", _ZERO_)
+        active = sorted(self._layers.pead_active(day),
+                        key=lambda e: -e.pct_rank)
+        for ev in active:
+            if len(self._pead_holds) >= cfg.pead_max_slots:
+                break
+            s = ev.symbol
+            if (s in self._pead_holds
+                    or (hasattr(book, "positions") and s in book.positions
+                        and int(book.positions[s].volume) > 0)
+                    or ev.event_id in self._pead_acted):
+                continue
+            if (cfg.use_landmine_overlay
+                    and self._layers.landmine_block(s, day)):
+                continue
+            if (cfg.use_quality_veto
+                    and self._layers.veto_reason(s, day)):
+                continue
+            bar = bars.get(s)
+            if bar is None or bar.limit_up or bar.limit_down:
+                continue
+            if bar.amount < cfg.portfolio.min_daily_amount:
+                continue
+            if (cfg.portfolio.max_price is not None
+                    and bar.close > cfg.portfolio.max_price):
+                continue
+            # 槽位资金 = 净值 × reserve ÷ 总槽位数；参与率与单票下限沿用组合层口径
+            value = nav * cfg.pead_reserve_pct / Decimal(cfg.pead_max_slots)
+            value = min(value, bar.amount * cfg.portfolio.max_participation_rate)
+            if cash < value * Decimal("1.01"):   # 预留费用缓冲
+                continue
+            shares = int(value / bar.close) // 100 * 100
+            if bar.close * shares < cfg.portfolio.min_position_value:
+                continue
+            self._submit(broker, [OrderIntent(s, OrderSide.BUY, shares)], day)
+            self._pead_holds[s] = self._bar_count
+            self._pead_acted.add(ev.event_id)
 

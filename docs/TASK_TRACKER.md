@@ -1,9 +1,17 @@
 # FinAI2.0 任务跟踪文档（跨窗口唯一事实源）
 
-> 创建：2026-09-15 17:45 ｜ 更新：2026-09-16 20:45（流水线可信度修复已 commit `2434aa6`；红利池 2025/2026 回补完成——Tushare 双代理 488只/0失败/3.8分钟/200882行；测试基线 1028 passed）｜ 更新规则：每完成一个小任务立即更新对应复选框与本节时间戳
+> 创建：2026-09-15 17:45 ｜ 更新：2026-09-17 04:10（Alpha 三层落地进行中：采集/构建/策略集成已完代码级，34 新单测绿；E1 否决实验已出结果，E2b/E3 在跑）｜ 更新规则：每完成一个小任务立即更新对应复选框与本节时间戳
 > ⚠️ 旧交接文档 HANDOFF_20260915.md 已过期（MA200 时代），仅作历史追溯，勿作决策依据
 
-## 当前阶段：方案 D（市场宽度择时）落地验证期
+## 当前阶段：Alpha 三层（修池子/排雷/PEAD）落地验证期
+
+> 前阶段产物：宽度网格 24 组完成，冠军 `bd25a35m00i1`（D=0.25/A=0.35/m=0/i=1）CAGR 5.82%/MDD 31.28%，为当前进攻基线。 <!-- gate-doc-ignore: 历史快照（宽度网格实验实测值，非基线声明），⛔ 不改史 -->
+
+**进行中**：①修池子（准入质量否决 Q1-Q4）②排雷 overlay（L1-L5）③PEAD 进攻档候选源（扣非 SUE≥80%+DEMAX）。
+- 数据：`data/forecast_pit`（10838行）/`statements_pit`（29996行，income+bs 按 end_date 外合并）/`pool_meta`（行业 5903）已采集；`data/quality_veto`（487 只日频）/`landmine_events`（8198 事件）/`pead_signals`（19229 事件/3575 eligible）已构建，幂等原子写。
+- 代码：`strategy/signal_layers.py`（builders+SignalLayers 查询）+ `candidates.py` 扩展（veto/cooldown/landmine/PEAD 消费）+ runner 接线 + `scripts/build_signal_layers.py`。
+- 已修两个实测坑：PEAD 行业中性化改中位数+sue_adj>0 符号闸（均值口径把 sue_raw=-68 拉到 0.957 分位）；排雷改事件窗口冷却+L4 年报口径+L1b 降 block_only+同日最强动作（旧版造成卖-买-再卖空转，E3 换手 652%）。
+- 已出结果：E1（veto 单开）CAGR 4.80%/MDD 29.52% vs 基线 5.82%/31.28%。 <!-- gate-doc-ignore: 历史快照（Alpha 层消融实验实测值，非基线声明），⛔ 不改史 --> E2c/E3b（修订后排雷+PEAD）在跑。
 
 **目标**：找到 MDD<35% 且 CAGR>0 的宽度参数组合，通过全部六维门禁后晋级为基线。
 
@@ -22,7 +30,7 @@
 - [x] P2-b（流水线B阶段已注入，见 commit） 产出侧供给宽度口径 context（run_dividend_backtest.py 的 _build_post_run_gate_context 注入 breadth_series 等字段）
 - [x] P2-c（流水线B阶段已新增测试，见 tests/test_breadth_gate_context.py） S-2 宽度口径新增测试用例
 - [x] P7 装甲一（已撤销立项：修正后收益 +0.012pp~+0.3pp/年 不抵实施成本，详见设计文档尾部评估）：除权前 15 天禁建仓过滤 + S-4 事前拦截化（数据已核实：487 只 exdiv 全有 date/factor/cash_dividend；调研实测值 5043 元红利税≈净值 +3pp）⛔ 须等网格结束后动 strategy/
-- [ ] P8 PEAD 简化探路实验（Phase D 第三选项：数据已核实 financial_pit 487只×16891行、pub_date 对齐零前视、含 net_profit_yoy/roe/debt_to_assets/cash_flow_per_share；缺扣非字段，先用归母口径探路再决定是否补采）⛔ 启动时机见决策记录
+- [x] P8 PEAD 简化探路实验（已执行，commit `62e9634`；归母粗阈值不可用实锤，升级裁决=R5 扣非 SUE 口径）⛔ 启动时机见决策记录
   - 📦 数据就绪增强（2026-09-16）：红利池日线已补到 2026-09-16（含官方 circ_mv 市值口径）；新接口另备 `forecast` 业绩预告全市场拉取能力（633条/日，PEAD 原生底座，实测报告 §六.4）
 - [x] 收尾：全量回归 1022/1022 全绿 + commit 已固化（61f553d 核心资产 / b78a6b9 诊断治理 / c944917 mid_cap 修复）
 - [x] 收尾-2（2026-09-16 窗口）：流水线可信度 12 文件修复 + 回补脚本重写 + 基线 1028 校准 → commit `2434aa6`，回归 1028 passed / 0 failed，FINDING 台账 370 行守住
