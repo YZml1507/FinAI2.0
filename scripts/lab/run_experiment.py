@@ -62,6 +62,7 @@ _PARAM_CASTERS = {
     "pead_max_slots": int,
     "pead_hold_days": int,
     "pead_reserve_pct": Decimal,
+    "pead_entry_mode": str,
     # 回测区间覆盖（非 DividendConfig 字段，run_experiment 单独提取传给 runner）
     "backtest_start": lambda v: _date.fromisoformat(v),
     "backtest_end": lambda v: _date.fromisoformat(v),

@@ -528,11 +528,6 @@ class DividendStrategy:
 
         # ⑥ 组合计划（复用 portfolio.py 三段链，传入市值权重）
         scores = {s.symbol: s.score for s in signals}
-        # PEAD 在册持仓由 reserve 池供资 ⇒ 从红利候选目标中剔除，防双重计价
-        pead_syms = set(self._pead_holds)
-        targets = [t for t in select_targets(scores, cfg.portfolio)
-                   if t not in pead_syms]
-        total_nav = book.total_nav if hasattr(book, "total_nav") else getattr(book, "nav", _ZERO_)
         # 方案 D 警戒区（defense ≤ 宽度 < attack）：仓位上限 breadth_mid_cap（默认 50%）。
         # ⛔ 上限语义而非资金缩放：mid_cap 是『目标仓位占净值比例上限』，调仓日据此
         #   生成目标计划并由 diff 出清超出部分；mid_cap=0 表示警戒区目标零仓（合法
@@ -540,16 +535,57 @@ class DividendStrategy:
         #   守卫而崩溃）。
         in_mid_zone = (cfg.use_breadth_timing and self._breadth_today is not None
                        and self._breadth_today < cfg.breadth_attack_threshold)
+        # PEAD rebalance 模式（软叠加）：进攻档调仓日把在册持仓+当日 active
+        # 事件并入候选源——不占闲置现金、不中途追高；持有到期由 _apply_pead
+        # 日频卖出。冻结票（当日无 bar）不注入，防 plan 缺数据除名后被 diff 追杀。
+        pead_new: dict[str, tuple] = {}  # symbol → event_id（本轮新并入）
+        if (cfg.use_pead and cfg.pead_entry_mode == "rebalance"
+                and self._layers is not None and not in_mid_zone):
+            top_score = max(scores.values()) if scores else Decimal("1")
+            picks: list[str] = [s for s in self._pead_holds
+                                if bars.get(s) is not None]
+            for ev in sorted(self._layers.pead_active(day),
+                             key=lambda e: -e.pct_rank):
+                if len(picks) >= cfg.pead_max_slots:
+                    break
+                s = ev.symbol
+                if (s in picks or s in self._pead_holds
+                        or ev.event_id in self._pead_acted):
+                    continue
+                if (cfg.use_landmine_overlay
+                        and self._layers.landmine_block(s, day)):
+                    continue
+                if (cfg.use_quality_veto
+                        and self._layers.veto_reason(s, day)):
+                    continue
+                if bars.get(s) is None:
+                    continue
+                picks.append(s)
+                pead_new[s] = ev.event_id
+            for s in picks:
+                scores[s] = top_score   # 与红利头部同权，等权入计划
+        targets = select_targets(scores, cfg.portfolio)
+        if cfg.use_pead and cfg.pead_entry_mode == "event":
+            # event 模式在册持仓由 reserve 池供资 ⇒ 从红利目标剔除防双重计价
+            pead_syms = set(self._pead_holds)
+            targets = [t for t in targets if t not in pead_syms]
+        # 并入成功的新 PEAD 目标登记为在册（起算持有期）
+        for s, eid in pead_new.items():
+            if s in targets:
+                self._pead_holds[s] = self._bar_count
+                self._pead_acted.add(eid)
+        total_nav = book.total_nav if hasattr(book, "total_nav") else getattr(book, "nav", _ZERO_)
         if in_mid_zone and cfg.breadth_mid_cap == _ZERO_:
             plan, _plan_dropped = {}, ()          # 警戒区目标零仓：diff 将出清全部持仓
         else:
             if in_mid_zone:
                 total_nav = total_nav * cfg.breadth_mid_cap
-            # PEAD reserve：披露密集月（1/4/7/8/10，R5 实测公告聚簇）或有
-            # 在册持仓时预留现金池；非聚簇月不预留（避免进攻档长期现金拖累）。
+            # PEAD reserve（仅 event 模式）：披露密集月（1/4/7/8/10，R5 实测
+            # 公告聚簇）或有在册持仓时预留现金池；非聚簇月不预留（避免进攻档
+            # 长期现金拖累）。rebalance 模式恒为 0——PEAD 走正常目标位资金。
             reserve = _ZERO_
-            if cfg.use_pead and (day.month in (1, 4, 7, 8, 10)
-                                 or self._pead_holds):
+            if (cfg.use_pead and cfg.pead_entry_mode == "event"
+                    and (day.month in (1, 4, 7, 8, 10) or self._pead_holds)):
                 reserve = cfg.pead_reserve_pct
             plan, _plan_dropped = plan_positions(
                 targets, total_nav * (Decimal("1") - reserve), bars,

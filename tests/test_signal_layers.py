@@ -604,6 +604,71 @@ class TestStrategyLayersIntegration:
         assert sells and sells[0].volume == 1000
         assert "sh.600005" not in st._pead_holds
 
+    def test_pead_rebalance_mode_merges_targets(self):
+        """rebalance 模式：进攻档调仓日 PEAD 事件并入候选源，不占 reserve、
+        不中途追高；并入成功的目标登记 _pead_holds 起算持有期。"""
+        from strategy.signal_layers import PeadEvent
+        ev = PeadEvent("sh.600005", date(2020, 5, 20),
+                       date(2019, 12, 31), 50.0, 45.0, 0.9,
+                       date(2020, 5, 20), date(2020, 7, 15))
+        ly = SignalLayers(pead_by_day={"2020-06-01": [ev]})
+        pc = PortfolioConfig(min_positions=2, max_positions=5,
+                             target_count=3, hard_limit=5,
+                             min_position_value=Decimal("10000"),
+                             min_daily_amount=Decimal("1000"),
+                             max_participation_rate=Decimal("1"))
+        cfg = _cfg(use_breadth_timing=True, use_pead=True,
+                   pead_entry_mode="rebalance",
+                   breadth_series={"2020-06-01": Decimal("0.5")},
+                   rebalance_days=1,
+                   pead_max_slots=1, portfolio=pc)
+        st = DividendStrategy(config=cfg, signal_layers=ly)
+        st._bar_count = 200               # 跳过冷启动（warmup 下限 200）
+        book = _Book(Decimal("150000"))
+        brk = _Broker()
+        bars = {"sh.600001": _bar("sh.600001", dy="0.06"),
+                "sh.600002": _bar("sh.600002", dy="0.05"),
+                # PEAD 票不满足股息率门槛——只能由事件源并入
+                "sh.600005": _bar("sh.600005", dy="0.0")}
+        st.on_bar(date(2020, 6, 1), bars, book, brk)
+        buys = [o for o in brk.orders if o.side.value == "BUY"]
+        assert "sh.600005" in {o.symbol for o in buys}
+        assert "sh.600005" in st._pead_holds
+        assert ev.event_id in st._pead_acted
+
+    def test_pead_rebalance_mode_zero_reserve(self):
+        """rebalance 模式恒不预留现金池（软叠加核心：零闲置拖累）。"""
+        from strategy.signal_layers import PeadEvent
+        ev = PeadEvent("sh.600005", date(2020, 4, 20),
+                       date(2019, 12, 31), 50.0, 45.0, 0.9,
+                       date(2020, 4, 20), date(2020, 6, 15))
+        ly = SignalLayers(pead_by_day={})
+        pc = PortfolioConfig(min_positions=2, max_positions=5,
+                             target_count=2, hard_limit=5,
+                             min_position_value=Decimal("10000"),
+                             min_daily_amount=Decimal("1000"),
+                             max_participation_rate=Decimal("1"))
+        cfg = _cfg(use_breadth_timing=True, use_pead=True,
+                   pead_entry_mode="rebalance",
+                   pead_reserve_pct=Decimal("0.40"),
+                   breadth_series={"2020-04-20": Decimal("0.5")},
+                   rebalance_days=1,
+                   portfolio=pc)
+        st = DividendStrategy(config=cfg, signal_layers=ly)
+        st._bar_count = 200               # 跳过冷启动（warmup 下限 200）
+        st._pead_holds["sh.600009"] = 0   # 有在册也不触发 reserve
+        book = _Book(Decimal("150000"))
+        brk = _Broker()
+        bars = {"sh.600001": _bar("sh.600001", dy="0.06"),
+                "sh.600002": _bar("sh.600002", dy="0.05")}
+        st.on_bar(date(2020, 4, 20), bars, book, brk)
+        buys = [o for o in brk.orders if o.side.value == "BUY"]
+        # 4 月是披露密集月+有在册——event 模式会预留 40%，rebalance 不留：
+        # 15 万全额按 2 目标等权 ⇒ 每票 ≥ 7 万 > min_position_value
+        assert len(buys) == 2
+        for o in buys:
+            assert Decimal(o.volume) * Decimal("10") >= Decimal("70000")
+
     def test_layers_required_failclosed(self):
         with pytest.raises(ValueError):
             DividendStrategy(config=_cfg(use_quality_veto=True),
