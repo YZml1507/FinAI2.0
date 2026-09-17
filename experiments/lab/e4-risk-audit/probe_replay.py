@@ -15,6 +15,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 import sys as _sys
 _sys.path.insert(0, str(ROOT))
+import os as _os
+_os.environ.setdefault(
+    "FNAI_STOCK_BASIC_CACHE", str(ROOT / "data/stock_basic_cache.parquet"))
 
 from scripts.lab.run_experiment import _parse_overrides, _load_breadth_series, LAB_ROOT
 

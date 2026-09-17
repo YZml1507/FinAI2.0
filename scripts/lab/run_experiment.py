@@ -32,6 +32,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
+# 可复现性（E5 教训）：stock_basic 在线拉取不稳定（实测两跑 2595 vs 986
+# ⇒ 池子不同实验不可比）。默认固定缓存文件，外部可用同名环境变量覆盖。
+import os as _os
+_os.environ.setdefault(
+    "FNAI_STOCK_BASIC_CACHE", str(ROOT / "data/stock_basic_cache.parquet"))
+
 from scripts import run_dividend_backtest as rdb  # noqa: E402
 from strategy.candidates import DividendConfig  # noqa: E402
 

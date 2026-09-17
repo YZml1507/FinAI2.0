@@ -487,8 +487,23 @@ def _make_universe_provider(logger: logging.Logger, data_path: Path) -> Any:
     零交易回测的根因）。
     """
     try:
-        stock_basic = load_stock_basic()
-        logger.info(f"历史股票池: {len(stock_basic)} 条")
+        # 可复现性修复（E5 教训）：stock_basic 是在线拉取，两次运行可能拿到
+        # 不同行数（实测同日两跑 alive universe 2595 vs 986 ⇒ 实验不可比）。
+        # 环境变量 FNAI_STOCK_BASIC_CACHE 指定缓存文件：存在则直接用；
+        # 否则拉取后原子落盘，供后续全部实验/探针复用同一截面。
+        import os
+        cache_path = os.environ.get("FNAI_STOCK_BASIC_CACHE")
+        if cache_path and Path(cache_path).exists():
+            stock_basic = pd.read_parquet(cache_path)
+            logger.info(f"历史股票池(缓存): {len(stock_basic)} 条 ← {cache_path}")
+        else:
+            stock_basic = load_stock_basic()
+            logger.info(f"历史股票池: {len(stock_basic)} 条")
+            if cache_path:
+                tmp = Path(str(cache_path) + ".tmp")
+                stock_basic.to_parquet(tmp)
+                tmp.replace(cache_path)
+                logger.info(f"stock_basic 已缓存 → {cache_path}")
 
         def provider(day: _date) -> list[str]:
             return list(alive_universe(stock_basic, day.isoformat()))
