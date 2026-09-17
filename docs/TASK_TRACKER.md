@@ -15,6 +15,7 @@
 - 归因裁决：PEAD event 模式双重拖累（40% reserve 进攻日闲置 + 中途建仓追高）→ 改 rebalance 软叠加（调仓日并入候选源、reserve 恒 0、持有到期日频卖出）；排雷除 L1a/L1c 真卖出外全部 block_only。
 - **E4 终局（已出但裁决作废）**：rebalance 版 CAGR 4.02%/MDD 37.78% < E2c 4.20% → ~~③PEAD 判负关闭~~ **该成绩系 _pead_holds 幽灵/僵尸在册 bug 下的产物**（排雷卖出→PEAD 注入买回互搏；幽灵票空挂占槽位），非有效检验；已修复并对照重跑 `e4-rebal-fixed`，裁决以重跑为准。 <!-- gate-doc-ignore: 历史快照（消融实验实测值，非基线声明），⛔ 不改史 -->
 - **E4 风控审计（已出）**：探针实证详见 `experiments/lab/e4-risk-audit/REPORT.md`；修复=in `_apply_pead` 在册对账；新增 3 单测；先例教训「实现存疑的实验不许升级为路线判负」已入 PLAYBOOK。
+- **治理加固（已落）**：新增 `docs/STRATEGY.md`（项目战略宪章：阅读顺序最高层、瓶颈归因优先、裁决分级、数据引入原则、已封顶路线）+ `tests/test_constitution.py`（硬守卫：防护文档缺失/禁止清单缩水即红）；基线 1067→1073。进行中：`e4-rebal-fixed` 重跑 + `utilization-audit` 仓位归因探针（后台并行）。
 
 **目标**：找到 MDD<35% 且 CAGR>0 的宽度参数组合，通过全部六维门禁后晋级为基线。
 
