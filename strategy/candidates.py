@@ -180,6 +180,9 @@ class MomentumStrategy:
 
 
 _ZERO_ = Decimal("0")
+# PEAD 在册对账宽限（bar）：登记后 T+1 成交需 1 日，另留 2 日拒单/停牌缓冲；
+# 超过此期限仍无实际持仓的在册项判定为幽灵/僵尸并注销（见 _apply_pead）。
+_PEAD_GHOST_GRACE_BARS = 3
 
 
 # ==============================================================================
@@ -738,14 +741,26 @@ class DividendStrategy:
         建仓资金来自进攻档 reserve 池（``pead_reserve_pct``，调仓日预留）。
         """
         cfg = self.config
-        # ① 到期退出（每日，不等调仓节拍）
+        # ① 到期退出 + 在册对账（每日，不等调仓节拍）
+        #    ⛔ 对账修复（E4 审计实锤）：_pead_holds 只在 targets 阶段登记，
+        #    与 book.positions 无同步——产生两类幽灵：
+        #    a) 纯幽灵：进 targets 后被 plan_positions 丢弃，从未发出 BUY
+        #       （探针实证 sz.000014 在册 34 bar 零持仓零意图）；
+        #    b) 僵尸：被排雷/冰点/警戒等外部路径出清后登记簿不注销，继续
+        #       占槽位并被 scores 注入买回（实证 300443 被排雷卖出后由
+        #       PEAD 注入重新买回——排雷与 PEAD 互搏，E4 回撤恶化真因）。
+        #    规则：在册 ≥3 bar（覆盖 T+1 成交 + 拒单/停牌缓冲）仍无实际
+        #    持仓 → 注销。event_id 保留在 _pead_acted，防同事件反复纠缠。
         for s, entry_bc in list(self._pead_holds.items()):
-            if self._bar_count - entry_bc >= cfg.pead_hold_days:
-                vol = int(book.positions[s].volume) if (
-                    hasattr(book, "positions") and s in book.positions) else 0
+            vol = int(book.positions[s].volume) if (
+                hasattr(book, "positions") and s in book.positions) else 0
+            age = self._bar_count - entry_bc
+            if age >= cfg.pead_hold_days:
                 if vol > 0 and bars.get(s) is not None:
                     self._submit(broker, [OrderIntent(
                         s, OrderSide.SELL, vol)], day)
+                self._pead_holds.pop(s, None)
+            elif vol <= 0 and age >= _PEAD_GHOST_GRACE_BARS:
                 self._pead_holds.pop(s, None)
 
         # ② 非进攻档不建仓（冰点/警戒 PEAD 关闭——宽度择时最高优先级）；

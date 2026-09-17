@@ -669,6 +669,69 @@ class TestStrategyLayersIntegration:
         for o in buys:
             assert Decimal(o.volume) * Decimal("10") >= Decimal("70000")
 
+    def test_pead_ghost_unregister_after_grace(self):
+        """幽灵在册注销：登记 ≥3 bar 仍无实际持仓 → 移出 _pead_holds。
+        E4 审计实证：targets 阶段登记被 plan_positions 丢弃后从未买入
+        （sz.000014 空挂 34 bar），或被排雷/冰点外部出清后仍占槽位、
+        并被 scores 注入买回（300443 排雷/PEAD 互搏）。"""
+        pc = PortfolioConfig(min_daily_amount=Decimal("50000000"))
+        cfg = _cfg(use_breadth_timing=True, use_pead=True,
+                   breadth_series={"2020-06-01": Decimal("0.5")},
+                   pead_hold_days=30, portfolio=pc)
+        st = DividendStrategy(config=cfg, signal_layers=SignalLayers())
+        st._breadth_today = Decimal("0.5")
+        book = _Book(Decimal("150000"))
+        brk = _Broker()
+        bars = {"sh.600005": _bar("sh.600005")}
+
+        # 宽限期内（age<3）：登记未成交不注销（T+1/拒单缓冲）
+        st._pead_holds["sh.600005"] = 0
+        st._bar_count = 2
+        st._apply_pead(date(2020, 6, 1), bars, book, brk)
+        assert "sh.600005" in st._pead_holds
+
+        # 超过宽限仍无持仓 → 幽灵注销
+        st._bar_count = 3
+        st._apply_pead(date(2020, 6, 1), bars, book, brk)
+        assert "sh.600005" not in st._pead_holds
+
+    def test_pead_zombie_unregister_external_sell(self):
+        """僵尸在册注销：实际持仓被外部路径（排雷/冰点/警戒）出清后，
+        登记簿同步移出——不再占槽位、不再被调仓注入买回。"""
+        pc = PortfolioConfig(min_daily_amount=Decimal("50000000"))
+        cfg = _cfg(use_breadth_timing=True, use_pead=True,
+                   breadth_series={"2020-06-01": Decimal("0.5")},
+                   pead_hold_days=30, portfolio=pc)
+        st = DividendStrategy(config=cfg, signal_layers=SignalLayers())
+        st._breadth_today = Decimal("0.5")
+        # 登记于 bar 0，曾真实持仓，bar 5 时已被外部出清（vol=0）
+        st._pead_holds["sh.600005"] = 0
+        st._pead_acted.add("evt-x")
+        st._bar_count = 5
+        book = _Book(Decimal("150000"))           # 无持仓
+        brk = _Broker()
+        st._apply_pead(date(2020, 6, 1), {}, book, brk)
+        assert "sh.600005" not in st._pead_holds
+        assert "evt-x" in st._pead_acted           # 事件保持已消费
+        assert not brk.orders                      # 零持仓不发卖单
+
+    def test_pead_held_position_not_unregistered(self):
+        """有实际持仓的在册票不受对账影响（正常持有到期语义不变）。"""
+        pc = PortfolioConfig(min_daily_amount=Decimal("50000000"))
+        cfg = _cfg(use_breadth_timing=True, use_pead=True,
+                   breadth_series={"2020-06-01": Decimal("0.5")},
+                   pead_hold_days=30, portfolio=pc)
+        st = DividendStrategy(config=cfg, signal_layers=SignalLayers())
+        st._breadth_today = Decimal("0.5")
+        st._pead_holds["sh.600005"] = 0
+        st._bar_count = 10
+        book = _Book(Decimal("150000"),
+                     positions={"sh.600005": _Pos(1000)})
+        brk = _Broker()
+        st._apply_pead(date(2020, 6, 1), {}, book, brk)
+        assert "sh.600005" in st._pead_holds
+        assert not brk.orders                      # 未到期不卖出
+
     def test_layers_required_failclosed(self):
         with pytest.raises(ValueError):
             DividendStrategy(config=_cfg(use_quality_veto=True),
