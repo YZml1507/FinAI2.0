@@ -1178,6 +1178,7 @@ class TestGateDocIgnoreScope:
             "docs/ALPHA3_PLAYBOOK.md": (1, None),   # 作战手册的消融实验实测值快照
             "docs/STRATEGY.md": (1, None),           # 战略宪章的基线实测值快照
             "docs/PROJECT_ASSESSMENT.md": (1, None),  # 项目评估的基准实测值快照
+            "docs/R9_RESEARCH_BRIEF.md": (1, None),    # 调研任务书的历史实验实测值快照
         }
         by_file: dict[str, list] = {}
         for h in hits:
