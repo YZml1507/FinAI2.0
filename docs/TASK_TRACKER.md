@@ -15,8 +15,7 @@
   与任务书一致。
 - **在途**：R9（红利池重选实证设计）+ R10（阈值/状态切换稳健性方法学）双工作流
   调研委托已发 Hermes（2026-09-19 02:40 启动，tmux 会话 hermes-r9r10，
-  交付路径 
-esearch-finai-latest/research-finai/.cluster/rd_r9_r10_20260919/，
+  交付路径 research-finai-latest/research-finai/.cluster/rd_r9_r10_20260919/，
   任务书 ~/R9_R10_BRIEF.md / 仓内 docs/R9_RESEARCH_BRIEF.md 为本地草版）。
   **下一步：等 Hermes 交付 → 按 PLAYBOOK 审计口径（时序/无前视/成本/多重检验）
   → 裁决可预登记实验方向 → 更新 EXPANSION_MEMO 方向裁决表。**
