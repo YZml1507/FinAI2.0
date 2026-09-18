@@ -233,6 +233,9 @@ class DividendConfig:
     pead_reserve_pct: Decimal = Decimal("0.40")       # event 模式：进攻档为 PEAD 预留资金比例（2 槽×~20%净值≈常规单票量级，低于单票下限会永远买不进）
     cash_yield_annual: Decimal = Decimal("0")         # 空仓现金年化收益（e6 防御资产近似：货基/逆回购 ~0.02；0=不计息）
     breadth_demote_liquidate: bool = False            # e7 降档即出清：宽度由 attack 跌入 <attack 当日向 mid_cap 收敛（⛔ 默认关——须开关隔离，否则无条件生效污染消融实验）
+    # —— P2 阈值平台化：降档跨界滞回带（默认关，attack 标称值不动，仅改判定形态）——
+    use_breadth_hysteresis: bool = False              # 滞回带开关：关时走原单点判定，保证可回退可对照
+    breadth_demote_band: Decimal = Decimal("0.02")    # 降档跨界带宽：今 < attack−band 且 昨 ≥ attack 才算有效跨界，尖峰→平台
     cash_yield_series: str = ""                       # e6b GC001 日度利率 parquet 路径（date,rate_annual%）；与 cash_yield_annual 互斥
     pead_entry_mode: str = "rebalance"                # 'event'=公告日事件驱动建仓（需 reserve）；'rebalance'=调仓日并入候选源（软叠加，零闲置现金）
     portfolio: PortfolioConfig = field(default_factory=PortfolioConfig)
@@ -535,11 +538,18 @@ class DividendStrategy:
         #    走正常调仓流程（in_mid_zone 路径会按计划收敛到 mid_cap 上限）。
         #    ⛔ 降档只出清不重置调仓时钟：_last_rebalance_bar 仅在常规
         #    节拍日更新，防出清事件挤占/推迟后续正常调仓。
+        # 降档出清跨界判定：P2 滞回带改造（use_breadth_hysteresis 开时生效）。
+        # 原单点判定『今 < attack 且 昨 ≥ attack』对阈值扰动呈尖峰（G-2 失败根因）；
+        # 滞回带改为『今 < attack − band 且 昨 ≥ attack』，要求跌出缓冲带才算有效跨界，
+        # 阈值附近抖动不再制造伪 crossing——改的是判定形态，attack 标称值不动。
+        _demote_line = cfg.breadth_attack_threshold
+        if getattr(cfg, "use_breadth_hysteresis", False):
+            _demote_line = cfg.breadth_attack_threshold - cfg.breadth_demote_band
         demote_due = (
             cfg.breadth_demote_liquidate
             and cfg.use_breadth_timing and not self._breadth_ice
             and self._breadth_today is not None
-            and self._breadth_today < cfg.breadth_attack_threshold
+            and self._breadth_today < _demote_line
             and prev_b is not None and prev_b >= cfg.breadth_attack_threshold)
         scheduled = (self._bar_count - self._last_rebalance_bar
                      >= cfg.rebalance_days)
