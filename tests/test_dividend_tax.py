@@ -512,3 +512,122 @@ class TestDividendTaxIntegration:
         # 1500 × 1.0 × 10% = 150.00 元
         assert tax == Decimal("150.00")
 
+
+
+class TestExDateSameDayFills:
+    """除权日当日成交回归（capm-100w 实撞 bug，2026-09-20 修复）。"""
+
+    def _engine_stack(self, dates):
+        import pandas as pd
+        from backtest.broker import BacktestBroker
+        from backtest.engine import BacktestEngine
+        from backtest.feed import ParquetDailyFeed
+        from backtest.ledger import Ledger
+        from backtest.matching import MatchEngine
+
+        df = pd.DataFrame({
+            "date": [d.isoformat() for d in dates],
+            "open": [10.0] * len(dates),
+            "high": [10.0] * len(dates),
+            "low": [10.0] * len(dates),
+            "close": [10.0] * len(dates),
+            "preclose": [10.0] * len(dates),
+            "volume": [10000.0] * len(dates),
+            "amount": [100000.0] * len(dates),
+            "turn": [1.0] * len(dates),
+            "pctChg": [0.0] * len(dates),
+            "tradestatus": ["1"] * len(dates),
+            "isST": ["0"] * len(dates),
+            "code": ["sh.600000"] * len(dates),
+            "source": ["test"] * len(dates),
+            "adjust_mode": ["RAW"] * len(dates),
+        })
+        feed = ParquetDailyFeed(
+            preloaded={"sh.600000": df},
+            trade_calendar=lambda s, e: [d for d in dates if s <= d <= e],
+        )
+        ledger = Ledger(Decimal("100000"), date=dates[0])
+        broker = BacktestBroker(MatchEngine(), ledger, feed,
+                                enable_dividend_tax=True)
+        return BacktestEngine(broker, feed), broker, ledger
+
+    def test_sell_filled_on_exdate_taxes_record_date_position(self):
+        """除权日早盘卖单成交：计税基数=登记日持股（含当日卖出部分），不炸。
+
+        d1 买 1000（d2 成交）→ d2 卖 200（d3=除权日早盘成交，已 T+1 解禁）
+        → d3 除权派 1.0 元/股。登记日持股=1000 ⇒ 税=1000×1×20%=200。
+        """
+        from backtest.engine import BacktestEngine  # noqa: F401
+        from backtest.ledger import JournalType
+        from backtest.settle import ExdivEvent
+        from backtest.constants import FeeItem, OrderSide
+        from backtest.types import Order, OrderType
+
+        d1, d2, d3 = date(2023, 6, 1), date(2023, 6, 2), date(2023, 6, 5)
+        engine, broker, ledger = self._engine_stack([d1, d2, d3])
+
+        class S:
+            def on_bar(self, day, bars, book, b):
+                if day == d1:
+                    b.submit(Order(
+                        client_order_id="BUY1", symbol="sh.600000",
+                        side=OrderSide.BUY, order_type=OrderType.MARKET,
+                        volume=1000, price=None, created_date=d1))
+                elif day == d2:
+                    b.submit(Order(
+                        client_order_id="SELL1", symbol="sh.600000",
+                        side=OrderSide.SELL, order_type=OrderType.MARKET,
+                        volume=200, price=None, created_date=d2))
+
+        engine.exdiv_provider = lambda day: (
+            {"sh.600000": ExdivEvent("sh.600000", factor=Decimal("1"),
+                                     cash_dividend=Decimal("1.0"), date=d3)}
+            if day == d3 else None
+        )
+        engine.run(S(), d1, d3)  # ⛔ 修复前此处 raise（FIFO 1000 vs 持股 800）
+
+        # 登记日持股 1000（含当日卖出的 200）→ 税 = 1000×1.0×20% = 200
+        tax_entries = [e for e in ledger.journal.entries
+                       if e.entry_type == JournalType.DIVIDEND_TAX]
+        assert len(tax_entries) == 1
+        assert tax_entries[0].fees[FeeItem.DIVIDEND_TAX] == Decimal("200.00")
+
+    def test_buy_filled_on_exdate_not_taxed(self):
+        """除权日早盘买单成交：新买股不享有本次分红 ⇒ 不计入计税基数。
+
+        d1 买 1000（d2 成交）→ d2 再买 500（d3=除权日早盘成交）
+        → d3 除权派 1.0 元/股。登记日持股=1000（当日 500 不计）⇒ 税=200。
+        """
+        from backtest.ledger import JournalType
+        from backtest.settle import ExdivEvent
+        from backtest.constants import FeeItem, OrderSide
+        from backtest.types import Order, OrderType
+
+        d1, d2, d3 = date(2023, 6, 1), date(2023, 6, 2), date(2023, 6, 5)
+        engine, broker, ledger = self._engine_stack([d1, d2, d3])
+
+        class S:
+            def on_bar(self, day, bars, book, b):
+                if day == d1:
+                    b.submit(Order(
+                        client_order_id="BUY1", symbol="sh.600000",
+                        side=OrderSide.BUY, order_type=OrderType.MARKET,
+                        volume=1000, price=None, created_date=d1))
+                elif day == d2:
+                    b.submit(Order(
+                        client_order_id="BUY2", symbol="sh.600000",
+                        side=OrderSide.BUY, order_type=OrderType.MARKET,
+                        volume=500, price=None, created_date=d2))
+
+        engine.exdiv_provider = lambda day: (
+            {"sh.600000": ExdivEvent("sh.600000", factor=Decimal("1"),
+                                     cash_dividend=Decimal("1.0"), date=d3)}
+            if day == d3 else None
+        )
+        engine.run(S(), d1, d3)
+
+        # 登记日持股 1000（除权日买入的 500 无权分红）→ 税 = 200
+        tax_entries = [e for e in ledger.journal.entries
+                       if e.entry_type == JournalType.DIVIDEND_TAX]
+        assert len(tax_entries) == 1
+        assert tax_entries[0].fees[FeeItem.DIVIDEND_TAX] == Decimal("200.00")

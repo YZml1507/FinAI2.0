@@ -439,28 +439,48 @@ class BacktestBroker:
     def _apply_dividend_tax(
         self, symbol: str, event: ExdivEvent, old_volume: int, date: _date
     ) -> None:
-        """T309 红利税：FIFO 配对追溯持股期并扣税。"""
+        """T309 红利税：FIFO 配对追溯持股期并扣税。
+
+        计税基数 = 股权登记日（除权日前一交易日收盘）持股——除权日**当日**
+        成交的买单不享有本次分红权（不计入基数）、当日成交的卖单仍享有
+        （须计入基数）。此前实现把当日 fills 计入 shares_held 且 FIFO 重放
+        里当日卖单按 SELL-after-DIV 排序不抵扣队列 ⇒ 两侧同向错配即触发
+        compute_dividend_tax 的边界校验 fail-closed（capm-100w+ 实测
+        2021-06-08 sh.600594 除权日早盘卖单成交后撞上：队列含当日将卖
+        股数而 shares_held 已扣）。同日 SPLIT 同理须排除（登记日口径为
+        除权前股数）。
+        """
         from backtest.dividend_tax import DividendEvent as DivTaxEvent, compute_dividend_tax
 
+        buys: list[tuple] = []
+        sells: list[tuple] = []
+        same_day_buy_vol = 0
+        same_day_sell_vol = 0
+        for t in self._trades:
+            if t.symbol != symbol:
+                continue
+            if t.side is OrderSide.BUY:
+                if t.date < date:
+                    buys.append((t.date, t.symbol, int(t.volume)))
+                else:
+                    same_day_buy_vol += int(t.volume)
+            else:
+                if t.date < date:
+                    sells.append((t.date, t.symbol, int(t.volume)))
+                else:
+                    same_day_sell_vol += int(t.volume)
+        splits = [
+            (d, s, f) for d, s, f in self._split_events
+            if s == symbol and d < date
+        ]
+        # 登记日收盘持股（除权前股数口径）= 当日持仓 − 当日买 + 当日卖
+        entitled = old_volume - same_day_buy_vol + same_day_sell_vol
         div_ev = DivTaxEvent(
             ex_date=date,
             symbol=symbol,
             dividend_per_share=event.cash_dividend,
-            shares_held=old_volume,
+            shares_held=entitled,
         )
-        buys = [
-            (t.date, t.symbol, int(t.volume))
-            for t in self._trades
-            if t.symbol == symbol and t.side is OrderSide.BUY
-        ]
-        sells = [
-            (t.date, t.symbol, int(t.volume))
-            for t in self._trades
-            if t.symbol == symbol and t.side is OrderSide.SELL
-        ]
-        splits = [
-            (d, s, f) for d, s, f in self._split_events if s == symbol
-        ]
         tax = compute_dividend_tax([div_ev], buys, sells, split_events=splits)
         if tax > _ZERO:
             self.book.cash -= tax
