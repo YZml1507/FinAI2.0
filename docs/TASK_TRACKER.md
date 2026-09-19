@@ -60,6 +60,25 @@
   <!-- gate-doc-ignore: 历史快照（C2 机制归因实测快照，非基线声明），⛔ 不改史 -->
 
 
+### 数据层去偏修复启动（2026-09-19 09:5x，补采在途，⛔ 语义未并入）
+
+- **范围裁决（本窗口拍板，理由登记）**：回测窗 2015-2024 ⇒ 只补采
+  **窗内存活过的退市票 255 只**（outDate≥2015-01-05；2015 前退市 82 只
+  对回测无影响，不采）。窗口外 2025-2026 退市 49 只含在窗内部分，一并采集
+  至 min(outDate, 2024-12-31)。
+- **①退市票 bar 补采**：`scripts/lab/collect_delisted_bars.py`
+  （datahubco tushare daily 按年分段，255 只，断点续采+原子写+限频）→
+  产物 `experiments/lab/market-breadth-a/delisted_bars/`（⛔ 隔离目录，
+  不碰 daily_bars；turn/isST 源缺省置 0 如实标注）。
+- **②PIT 名称史补采**：`scripts/lab/collect_namechange.py`
+  （namechange 全量 type=1 5557 只）→ 产物 `data/namechange/namechange.parquet`
+  （幂等整表）。isST 回写日线属后续独立工序，须预登记+整批重跑。
+- **源能力实测**（本窗口）：datahubco daily 支持退市票全历史（600001.SH
+  2006 年 220 行 ✅）；namechange 字段齐全（start/end/ann/change_reason ✅）；
+  ⛔ daily 跨年 range 报 400，须按年分段；bak_daily 对退市票恒空不可用。
+- **纪律**：补采完成后 → compute_market_breadth 衍生新宽度序列（新文件名）
+  → 既有实验不动，新口径实验整批同 SHA 重跑 + 登记基线变更理由（G-REPRO-1）。
+
 ### e11-linear 预登记（2026-09-19 09:3x，本窗口）
 
 - **预登记**：`docs/E11_LINEAR_PREREG.md`——唯一变量 `breadth_weight_mode=linear`，
