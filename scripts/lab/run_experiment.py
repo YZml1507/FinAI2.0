@@ -73,6 +73,7 @@ _PARAM_CASTERS = {
     "cash_yield_annual": Decimal,
     "cash_yield_series": str,      # e6b：GC001 日度利率 parquet 路径
     "breadth_demote_liquidate": lambda v: v.lower() in ("1", "true", "yes", "on"),
+    "breadth_weight_mode": str,
     # 回测区间覆盖（非 DividendConfig 字段，run_experiment 单独提取传给 runner）
     "backtest_start": lambda v: _date.fromisoformat(v),
     "backtest_end": lambda v: _date.fromisoformat(v),

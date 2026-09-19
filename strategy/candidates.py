@@ -233,6 +233,7 @@ class DividendConfig:
     pead_reserve_pct: Decimal = Decimal("0.40")       # event 模式：进攻档为 PEAD 预留资金比例（2 槽×~20%净值≈常规单票量级，低于单票下限会永远买不进）
     cash_yield_annual: Decimal = Decimal("0")         # 空仓现金年化收益（e6 防御资产近似：货基/逆回购 ~0.02；0=不计息）
     breadth_demote_liquidate: bool = False            # e7 降档即出清：宽度由 attack 跌入 <attack 当日向 mid_cap 收敛（⛔ 默认关——须开关隔离，否则无条件生效污染消融实验）
+    breadth_weight_mode: str = "hard"                 # C1 连续权重映射（R9/R10 §B3.1）：'hard'=现行阶跃（默认，基线可比）；'linear'=[defense,attack) 内 mid_cap→1.0 线性裁剪（ice 保留硬阈值）
     cash_yield_series: str = ""                       # e6b GC001 日度利率 parquet 路径（date,rate_annual%）；与 cash_yield_annual 互斥
     pead_entry_mode: str = "rebalance"                # 'event'=公告日事件驱动建仓（需 reserve）；'rebalance'=调仓日并入候选源（软叠加，零闲置现金）
     portfolio: PortfolioConfig = field(default_factory=PortfolioConfig)
@@ -297,6 +298,9 @@ class DividendConfig:
         if self.breadth_defense_threshold >= self.breadth_attack_threshold:
             raise ValueError(f"breadth_defense_threshold={self.breadth_defense_threshold} "
                              f"须严格小于 breadth_attack_threshold={self.breadth_attack_threshold}")
+        if self.breadth_weight_mode not in ("hard", "linear"):
+            raise ValueError(f"breadth_weight_mode 须为 'hard'/'linear'（fail-closed）: "
+                             f"{self.breadth_weight_mode!r}")
         if self.breadth_mid_cap > Decimal("0.8"):
             raise ValueError(f"breadth_mid_cap 警戒档仓位上限不应超 0.8: {self.breadth_mid_cap}")
         if self.cash_yield_series and Decimal(self.cash_yield_annual) != 0:
@@ -408,6 +412,27 @@ class DividendStrategy:
     # ------------------------------------------------------------------
     # 引擎契约
     # ------------------------------------------------------------------
+
+    @staticmethod
+    def _breadth_cap(cfg: "DividendConfig", b: Decimal) -> Decimal:
+        """宽度 → 目标仓位上限（C1 连续权重映射，R9/R10 §B3.1）。
+
+        'hard'（默认）：与旧 in_mid_zone/mid_cap 语义**逐值等价**——
+          b>=attack 满仓；b<attack（含未确认冰点日）一律 mid_cap；
+        'linear'：b>=attack 满仓；b<defense 零仓（ice 保留硬阈值）；
+          [defense, attack) 内由 mid_cap 线性升至 1.0——把台阶改造成斜坡，
+          端点复用既有参数（新增自由度 0），针对 G-2「台阶+棱边」病根。
+        """
+        one = Decimal("1")
+        if b >= cfg.breadth_attack_threshold:
+            return one
+        if cfg.breadth_weight_mode == "hard":
+            return cfg.breadth_mid_cap
+        if b < cfg.breadth_defense_threshold:
+            return _ZERO_
+        span = cfg.breadth_attack_threshold - cfg.breadth_defense_threshold
+        frac = (b - cfg.breadth_defense_threshold) / span
+        return cfg.breadth_mid_cap + (one - cfg.breadth_mid_cap) * frac
 
     def on_bar(self, day: _date, bars: Mapping[str, Bar], book: Any, broker: Any) -> None:
         """每日回调（引擎契约）。
@@ -600,11 +625,16 @@ class DividendStrategy:
                 self._pead_holds[s] = self._bar_count
                 self._pead_acted.add(eid)
         total_nav = book.total_nav if hasattr(book, "total_nav") else getattr(book, "nav", _ZERO_)
-        if in_mid_zone and cfg.breadth_mid_cap == _ZERO_:
-            plan, _plan_dropped = {}, ()          # 警戒区目标零仓：diff 将出清全部持仓
+        # C1 连续权重映射（R9/R10 §B3.1）：cap=宽度的连续函数；
+        # 'hard' 模式与旧 in_mid_zone/mid_cap 语义逐值等价（基线可比）。
+        breadth_cap = (self._breadth_cap(cfg, self._breadth_today)
+                       if (cfg.use_breadth_timing and self._breadth_today is not None)
+                       else None)
+        if breadth_cap is not None and breadth_cap == _ZERO_:
+            plan, _plan_dropped = {}, ()          # 目标零仓：diff 将出清全部持仓
         else:
-            if in_mid_zone:
-                total_nav = total_nav * cfg.breadth_mid_cap
+            if breadth_cap is not None:
+                total_nav = total_nav * breadth_cap
             # PEAD reserve（仅 event 模式）：披露密集月（1/4/7/8/10，R5 实测
             # 公告聚簇）或有在册持仓时预留现金池；非聚簇月不预留（避免进攻档
             # 长期现金拖累）。rebalance 模式恒为 0——PEAD 走正常目标位资金。
