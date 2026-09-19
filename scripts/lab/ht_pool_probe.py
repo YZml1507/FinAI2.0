@@ -112,7 +112,8 @@ def main():
     factors = div_factor_by_year()
     factors['ex'] = pd.to_datetime(factors['ex_date']).dt.date
     fac_map = {(r.ts_code, r.ex): (float(r.fac), float(r.cash_div))
-               for r in factors.itertuples()}
+               for r in factors.itertuples()
+               if pd.notna(r.fac) and pd.notna(r.cash_div)}
 
     # 年收益评估：把持仓年 5/1→次年4/30 切成 daily_basic 收盘价序列
     results = []
