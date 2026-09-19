@@ -222,6 +222,17 @@ class TestMaterialize:
         m = c3.materialize(pool, out, (2015, 2015))
         assert m["missing_bars"] == ["sz.999999"]
 
+    def test_relative_pool_path_no_crash(self, tmp_path, monkeypatch):
+        """回归：相对路径 --pool 不得在 manifest 落盘时炸（曾
+        relative_to(ROOT) 对未 resolve 的相对路径 ValueError）。"""
+        self._sandbox(tmp_path, monkeypatch)
+        _pool(tmp_path, {2015: ["sh.600000", "sz.000001"]})
+        monkeypatch.chdir(tmp_path)
+        out = tmp_path / "c3_universe"
+        m = c3.materialize(Path("pool_yearly.parquet"), out, (2015, 2016))
+        assert m["union_symbols"] == 2
+        assert (out / "C3_PLANE_MANIFEST.json").exists()
+
     def test_manifest_idempotent(self, tmp_path, monkeypatch):
         self._sandbox(tmp_path, monkeypatch)
         pool = _pool(tmp_path, {2015: ["sh.600000", "sz.000001"]})

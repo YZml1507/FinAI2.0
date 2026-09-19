@@ -237,10 +237,11 @@ def materialize(pool_path: Path, out_dir: Path,
             (idx_dir / p.name).write_bytes(p.read_bytes())
             n_idx += 1
 
+    pp = pool_path.resolve()
     manifest = {
-        'pool_path': (str(pool_path.relative_to(ROOT))
-                      if pool_path.resolve().is_relative_to(ROOT.resolve())
-                      else str(pool_path)),
+        'pool_path': (str(pp.relative_to(ROOT.resolve()))
+                      if pp.is_relative_to(ROOT.resolve())
+                      else str(pp)),
         'years': list(years),
         'union_symbols': len(syms),
         'copied_487': len(copied),
