@@ -218,21 +218,22 @@ def run_experiment(name: str, overrides: dict, data_path: Path) -> dict:
         cfg = orig_config_init(**kwargs)
         if overrides:
             cfg = replace(cfg, **overrides)
+        # PortfolioConfig 嵌套覆盖须单批 replace——逐字段 replace 会让
+        # __post_init__ 在过渡态上校验（如 target_count=10 撞上
+        # 默认 max_positions=8 直接炸），一次性构造才看到最终组合。
+        pf_overrides: dict = {}
         if portfolio_min_amt is not None:
-            cfg = replace(cfg, portfolio=replace(
-                cfg.portfolio, min_daily_amount=portfolio_min_amt))
+            pf_overrides["min_daily_amount"] = portfolio_min_amt
         if portfolio_target_cnt is not None:
-            cfg = replace(cfg, portfolio=replace(
-                cfg.portfolio, target_count=portfolio_target_cnt))
+            pf_overrides["target_count"] = portfolio_target_cnt
         if portfolio_max_pos is not None:
-            cfg = replace(cfg, portfolio=replace(
-                cfg.portfolio, max_positions=portfolio_max_pos))
+            pf_overrides["max_positions"] = portfolio_max_pos
         if portfolio_hard_lim is not None:
-            cfg = replace(cfg, portfolio=replace(
-                cfg.portfolio, hard_limit=portfolio_hard_lim))
+            pf_overrides["hard_limit"] = portfolio_hard_lim
         if portfolio_min_pv is not None:
-            cfg = replace(cfg, portfolio=replace(
-                cfg.portfolio, min_position_value=portfolio_min_pv))
+            pf_overrides["min_position_value"] = portfolio_min_pv
+        if pf_overrides:
+            cfg = replace(cfg, portfolio=replace(cfg.portfolio, **pf_overrides))
         return cfg
 
     # 覆盖配置构造（仅本进程生效，权威脚本的 import 引用不变更）
