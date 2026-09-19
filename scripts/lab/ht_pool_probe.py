@@ -200,7 +200,10 @@ def main():
             for tc, wi in w.items():
                 if tc not in day.index:
                     continue
-                c = float(day.loc[tc, 'close'])
+                c = day.loc[tc, 'close']
+                if not pd.notna(c) or c <= 0:
+                    continue
+                c = float(c)
                 if tc in prev_close and prev_close[tc] > 0:
                     fac, cdv = fac_map.get((tc, dd), (1.0, 0.0))
                     port_r += wi * ((c * fac + cdv) / prev_close[tc] - 1.0)
