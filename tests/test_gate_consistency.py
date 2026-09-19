@@ -1186,6 +1186,7 @@ class TestGateDocIgnoreScope:
             "docs/C3_POOL_RESELECT_PREREG.md": (1, None),     # C3 预登记收单裁决的实测对照值快照
             "docs/E15_ETFATTACK_PREREG.md": (1, None),        # e15 预登记的对照实验实测值快照
             "docs/D2_LOWVOL_PREREG.md": (1, None),            # D2 预登记的对照实验实测值快照
+            "docs/E16_DVTAIL_PREREG.md": (1, None),           # e16 预登记的对照实验实测值快照
             "docs/DEEP_RESEARCH_DIVIDEND_20260919.md": (1, None),  # 外部调研引用的券商/学术实测值，非本项目基线
             "docs/DEEP_ANALYSIS_GAP_20260919.md": (1, None),  # 差距剖析文：外部调研值+历史实验快照值混合豁免
         }

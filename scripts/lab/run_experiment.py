@@ -85,6 +85,8 @@ _PARAM_CASTERS = {
     # provider(day)=pool[year(day)]∩alive(day)，与 --data-path data/c3_universe 配套）
     "universe_yearly_pool": str,
     "low_vol_keep_pct": Decimal,      # D2 低波翼：dv 合格候选按 trailing-250d vol 升序保留前 pct（None=不启用）
+    "dv_skip_top": int,               # e16 剔尾：dv 降序排序后跳过前 N 名（实证逆向选择带）
+    "max_dividend_yield": Decimal,    # e16 扰动臂：股息率上限（剔除极端高息尾部）
     # e15：ETF 攻击资产的组合层流动性下限覆盖（嵌套 PortfolioConfig 字段——
     # 二级成交额下限对 ETF 不适用：申赎机制兜底，真实约束是参与率上限；
     # ⛔ 只用于 placebo 臂，选股池 hygiene 下限语义不变）

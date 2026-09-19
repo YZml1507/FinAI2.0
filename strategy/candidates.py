@@ -236,6 +236,8 @@ class DividendConfig:
     breadth_weight_mode: str = "hard"                 # C1 连续权重映射（R9/R10 §B3.1）：'hard'=现行阶跃（默认，基线可比）；'linear'=[defense,attack) 内 mid_cap→1.0 线性裁剪（ice 保留硬阈值）
     attack_instrument: str = ""                       # e15 指数 placebo：非空时 attack 档满仓该单票（如 'sh.510880'），选股层整体旁路（⛔ 默认空——须显式开启，否则无条件生效污染消融实验）
     low_vol_keep_pct: Optional[Decimal] = None        # D2 低波翼：非 None 时 dv 合格候选先按 trailing-250d 波动率升序保留前 pct（0,1]，再做股息率排序/top5/市值加权（⛔ 默认 None=不启用）
+    dv_skip_top: int = 0                              # e16 剔尾：dv 降序排序后先跳过前 N 名（实证 top15 尾部逆向选择带），再取候选池（⛔ 默认 0=不跳过）
+    max_dividend_yield: Optional[Decimal] = None      # e16 扰动臂替代机制：股息率上限——dv>cap 的极端高息票剔除（⛔ 默认 None=不设上限）
     cash_yield_series: str = ""                       # e6b GC001 日度利率 parquet 路径（date,rate_annual%）；与 cash_yield_annual 互斥
     pead_entry_mode: str = "rebalance"                # 'event'=公告日事件驱动建仓（需 reserve）；'rebalance'=调仓日并入候选源（软叠加，零闲置现金）
     portfolio: PortfolioConfig = field(default_factory=PortfolioConfig)
@@ -313,6 +315,18 @@ class DividendConfig:
             if not (_ZERO_ < self.low_vol_keep_pct <= Decimal("1")):
                 raise ValueError(f"low_vol_keep_pct 须在 (0, 1] 范围内: "
                                  f"{self.low_vol_keep_pct}")
+        if not isinstance(self.dv_skip_top, int) or isinstance(self.dv_skip_top, bool):
+            raise TypeError(f"dv_skip_top 须为 int: {self.dv_skip_top!r}")
+        if self.dv_skip_top < 0:
+            raise ValueError(f"dv_skip_top 须 >= 0: {self.dv_skip_top}")
+        if self.max_dividend_yield is not None:
+            if not isinstance(self.max_dividend_yield, Decimal):
+                raise TypeError(f"max_dividend_yield 须为 Decimal（⛔ 禁 float）: "
+                                f"{type(self.max_dividend_yield).__name__}")
+            if self.max_dividend_yield <= self.min_dividend_yield:
+                raise ValueError(f"max_dividend_yield={self.max_dividend_yield} 须严格大于 "
+                                 f"min_dividend_yield={self.min_dividend_yield}"
+                                 f"（否则候选恒空——fail-closed）")
         if self.breadth_mid_cap > Decimal("0.8"):
             raise ValueError(f"breadth_mid_cap 警戒档仓位上限不应超 0.8: {self.breadth_mid_cap}")
         if self.cash_yield_series and Decimal(self.cash_yield_annual) != 0:
@@ -721,6 +735,10 @@ class DividendStrategy:
                 continue  # 数据不全，跳过
 
             if bar.dividend_yield >= cfg.min_dividend_yield:
+                # e16 扰动臂：极端高息上限剔除（dv>cap=困境高息尾部）
+                if (cfg.max_dividend_yield is not None
+                        and bar.dividend_yield > cfg.max_dividend_yield):
+                    continue
                 # ① 准入端质量否决（连续分红/ROE-TTM/分红现金流/伪高股息）
                 if (cfg.use_quality_veto and self._layers is not None
                         and self._layers.veto_reason(symbol, day)):
@@ -740,8 +758,12 @@ class DividendStrategy:
             keep_n = max(1, int(len(vol_ok) * cfg.low_vol_keep_pct))
             candidates = vol_ok[:keep_n]
 
-        # 按股息率降序排序，取前 N 只
+        # 按股息率降序排序
         candidates.sort(key=lambda x: x[1], reverse=True)
+        # e16 剔尾：跳过 dv 前 N 名（实证逆向选择带）——候选不足时
+        # 切片自然缩短/清空 → 空仓（fail-closed 语义）
+        if cfg.dv_skip_top > 0:
+            candidates = candidates[cfg.dv_skip_top:]
         top_candidates = candidates[:cfg.candidate_pool_size]
 
         # 市值加权（归一化）

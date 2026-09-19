@@ -824,3 +824,97 @@ def test_low_vol_missing_history_excluded():
 
     buys = [o for o in broker.orders if o.side == OrderSide.BUY]
     assert len(buys) == 1 and buys[0].symbol == "sh.600000"
+
+
+# ==============================================================================
+# e16 dv_skip_top / max_dividend_yield 剔尾（4 例）
+# ==============================================================================
+
+
+def _dvskip_cfg() -> DividendConfig:
+    """attack 档 + dv_skip_top=1（两候选跳头名 → 选次名）"""
+    return DividendConfig(
+        min_dividend_yield=Decimal("0.03"),
+        use_breadth_timing=True,
+        use_ma200_timing=False,
+        breadth_series={"2020-01-01": Decimal("0.50")},
+        breadth_attack_threshold=Decimal("0.40"),
+        breadth_defense_threshold=Decimal("0.20"),
+        breadth_ice_confirm_days=1,
+        dv_skip_top=1,
+        warmup_bars=210,
+        rebalance_days=10,
+        index_symbol="sh.000300",
+        min_positions=1,
+        max_positions=5,
+        default_positions=1,
+    )
+
+
+def test_dv_skip_default_zero_ok():
+    """默认 0 不跳过（向后兼容）"""
+    DividendConfig()
+
+
+def test_dv_skip_invalid():
+    """负数/非 int → 拒绝（fail-closed）"""
+    with pytest.raises(ValueError, match="dv_skip_top"):
+        DividendConfig(dv_skip_top=-1)
+    with pytest.raises(TypeError, match="dv_skip_top"):
+        DividendConfig(dv_skip_top=15.0)
+
+
+def test_dv_skip_top_shifts_selection():
+    """dv_skip_top=1：跳过 dv 头名 → 选 dv 次名（剔尾语义）"""
+    cfg = _dvskip_cfg()
+    strategy = DividendStrategy(config=cfg)
+    strategy.watchlist = ["sh.600000", "sh.600001"]
+    strategy._bar_count = cfg.warmup_bars
+    strategy._last_rebalance_bar = strategy._bar_count - cfg.rebalance_days
+
+    book = MockBook(nav=Decimal("100000"))
+    broker = MockBroker()
+    day = date(2020, 1, 1)
+    # 600000 dv=8%（头名，被跳过）/ 600001 dv=5%（次名，入选）
+    bars = {"sh.600000": _dv_bar(day, "sh.600000", dv="0.08"),
+            "sh.600001": _dv_bar(day, "sh.600001", dv="0.05")}
+
+    strategy.on_bar(day, bars, book, broker)
+
+    buys = [o for o in broker.orders if o.side == OrderSide.BUY]
+    assert len(buys) == 1 and buys[0].symbol == "sh.600001"
+
+
+def test_dv_cap_excludes_extreme_yield():
+    """max_dividend_yield=6%：dv=8% 票被剔 → 选 dv=5% 票"""
+    cfg = DividendConfig(
+        min_dividend_yield=Decimal("0.03"),
+        max_dividend_yield=Decimal("0.06"),
+        use_breadth_timing=True,
+        use_ma200_timing=False,
+        breadth_series={"2020-01-01": Decimal("0.50")},
+        breadth_attack_threshold=Decimal("0.40"),
+        breadth_defense_threshold=Decimal("0.20"),
+        breadth_ice_confirm_days=1,
+        warmup_bars=210,
+        rebalance_days=10,
+        index_symbol="sh.000300",
+        min_positions=1,
+        max_positions=5,
+        default_positions=1,
+    )
+    strategy = DividendStrategy(config=cfg)
+    strategy.watchlist = ["sh.600000", "sh.600001"]
+    strategy._bar_count = cfg.warmup_bars
+    strategy._last_rebalance_bar = strategy._bar_count - cfg.rebalance_days
+
+    book = MockBook(nav=Decimal("100000"))
+    broker = MockBroker()
+    day = date(2020, 1, 1)
+    bars = {"sh.600000": _dv_bar(day, "sh.600000", dv="0.08"),
+            "sh.600001": _dv_bar(day, "sh.600001", dv="0.05")}
+
+    strategy.on_bar(day, bars, book, broker)
+
+    buys = [o for o in broker.orders if o.side == OrderSide.BUY]
+    assert len(buys) == 1 and buys[0].symbol == "sh.600001"
