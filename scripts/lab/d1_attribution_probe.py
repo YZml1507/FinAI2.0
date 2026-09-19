@@ -165,8 +165,8 @@ def main():
         lo_pb = quintile(pb.loc[me][pb.loc[me] > 0], top=False, valid=alive)
         hi_pb = quintile(pb.loc[me][pb.loc[me] > 0], top=True, valid=alive)
         payers = dvt.loc[me][dvt.loc[me] > 0].index
-        hi_dv = quintile(dvt.loc[me], top=True, valid=payers & alive)
-        lo_dv = quintile(dvt.loc[me], top=False, valid=payers & alive)
+        hi_dv = quintile(dvt.loc[me], top=True, valid=payers.intersection(alive))
+        lo_dv = quintile(dvt.loc[me], top=False, valid=payers.intersection(alive))
         lo_vol = quintile(vol60.loc[me], top=False, valid=alive)
         hi_vol = quintile(vol60.loc[me], top=True, valid=alive)
         hi_mom = quintile(mom60.loc[me], top=True, valid=alive)
