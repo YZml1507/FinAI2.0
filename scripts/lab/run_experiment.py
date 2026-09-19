@@ -87,10 +87,16 @@ _PARAM_CASTERS = {
     "low_vol_keep_pct": Decimal,      # D2 低波翼：dv 合格候选按 trailing-250d vol 升序保留前 pct（None=不启用）
     "dv_skip_top": int,               # e16 剔尾：dv 降序排序后跳过前 N 名（实证逆向选择带）
     "max_dividend_yield": Decimal,    # e16 扰动臂：股息率上限（剔除极端高息尾部）
+    "weight_mode": str,               # e17 权重形态：market_cap(默认)/equal/dividend_yield
+    "min_positions": int,             # e17 持仓数臂：DividendConfig 下界（配合 default_positions 使用）
+    "max_positions": int,             # e17 持仓数臂：DividendConfig 上界
     # e15：ETF 攻击资产的组合层流动性下限覆盖（嵌套 PortfolioConfig 字段——
     # 二级成交额下限对 ETF 不适用：申赎机制兜底，真实约束是参与率上限；
     # ⛔ 只用于 placebo 臂，选股池 hygiene 下限语义不变）
     "portfolio_min_daily_amount": Decimal,
+    # e17 持仓数臂：组合层目标数覆盖（select_targets 截断数——硬编码默认 5，
+    # pos>5 臂不覆盖此键会被截回 5 ⇒ 嵌套 PortfolioConfig 字段，同上行机制）
+    "portfolio_target_count": int,
 }
 
 #: 非策略配置字段——传给 ``run_dividend_backtest_*`` 或本 runner 的运行级参数。
@@ -138,6 +144,7 @@ def run_experiment(name: str, overrides: dict, data_path: Path) -> dict:
     fee_mult = Decimal(overrides.pop("fee_multiplier", "1"))
     yearly_pool = overrides.pop("universe_yearly_pool", None)
     portfolio_min_amt = overrides.pop("portfolio_min_daily_amount", None)
+    portfolio_target_cnt = overrides.pop("portfolio_target_count", None)
     run_params = {
         "backtest_start": str(bt_start) if bt_start else None,
         "backtest_end": str(bt_end) if bt_end else None,
@@ -146,6 +153,8 @@ def run_experiment(name: str, overrides: dict, data_path: Path) -> dict:
         "universe_yearly_pool": yearly_pool,
         "portfolio_min_daily_amount": (str(portfolio_min_amt)
                                        if portfolio_min_amt is not None else None),
+        "portfolio_target_count": (str(portfolio_target_cnt)
+                                   if portfolio_target_cnt is not None else None),
     }
 
     orig_config_init = rdb.DividendConfig
@@ -198,6 +207,9 @@ def run_experiment(name: str, overrides: dict, data_path: Path) -> dict:
         if portfolio_min_amt is not None:
             cfg = replace(cfg, portfolio=replace(
                 cfg.portfolio, min_daily_amount=portfolio_min_amt))
+        if portfolio_target_cnt is not None:
+            cfg = replace(cfg, portfolio=replace(
+                cfg.portfolio, target_count=portfolio_target_cnt))
         return cfg
 
     # 覆盖配置构造（仅本进程生效，权威脚本的 import 引用不变更）

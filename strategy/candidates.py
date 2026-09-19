@@ -238,6 +238,7 @@ class DividendConfig:
     low_vol_keep_pct: Optional[Decimal] = None        # D2 低波翼：非 None 时 dv 合格候选先按 trailing-250d 波动率升序保留前 pct（0,1]，再做股息率排序/top5/市值加权（⛔ 默认 None=不启用）
     dv_skip_top: int = 0                              # e16 剔尾：dv 降序排序后先跳过前 N 名（实证 top15 尾部逆向选择带），再取候选池（⛔ 默认 0=不跳过）
     max_dividend_yield: Optional[Decimal] = None      # e16 扰动臂替代机制：股息率上限——dv>cap 的极端高息票剔除（⛔ 默认 None=不设上限）
+    weight_mode: str = "market_cap"                 # e17 权重形态：'market_cap'=自由流通市值加权（默认，基线可比）；'equal'=等权；'dividend_yield'=股息率加权（⛔ 默认 market_cap——须显式开启，否则无条件生效污染消融实验）
     cash_yield_series: str = ""                       # e6b GC001 日度利率 parquet 路径（date,rate_annual%）；与 cash_yield_annual 互斥
     pead_entry_mode: str = "rebalance"                # 'event'=公告日事件驱动建仓（需 reserve）；'rebalance'=调仓日并入候选源（软叠加，零闲置现金）
     portfolio: PortfolioConfig = field(default_factory=PortfolioConfig)
@@ -327,6 +328,9 @@ class DividendConfig:
                 raise ValueError(f"max_dividend_yield={self.max_dividend_yield} 须严格大于 "
                                  f"min_dividend_yield={self.min_dividend_yield}"
                                  f"（否则候选恒空——fail-closed）")
+        if self.weight_mode not in ("market_cap", "equal", "dividend_yield"):
+            raise ValueError(f"weight_mode 须为 'market_cap'/'equal'/'dividend_yield'"
+                             f"（fail-closed）: {self.weight_mode!r}")
         if self.breadth_mid_cap > Decimal("0.8"):
             raise ValueError(f"breadth_mid_cap 警戒档仓位上限不应超 0.8: {self.breadth_mid_cap}")
         if self.cash_yield_series and Decimal(self.cash_yield_annual) != 0:
@@ -766,18 +770,25 @@ class DividendStrategy:
             candidates = candidates[cfg.dv_skip_top:]
         top_candidates = candidates[:cfg.candidate_pool_size]
 
-        # 市值加权（归一化）
+        # 加权（归一化）：e17 权重形态——'market_cap'=自由流通市值占比（默认）/
+        # 'equal'=等权 / 'dividend_yield'=股息率加权。score 仅作相对权重，
+        # 组合层在 targets 内再归一化，故等权给 1、dv 加权给 dv 原值即可。
         total_market_cap = sum(c[2] for c in top_candidates)
-        if total_market_cap == _ZERO_:
+        if cfg.weight_mode == "market_cap" and total_market_cap == _ZERO_:
             return []  # 无有效候选，空仓
 
         signals = []
         for symbol, div_yield, market_cap in top_candidates[:cfg.default_positions]:
-            weight = market_cap / total_market_cap
+            if cfg.weight_mode == "equal":
+                weight = Decimal("1")
+            elif cfg.weight_mode == "dividend_yield":
+                weight = div_yield
+            else:  # "market_cap"（默认，基线可比）
+                weight = market_cap / total_market_cap
             signals.append(Signal(
                 symbol=symbol,
-                score=weight,  # 市值权重作为 score
-                reason=f"股息率 {div_yield * 100:.2f}% / 市值权重 {weight * 100:.2f}%"
+                score=weight,  # 权重作为 score
+                reason=f"股息率 {div_yield * 100:.2f}% / 权重[{cfg.weight_mode}] {weight * 100:.2f}%"
             ))
 
         return signals

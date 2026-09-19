@@ -918,3 +918,90 @@ def test_dv_cap_excludes_extreme_yield():
 
     buys = [o for o in broker.orders if o.side == OrderSide.BUY]
     assert len(buys) == 1 and buys[0].symbol == "sh.600001"
+
+
+# e17 weight_mode 权重形态（5 例）
+
+
+def _wm_bar(day: date, symbol: str, dv: str, mc: str) -> Bar:
+    return Bar(
+        date=day, symbol=symbol,
+        open=Decimal("10"), high=Decimal("10"), low=Decimal("10"),
+        close=Decimal("10"), preclose=Decimal("10"),
+        volume=Decimal("1000000"), amount=Decimal("100000000"),
+        dividend_yield=Decimal(dv), market_cap=Decimal(mc),
+    )
+
+
+def _wm_cfg(weight_mode: str) -> DividendConfig:
+    return DividendConfig(
+        min_dividend_yield=Decimal("0.03"),
+        candidate_pool_size=50,
+        min_positions=3,
+        max_positions=5,
+        default_positions=3,
+        use_ma200_timing=False,
+        warmup_bars=200,
+        rebalance_days=1,
+        weight_mode=weight_mode,
+    )
+
+
+def _wm_bars(day: date) -> dict:
+    # dv 降序：600009(8%) > 600008(6%) > 600007(4%)；市值反向：1e9/4e9/5e9
+    return {
+        "sh.600007": _wm_bar(day, "sh.600007", "0.04", "5000000000"),
+        "sh.600008": _wm_bar(day, "sh.600008", "0.06", "4000000000"),
+        "sh.600009": _wm_bar(day, "sh.600009", "0.08", "1000000000"),
+    }
+
+
+def test_weight_mode_default_is_market_cap():
+    """默认 weight_mode='market_cap'——与 e8b 基线逐值等价（市值占比归一化）"""
+    cfg = _wm_cfg("market_cap")
+    strategy = DividendStrategy(config=cfg)
+    signals = strategy._select_stocks(_wm_bars(date(2020, 1, 2)), cfg)
+    w = {s.symbol: s.score for s in signals}
+    # Σmc(top3)=10e9：600009→0.1 / 600008→0.4 / 600007→0.5
+    assert abs(w["sh.600009"] - Decimal("0.1")) < Decimal("0.0001")
+    assert abs(w["sh.600008"] - Decimal("0.4")) < Decimal("0.0001")
+    assert abs(w["sh.600007"] - Decimal("0.5")) < Decimal("0.0001")
+
+
+def test_weight_mode_invalid_rejected():
+    """非法 weight_mode ⇒ fail-closed ValueError"""
+    with pytest.raises(ValueError, match="weight_mode"):
+        _wm_cfg("sqrt_mc")
+
+
+def test_weight_mode_equal():
+    """equal：所有选中票 score=1（组合层归一化后等权）"""
+    cfg = _wm_cfg("equal")
+    strategy = DividendStrategy(config=cfg)
+    signals = strategy._select_stocks(_wm_bars(date(2020, 1, 2)), cfg)
+    assert len(signals) == 3
+    assert all(s.score == Decimal("1") for s in signals)
+
+
+def test_weight_mode_dividend_yield():
+    """dividend_yield：score=dv 原值（高息票权重更高）"""
+    cfg = _wm_cfg("dividend_yield")
+    strategy = DividendStrategy(config=cfg)
+    signals = strategy._select_stocks(_wm_bars(date(2020, 1, 2)), cfg)
+    w = {s.symbol: s.score for s in signals}
+    assert w["sh.600009"] == Decimal("0.08")
+    assert w["sh.600008"] == Decimal("0.06")
+    assert w["sh.600007"] == Decimal("0.04")
+
+
+def test_weight_mode_equal_zero_mc_not_blocked():
+    """equal 模式：Σ市值=0 不触发空仓守卫（权重不依赖市值）"""
+    cfg = _wm_cfg("equal")
+    strategy = DividendStrategy(config=cfg)
+    day = date(2020, 1, 2)
+    bars = {
+        "sh.600007": _wm_bar(day, "sh.600007", "0.04", "0"),
+        "sh.600008": _wm_bar(day, "sh.600008", "0.06", "0"),
+    }
+    signals = strategy._select_stocks(bars, cfg)
+    assert len(signals) == 2
