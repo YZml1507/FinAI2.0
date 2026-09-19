@@ -59,6 +59,28 @@
   **C1（连续权重映射）是正确主攻方向**；现行 breadth20 口径无需重算。
   <!-- gate-doc-ignore: 历史快照（C2 机制归因实测快照，非基线声明），⛔ 不改史 -->
 
+
+### e11-linear 预登记（2026-09-19 09:3x，本窗口）
+
+- **预登记**：`docs/E11_LINEAR_PREREG.md`——唯一变量 `breadth_weight_mode=linear`，
+  对照 e8b-gc001-e7-combo（8.58%/17.40%/换手 4.607， <!-- gate-doc-ignore: 历史快照（对照实验实测值，非基线声明），⛔ 不改史 -->）；主实验 + ±20% 扰动矩阵
+  15 格（Hermes 指定 d∈{0.20,0.225,0.25,0.275,0.30}×a∈{0.28,0.31,0.35,0.385,0.42}
+  且 a>d，⛔ 不选最优只供 G-2a~c 曲面）。
+- **C7 判据预登记（本仓标定值，非国际标准）**：G-2a 平台宽度（CAGR≥(2/3)max
+  的格点占比≥50%）；G-2b 退化单调性；G-2c Lipschitz L×10%≤6.3pp；
+  G-2d PBO / G-2e DSR 登记为后续跟进（随 C7 完整版落地）；G-2g 换手≤8
+  （e8b 实测 4.607， <!-- gate-doc-ignore: 历史快照（对照实验实测值，非基线声明），⛔ 不改史 -->5 日节拍硬约束）；CAGR 退化 <1.0pp 成立 / 1.0~1.5pp 临界 /
+  >1.5pp 代价过大。
+- **影子前瞻**（不改仓不跑回测，产物 `experiments/lab/e11-linear/_shadow/`）：
+  mid 带天数 388/2846（13.6%）；影子到仓日 540（454 节拍 + 86 demote），
+  分数仓 173 天（32.0%）；linear vs hard 到仓 |Δcap| 均值 0.182；
+  ice 确认 124 次两模式逐日一致。修正 Hermes 原断言 3 的期望：|Δb| p99=0.31
+  ⇒ 单日 |Δcap| 经验上界=|Δb|/0.10。
+- **行为探针**：`scripts/lab/e11_linear_probe.py` 7 组断言全过
+  （单调/端点兼容/Lipschitz/demote 出单且目标=linear(b)/ice 路径逐日一致/
+  到仓日集合全同/分数仓生效面 173≥100）。
+- **发车**：`scripts/lab/e11_linear_grid.sh`（16 组×3 路并行，4 核绑核，
+  预计 ~2.5h），同 SHA 同 universe 缓存同宽度序列。
 ### C1 连续权重映射实施（2026-09-19 05:0x，进行中→已见绿）
 
 - **改动**：`strategy/candidates.py` 新增 `breadth_weight_mode`（'hard' 默认 /

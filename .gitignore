@@ -71,3 +71,6 @@ experiments/universe/
 # 流水线运行副本（start/daemon 生成的临时隔离副本，守护退出自删；失败残留时也不入 git）
 scripts/pipeline_12h/.daemon_12h.run.*.sh
 scripts/pipeline_12h/.pipeline_12h.run.*.sh
+
+# 本地临时审计/补丁脚本（不入库）
+tmp_audit/
