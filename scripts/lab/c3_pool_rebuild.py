@@ -102,10 +102,20 @@ def payout_ok(sym: str, stat_year: int, eps: float, day: str) -> bool:
 
 
 def base_partition_day(snap: str) -> str | None:
-    """距快照约一年前的最近 daily_basic 分片日（≤去年同期日）。"""
-    target = str(int(snap[:4]) - 1) + snap[4:]
-    days = [p.stem for p in DV_DIR.glob('*.parquet') if p.stem <= target]
-    return max(days) if days else None
+    """距快照约一年前的最近 daily_basic 分片日。
+
+    取与「去年同期日」距离最近的分片（±10 日窗内；早期年份首日分片
+    晚于周年日 1-3 天时仍取得到——如 2016 快照的基期=20150105）。
+    窗内无分片 → None（数据真空如实报告，R6 该年不施加剔除）。
+    """
+    target = int(str(int(snap[:4]) - 1) + snap[4:])
+    days = [int(p.stem) for p in DV_DIR.glob('*.parquet')]
+    if not days:
+        return None
+    best = min(days, key=lambda d: abs(d - target))
+    if abs(best - target) <= 10:
+        return f'{best:08d}'
+    return None
 
 
 def main() -> int:
