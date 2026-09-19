@@ -1189,6 +1189,7 @@ class TestGateDocIgnoreScope:
             "docs/E16_DVTAIL_PREREG.md": (1, None),           # e16 预登记的对照实验实测值快照
             "docs/E17_DOF_PREREG.md": (1, None),            # e17 预登记的对照实验实测值快照
             "docs/E18_WIDTH_PREREG.md": (1, None),          # e18 预登记的证据链实测值快照
+            "docs/CAPACITY_MATRIX_20260920.md": (1, None),  # 容量矩阵交付文档的分层实测值快照
             "docs/DEEP_RESEARCH_DIVIDEND_20260919.md": (1, None),  # 外部调研引用的券商/学术实测值，非本项目基线
             "docs/DEEP_ANALYSIS_GAP_20260919.md": (1, None),  # 差距剖析文：外部调研值+历史实验快照值混合豁免
         }
