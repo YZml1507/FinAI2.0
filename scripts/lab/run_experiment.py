@@ -80,11 +80,15 @@ _PARAM_CASTERS = {
     # 晋级门禁 G-3（成本/成交约束复核）：本金端点与费率敏感性
     "initial_capital": Decimal,     # 初始本金（默认 150000）
     "fee_multiplier": Decimal,      # 费率全科目缩放（默认 1；2=佣金/印花/过户/经手/证管 ×2）
+    # C3：年度池 universe_provider（pool_yearly.parquet 路径；
+    # provider(day)=pool[year(day)]∩alive(day)，与 --data-path data/c3_universe 配套）
+    "universe_yearly_pool": str,
 }
 
 #: 非策略配置字段——传给 ``run_dividend_backtest_*`` 或本 runner 的运行级参数。
 _RUN_LEVEL_KEYS = (
-    "backtest_start", "backtest_end", "initial_capital", "fee_multiplier")
+    "backtest_start", "backtest_end", "initial_capital", "fee_multiplier",
+    "universe_yearly_pool")
 
 
 def _load_breadth_series(path: Path) -> dict:
@@ -124,11 +128,13 @@ def run_experiment(name: str, overrides: dict, data_path: Path) -> dict:
     bt_end = overrides.pop("backtest_end", None)
     initial_capital = Decimal(overrides.pop("initial_capital", "150000"))
     fee_mult = Decimal(overrides.pop("fee_multiplier", "1"))
+    yearly_pool = overrides.pop("universe_yearly_pool", None)
     run_params = {
         "backtest_start": str(bt_start) if bt_start else None,
         "backtest_end": str(bt_end) if bt_end else None,
         "initial_capital": str(initial_capital),
         "fee_multiplier": str(fee_mult),
+        "universe_yearly_pool": yearly_pool,
     }
 
     orig_config_init = rdb.DividendConfig
@@ -182,6 +188,18 @@ def run_experiment(name: str, overrides: dict, data_path: Path) -> dict:
 
     # 覆盖配置构造（仅本进程生效，权威脚本的 import 引用不变更）
     rdb.DividendConfig = _patched_config  # type: ignore[misc]
+
+    # C3 年度池 provider（⛔ 不传入则走默认 alive_universe 全量池）
+    universe_provider = None
+    if yearly_pool:
+        import pandas as pd
+        from scripts.lab.c3_data_plane import make_yearly_pool_provider
+        sb_cache = Path(os.environ["FNAI_STOCK_BASIC_CACHE"])
+        stock_basic = pd.read_parquet(sb_cache)
+        universe_provider = make_yearly_pool_provider(
+            Path(yearly_pool), stock_basic)
+        print(f"[lab] C3 年度池 provider ← {yearly_pool}")
+
     started = time.strftime("%Y-%m-%d %H:%M:%S")
     t0 = time.time()
     try:
@@ -193,6 +211,7 @@ def run_experiment(name: str, overrides: dict, data_path: Path) -> dict:
             start_date=bt_start,
             end_date=bt_end,
             registry_root=lab_dir,
+            universe_provider=universe_provider,
         )
     finally:
         rdb.DividendConfig = orig_config_init  # type: ignore[misc]

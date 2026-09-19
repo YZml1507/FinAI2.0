@@ -1,25 +1,28 @@
 # FinAI2.0 任务跟踪文档（跨窗口唯一事实源）
 
-> 创建：2026-09-15 17:45 ｜ 更新：2026-09-19 14:1x（本窗口：isST 整批同 SHA 重跑 5 组全收单——与旧指纹逐值一致，data_hash e150ee29→c7630169 登记为纯语义修正；dividend_alla 补采完成 5471/5471；fina_alla 在跑；flowchart 重改在途；pytest 1092 绿）｜ 上一更新：2026-09-19 13:1x（本窗口：e11-linear 16 组收单判负——G-2a/b/c 全 FAIL + 退化 2.26pp，a385d25 证实尖峰非平台；e13a 收单 7.13% 恒等式分解闭合[暴露-1.45pp+形态-0.81pp]；isST 重建完成——主板边界补记+探针 A1~A5 全 PASS+幂等，整批同 SHA 重跑 5 组在跑；C3 全 A 财务/分红补采在跑；pytest 1092 绿）｜ 上一更新：2026-09-19 03:2x（本窗口：数据口径审计完成 + R9-A 池规格/幸存者偏差独立复算（★三臂影子检验：幸存者偏差 2.45pp/年、现池构造成本 4.27pp/年）+ R9/R10 调研委托 Hermes 在途；测试 1092 全绿）｜ 上一更新：2026-09-17（接续窗口：R8 已接收，e9 暂停，见「当前接续」；此前更新均为历史记录）｜ 上一更新：2026-09-17 21:2x（并行推进：①H20955/H00922 全收益序列已自采落盘 data/macro/（2676行/2014-2024，实测年化9.24%/9.01%与R7口径一致）——R8 D1/D2 已由本侧完成，Hermes 免重复；②e9 指数层设计稿 docs/E9_INDEX_LAYER_DESIGN.md 已出，等 R8 口径拆解标定 index_expense_drag 后评审；③G-4 分年表已登）｜ 上一更新：2026-09-17 20:35（⚠️ 门禁裁决：G-2 ±10% 仍无平台区→判负，e8b 不晋级保留实验冠军身份；瓶颈=阈值参数稳健性非实现/成本；主线移交红利低波指数层[R8 调研中]，pgy 分年组收尾中）｜ 上一更新：2026-09-17 18:45（门禁首批收单：G-1留出✅holdout 8.35%零退化、G-3✅费率×2=7.79%/10万本金=8.46%；G-2±20%悬崖敏感❌[仅GC001维平滑]→按checklist收窄处置，±10%平台区10组+分年10组在跑；R8委托已发）｜ 上一更新：2026-09-17 18:0x（R7 调研已回并登记：EXPANSION_MEMO §三 按证据重排——指数/ETF层升首选[红利低波100全收益9.7%逼近合格线+分红再投口径警告]、扩池改「重选」[连续3年≥3%仅176只，与现池重叠9.7%]；门禁矩阵在跑）｜ 上一更新：2026-09-17 17:0x（晋级门禁启动：run_experiment 已支持 initial_capital/fee_multiplier，G-1 留出 2 组+G-2 扰动 10 组+G-3 成本 2 组共 14 组并发 3 路在跑；EXPANSION_MEMO 判据已填——e8b 8.58%<9% 触发扩池评估成立，与 R7 并行）｜ 上一更新：2026-09-17 16:35（e6b/e8b GC001 真实利率版收单：e6b 7.64%/28.66% 有效、e8b 组合 8.58%/17.40% 超越固定2%版，晋级候选构型锁定为冠军+GC001计息+demote，待六维门禁）｜ 上一更新：2026-09-17 13:15（R6 防御资产调研交底登记：GC001 主工具/511990 补位/511360 限超长空仓；三项数据口径工程告警已录入台账）｜ 上一更新：2026-09-17 10:50（⚠️ E4 裁决作废：插桩审计实锤 _pead_holds 幽灵/僵尸在册 bug——登记于 targets 阶段、与实际持仓无同步；已修在册对账≥3bar 无仓即注销，基线 1067 绿，`e4-rebal-fixed` 干净对照重跑中。详见 experiments/lab/e4-risk-audit/REPORT.md 与 PLAYBOOK 修订）｜ 更新规则：每完成一个小任务立即更新对应复选框与本节时间戳
+> 创建：2026-09-15 17:45 ｜ 更新：2026-09-19 15:2x（本窗口：isST 整批同 SHA 重跑 5 组全收单——与旧指纹逐值一致，data_hash e150ee29→c7630169 登记为纯语义修正；dividend_alla 补采完成 5471/5471；fina_alla 在跑 ~2800/5473；flowchart 十节重构收单（07b240b）；C3 数据面机制就绪——487 成员分区复制+新成员 alla 构建+年度池 provider+runner 接线，8 测全绿，等 P1 冻结后实跑；pytest 1100 绿）｜ 上一更新：2026-09-19 14:1x（本窗口：isST 整批同 SHA 重跑 5 组全收单——与旧指纹逐值一致，data_hash e150ee29→c7630169 登记为纯语义修正；dividend_alla 补采完成 5471/5471；fina_alla 在跑；flowchart 重改在途；pytest 1092 绿）｜ 上一更新：2026-09-19 13:1x（本窗口：e11-linear 16 组收单判负——G-2a/b/c 全 FAIL + 退化 2.26pp，a385d25 证实尖峰非平台；e13a 收单 7.13% 恒等式分解闭合[暴露-1.45pp+形态-0.81pp]；isST 重建完成——主板边界补记+探针 A1~A5 全 PASS+幂等，整批同 SHA 重跑 5 组在跑；C3 全 A 财务/分红补采在跑；pytest 1092 绿）｜ 上一更新：2026-09-19 03:2x（本窗口：数据口径审计完成 + R9-A 池规格/幸存者偏差独立复算（★三臂影子检验：幸存者偏差 2.45pp/年、现池构造成本 4.27pp/年）+ R9/R10 调研委托 Hermes 在途；测试 1092 全绿）｜ 上一更新：2026-09-17（接续窗口：R8 已接收，e9 暂停，见「当前接续」；此前更新均为历史记录）｜ 上一更新：2026-09-17 21:2x（并行推进：①H20955/H00922 全收益序列已自采落盘 data/macro/（2676行/2014-2024，实测年化9.24%/9.01%与R7口径一致）——R8 D1/D2 已由本侧完成，Hermes 免重复；②e9 指数层设计稿 docs/E9_INDEX_LAYER_DESIGN.md 已出，等 R8 口径拆解标定 index_expense_drag 后评审；③G-4 分年表已登）｜ 上一更新：2026-09-17 20:35（⚠️ 门禁裁决：G-2 ±10% 仍无平台区→判负，e8b 不晋级保留实验冠军身份；瓶颈=阈值参数稳健性非实现/成本；主线移交红利低波指数层[R8 调研中]，pgy 分年组收尾中）｜ 上一更新：2026-09-17 18:45（门禁首批收单：G-1留出✅holdout 8.35%零退化、G-3✅费率×2=7.79%/10万本金=8.46%；G-2±20%悬崖敏感❌[仅GC001维平滑]→按checklist收窄处置，±10%平台区10组+分年10组在跑；R8委托已发）｜ 上一更新：2026-09-17 18:0x（R7 调研已回并登记：EXPANSION_MEMO §三 按证据重排——指数/ETF层升首选[红利低波100全收益9.7%逼近合格线+分红再投口径警告]、扩池改「重选」[连续3年≥3%仅176只，与现池重叠9.7%]；门禁矩阵在跑）｜ 上一更新：2026-09-17 17:0x（晋级门禁启动：run_experiment 已支持 initial_capital/fee_multiplier，G-1 留出 2 组+G-2 扰动 10 组+G-3 成本 2 组共 14 组并发 3 路在跑；EXPANSION_MEMO 判据已填——e8b 8.58%<9% 触发扩池评估成立，与 R7 并行）｜ 上一更新：2026-09-17 16:35（e6b/e8b GC001 真实利率版收单：e6b 7.64%/28.66% 有效、e8b 组合 8.58%/17.40% 超越固定2%版，晋级候选构型锁定为冠军+GC001计息+demote，待六维门禁）｜ 上一更新：2026-09-17 13:15（R6 防御资产调研交底登记：GC001 主工具/511990 补位/511360 限超长空仓；三项数据口径工程告警已录入台账）｜ 上一更新：2026-09-17 10:50（⚠️ E4 裁决作废：插桩审计实锤 _pead_holds 幽灵/僵尸在册 bug——登记于 targets 阶段、与实际持仓无同步；已修在册对账≥3bar 无仓即注销，基线 1067 绿，`e4-rebal-fixed` 干净对照重跑中。详见 experiments/lab/e4-risk-audit/REPORT.md 与 PLAYBOOK 修订）｜ 更新规则：每完成一个小任务立即更新对应复选框与本节时间戳
 > ⚠️ 旧交接文档 HANDOFF_20260915.md 已过期（MA200 时代），仅作历史追溯，勿作决策依据
 
-## 当前接续（2026-09-19 14:1x 窗口）：isST 整批重跑收单（逐值同旧）、flowchart 重改在途
+## 当前接续（2026-09-19 15:2x 窗口）：isST 收单+flowchart 收单+C3 数据面机制就绪，fina 在跑
 
 - **队列（按序）**：① ~~e11-linear 16 组收单 + G-2 正式裁决~~ **已完成判负**
   （见下「e11-linear 16 组收单」节）；② ~~e13a 暴露等价臂~~ **已收单登记**
   （CAGR 7.13%，恒等式分解闭合，见下「e13a」节）； <!-- gate-doc-ignore: 历史快照（消融实验实测值，非基线声明），⛔ 不改史 -->
   ③ ~~isST 重建（E12）~~ **全链闭环**：回写+探针+整批重跑+基线登记
   均完成（见下「isST 整批重跑收单」节）；
-  ④ C3 池扩容：行业口径核对完成；**dividend_events_alla 补采已完成**
-  （5471/5471，empty=12，fails=0 → 报告
-  data/dividend_events_alla/DIVIDEND_ALLA_COLLECTION_REPORT.json）；
-  **fina_alla 在跑**（~2250/5473，setsid 后台，日志
-  experiments/lab/_logs/fina_alla.log；采集只写**新目录**
-  financial_pit_alla/dividend_events_alla，不触碰 data_path 哈希域）；
-  P1 阈值在补采完成后于本仓数据上复核，再出 C3 预登记；
-  ⑤ 用户派活（接续窗口遗留）：docs/project_status_flowchart.html + .md
-  镜像重改在途——结构定为「基建/策略谱系基线矩阵/判负史归因/数据去偏/
-  C3/门禁/测试基线/队列/缺口/历史归档压缩治理时代」。
+  ④ C3 池扩容：**数据面机制已就绪**（见下「C3 数据面」节——487 成员
+  分区位级复制+新成员 alla 构建+年度池 provider+runner 接线，8 测）；
+  **dividend_events_alla 补采已完成**（5471/5471，empty=12，fails=0）；
+  **fina_alla 在跑**（~2800/5473，setsid 后台，日志
+  experiments/lab/_logs/fina_alla.log；采集只写**新目录**，不触哈希域）；
+  **下一步：fina 完成 → `scripts/lab/c3_pool_rebuild.py` → attrition
+  复核表 → 冻结 P1 → `c3_data_plane.py` 物化 → 跑 C3**（e8b 同参，
+  变量只有池；对照锚=isst-e8b）；
+  ⑤ ~~用户派活：flowchart 重改~~ **已收单**（commit 07b240b：十节结构
+  基建/谱系基线矩阵/判负史归因/数据去偏/C3/门禁/测试基线/队列/缺口/
+  治理时代压缩归档；.md 走表头关键词+裸数字数据行+权威产物锚定行，
+  零 gate-doc-ignore 过 G-DOC-1/G-REF-1；allowed_counts 该文件
+  (1,1)→(0,None) 同步守卫）。
 - **历史快照**（上一窗口交接时点，供追溯）：①TASK_TRACKER 队列②（指数日期顺序/代码映射/ETF NAV 分拆口径）——
   审计报告 docs/audit/data_quality_audit_20260919.md（commit 7a31cc5）：H20955/H00922
   parquet 升序干净；513100 factor=5.0019 伪分拆坏值实锤（R8 误写 515100），当前无消费方、
@@ -62,6 +65,37 @@
   新指纹下逐值重锚 ✅；MA200 权威基线产物（3.76%/21.43%， <!-- gate-doc-ignore: 历史快照（基线声明引用实测值），⛔ 不改史 -->
   20260915-235155）为旧指纹下历史快照、本批未重跑——对照基准恒为
   进攻基线，不构成比对断链。
+
+### C3 数据面机制就绪（2026-09-19 15:2x）——与 P1 阈值无关，先行实现
+
+- **背景**：fina 采集在跑期间先行实现「实现年度池 universe_provider+数据面」
+  的机制部分——该机制不含任何 P1 阈值（阈值只决定池成员名单），与采集并行
+  不违反「冻结后再实现」纪律（物化实跑仍排在冻结之后）。
+- **新增 `scripts/lab/c3_data_plane.py`**（物化 `data/c3_universe/`——尚未生成，
+  P1 冻结后实跑产物目录；
+  dividend_stocks 同布局 `{sym}/{year}.parquet` + `exdiv/` + 指数）：
+  - **487 成员**：分区+exdiv sidecar **逐文件复制**——与对照锚 isst-e8b
+    位级同口径，差值=纯池效应；
+  - **新成员**：market-breadth-a `daily_bars/delisted_bars` 平铺→年分区，
+    三列注入与 487 平面同方法论：`market_cap=daily_basic_alla.circ_mv×1e4`
+    （分片缺行→NaN 当日跳过，如实登记覆盖率）、`dividend_yield=compute_pit_fields`
+    395 天滚动（alla 除权事件）、`isST`=namechange PIT 主板口径（复用
+    rebuild_isst 函数，含 delisted 票原生 isST=0 的修正）；
+  - **exdiv sidecar 口径（实证登记）**：旧 cninfo `cash_dividend` ≈ alla
+    **`cash_div_tax`**——重叠 5368 事件 95.9% 一致（cash_div 仅 2 例）；
+    `factor=1+stk_bo_rate+stk_co_rate`（均为每股率，600039 三案交叉验证）；
+    同 ex_date 多笔实施合并=现金求和×因子求积；487 成员仍复制旧 sidecar
+    不重建（双源混用如实登记）；
+  - manifest 落盘：分类计数+market_cap 覆盖率+exdiv 覆盖+sha256，幂等重建。
+- **provider**：`provider(day)=pool_yearly[year(day)]∩alive(day)`——alive
+  语义对齐 `alive_universe`（ipoDate≤day<outDate；退市票退市前正常参与；
+  池无该年条目⇒fail-closed 空集不外推）；`run_experiment` 新增 run 级参数
+  `--set universe_yearly_pool=data/c3_pool/pool_yearly.parquet`
+  （⛔ 该文件尚未生成，随 c3_pool_rebuild 产出；配合
+  `--data-path data/c3_universe`——同尚未生成）。
+- **测试**：`tests/test_c3_data_plane.py` 8/8 绿（provider 年界/存活过滤/
+  fail-closed；物化复制位级一致/新成员三列注入/exdiv 口径/幂等）；
+  全量 1100/1100 绿，`TEST_BASELINE_PASSED` 1092→1100 同步。
 
 ### R9/R10 接收登记（2026-09-19 04:1x，Hermes 定稿）+ 本仓交叉验证
 
@@ -220,7 +254,7 @@ MDD 24.40% vs 17.40%（+7.00pp）、换手 6.45、round_trips 312（156→312 �
   （基线常量已从 1079 升为 1092）。hard 默认与基线 e8b 构型语义等价
   （mid_cap=0 + demote 全同）。**下一步：预登记 e11-linear（冠军构型 +
   `breadth_weight_mode=linear`），实测是否把 G-2 尖峰改造成斜坡。**
-- 测试基线：1092 collected / 1092 passed（2026-09-19 实测全绿；+13 = C1 连续权重映射测试）。
+- 测试基线：1100 collected / 1100 passed（2026-09-19 实测全绿；1092→1100 = C3 数据面 8 测）。
 - ⛔ 纪律：Hermes 交付前不开新实验、不改 strategy/backtest 代码。
 ### 本窗口新增（2026-09-19 03:1x）：R9-A 池规格/幸存者偏差独立复算 ★重大发现
 
