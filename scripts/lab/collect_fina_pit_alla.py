@@ -9,11 +9,12 @@
 产物：data/financial_pit_alla/{sym}.parquet（每票一文件、原子写、断点续采
 ——已存在的直接跳过；整表不重采）。
 
-字段映射（fina_indicator → 现有 financial_pit schema）：
+字段映射（fina_indicator → 现有 financial_pit schema + eps）：
   pub_date ← ann_date（真实公告日，⛔ PIT 唯一对齐键，永不 end_date）
   stat_date ← end_date（报告期，仅元数据）
   roe / netprofit_yoy→net_profit_yoy / dt_netprofit_yoy→deducted_net_profit_yoy
-  debt_to_assets / ocfps→cash_flow_per_share / source='tushare:datahubco'
+  debt_to_assets / ocfps→cash_flow_per_share / eps→eps（C3 支付率分母）
+  source='tushare:datahubco'
 
 用法：.venv/bin/python scripts/lab/collect_fina_pit_alla.py [--limit N]
 """
@@ -40,16 +41,17 @@ TIMEOUT = 20
 BAR_BASES = [ROOT / 'experiments/lab/market-breadth-a/daily_bars',
              ROOT / 'experiments/lab/market-breadth-a/delisted_bars']
 
-# 输出列序 = 现有 data/financial_pit schema（datahubco 字段 → 本仓列名）
+# 输出列序 = 现有 data/financial_pit schema + eps（C3 支付率分母）
 FIELD_MAP = {
     'ann_date': 'pub_date', 'end_date': 'stat_date', 'roe': 'roe',
     'netprofit_yoy': 'net_profit_yoy',
     'dt_netprofit_yoy': 'deducted_net_profit_yoy',
     'debt_to_assets': 'debt_to_assets', 'ocfps': 'cash_flow_per_share',
+    'eps': 'eps',
 }
 COLS = ['code', 'pub_date', 'stat_date', 'roe', 'net_profit_yoy',
         'deducted_net_profit_yoy', 'debt_to_assets', 'cash_flow_per_share',
-        'source']
+        'eps', 'source']
 
 
 def git_sha() -> str:
@@ -102,6 +104,7 @@ def to_frame(code: str, fields: list, items: list) -> pd.DataFrame:
                                                errors='coerce'),
         'debt_to_assets': pd.to_numeric(df['debt_to_assets'], errors='coerce'),
         'cash_flow_per_share': pd.to_numeric(df['ocfps'], errors='coerce'),
+        'eps': pd.to_numeric(df['eps'], errors='coerce'),
         'source': 'tushare:datahubco',
     })[COLS]
     # 源偶发同 (pub_date,stat_date) 重复行（600000 实测）——保末去重，
