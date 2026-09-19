@@ -1,0 +1,457 @@
+{
+  "repair": "688 volume/amount x100 unit fix",
+  "date": "2026-09-21",
+  "reference_source": "experiments/lab/market-breadth-a/daily_bars (tencent RAW)",
+  "threshold": 50.0,
+  "symbols": [
+    {
+      "symbol": "sh.688001",
+      "status": "fixed",
+      "rows_fixed": 1323,
+      "date_min": "2019-07-22",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.859
+    },
+    {
+      "symbol": "sh.688011",
+      "status": "fixed",
+      "rows_fixed": 1323,
+      "date_min": "2019-07-22",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.891
+    },
+    {
+      "symbol": "sh.688022",
+      "status": "fixed",
+      "rows_fixed": 1323,
+      "date_min": "2019-07-22",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.882
+    },
+    {
+      "symbol": "sh.688035",
+      "status": "fixed",
+      "rows_fixed": 554,
+      "date_min": "2022-09-19",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.816
+    },
+    {
+      "symbol": "sh.688046",
+      "status": "fixed",
+      "rows_fixed": 654,
+      "date_min": "2022-04-25",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.826
+    },
+    {
+      "symbol": "sh.688049",
+      "status": "fixed",
+      "rows_fixed": 751,
+      "date_min": "2021-11-29",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.864
+    },
+    {
+      "symbol": "sh.688061",
+      "status": "fixed",
+      "rows_fixed": 538,
+      "date_min": "2022-10-18",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.781
+    },
+    {
+      "symbol": "sh.688072",
+      "status": "fixed",
+      "rows_fixed": 657,
+      "date_min": "2022-04-20",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.839
+    },
+    {
+      "symbol": "sh.688084",
+      "status": "fixed",
+      "rows_fixed": 501,
+      "date_min": "2022-12-08",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.845
+    },
+    {
+      "symbol": "sh.688096",
+      "status": "fixed",
+      "rows_fixed": 1149,
+      "date_min": "2020-04-09",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.979
+    },
+    {
+      "symbol": "sh.688107",
+      "status": "fixed",
+      "rows_fixed": 762,
+      "date_min": "2021-11-12",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.707
+    },
+    {
+      "symbol": "sh.688118",
+      "status": "fixed",
+      "rows_fixed": 1232,
+      "date_min": "2019-12-04",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.791
+    },
+    {
+      "symbol": "sh.688129",
+      "status": "fixed",
+      "rows_fixed": 1019,
+      "date_min": "2020-10-23",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.96
+    },
+    {
+      "symbol": "sh.688143",
+      "status": "fixed",
+      "rows_fixed": 490,
+      "date_min": "2022-12-12",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.973
+    },
+    {
+      "symbol": "sh.688157",
+      "status": "fixed",
+      "rows_fixed": 1099,
+      "date_min": "2020-06-09",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.994
+    },
+    {
+      "symbol": "sh.688169",
+      "status": "fixed",
+      "rows_fixed": 1182,
+      "date_min": "2020-02-21",
+      "date_max": "2024-12-31",
+      "ratio_median": 100.025
+    },
+    {
+      "symbol": "sh.688180",
+      "status": "fixed",
+      "rows_fixed": 1085,
+      "date_min": "2020-07-15",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.809
+    },
+    {
+      "symbol": "sh.688190",
+      "status": "fixed",
+      "rows_fixed": 752,
+      "date_min": "2021-11-26",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.859
+    },
+    {
+      "symbol": "sh.688202",
+      "status": "fixed",
+      "rows_fixed": 1253,
+      "date_min": "2019-11-05",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.859
+    },
+    {
+      "symbol": "sh.688213",
+      "status": "fixed",
+      "rows_fixed": 638,
+      "date_min": "2022-05-20",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.81
+    },
+    {
+      "symbol": "sh.688226",
+      "status": "fixed",
+      "rows_fixed": 847,
+      "date_min": "2021-07-07",
+      "date_max": "2024-12-31",
+      "ratio_median": 100.01
+    },
+    {
+      "symbol": "sh.688236",
+      "status": "fixed",
+      "rows_fixed": 728,
+      "date_min": "2021-12-30",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.99
+    },
+    {
+      "symbol": "sh.688253",
+      "status": "fixed",
+      "rows_fixed": 590,
+      "date_min": "2022-07-28",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.934
+    },
+    {
+      "symbol": "sh.688266",
+      "status": "fixed",
+      "rows_fixed": 1197,
+      "date_min": "2020-01-23",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.805
+    },
+    {
+      "symbol": "sh.688277",
+      "status": "fixed",
+      "rows_fixed": 1091,
+      "date_min": "2020-07-07",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.78
+    },
+    {
+      "symbol": "sh.688290",
+      "status": "fixed",
+      "rows_fixed": 650,
+      "date_min": "2022-04-29",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.875
+    },
+    {
+      "symbol": "sh.688301",
+      "status": "fixed",
+      "rows_fixed": 1038,
+      "date_min": "2020-09-18",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.963
+    },
+    {
+      "symbol": "sh.688313",
+      "status": "fixed",
+      "rows_fixed": 1065,
+      "date_min": "2020-08-12",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.83
+    },
+    {
+      "symbol": "sh.688323",
+      "status": "fixed",
+      "rows_fixed": 893,
+      "date_min": "2021-04-28",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.91
+    },
+    {
+      "symbol": "sh.688335",
+      "status": "fixed",
+      "rows_fixed": 1062,
+      "date_min": "2020-08-17",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.962
+    },
+    {
+      "symbol": "sh.688350",
+      "status": "fixed",
+      "rows_fixed": 951,
+      "date_min": "2021-01-28",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.996
+    },
+    {
+      "symbol": "sh.688361",
+      "status": "fixed",
+      "rows_fixed": 395,
+      "date_min": "2023-05-19",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.941
+    },
+    {
+      "symbol": "sh.688373",
+      "status": "fixed",
+      "rows_fixed": 584,
+      "date_min": "2022-08-05",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.763
+    },
+    {
+      "symbol": "sh.688385",
+      "status": "fixed",
+      "rows_fixed": 827,
+      "date_min": "2021-08-04",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.78
+    },
+    {
+      "symbol": "sh.688398",
+      "status": "fixed",
+      "rows_fixed": 1190,
+      "date_min": "2020-02-11",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.947
+    },
+    {
+      "symbol": "sh.688418",
+      "status": "fixed",
+      "rows_fixed": 1080,
+      "date_min": "2020-07-22",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.796
+    },
+    {
+      "symbol": "sh.688443",
+      "status": "fixed",
+      "rows_fixed": 373,
+      "date_min": "2023-06-20",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.865
+    },
+    {
+      "symbol": "sh.688469",
+      "status": "fixed",
+      "rows_fixed": 402,
+      "date_min": "2023-05-10",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.956
+    },
+    {
+      "symbol": "sh.688496",
+      "status": "fixed",
+      "rows_fixed": 487,
+      "date_min": "2022-12-28",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.788
+    },
+    {
+      "symbol": "sh.688508",
+      "status": "fixed",
+      "rows_fixed": 1080,
+      "date_min": "2020-07-22",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.735
+    },
+    {
+      "symbol": "sh.688519",
+      "status": "fixed",
+      "rows_fixed": 1061,
+      "date_min": "2020-08-18",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.839
+    },
+    {
+      "symbol": "sh.688533",
+      "status": "fixed",
+      "rows_fixed": 900,
+      "date_min": "2021-04-19",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.836
+    },
+    {
+      "symbol": "sh.688551",
+      "status": "fixed",
+      "rows_fixed": 1044,
+      "date_min": "2020-09-10",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.957
+    },
+    {
+      "symbol": "sh.688565",
+      "status": "fixed",
+      "rows_fixed": 885,
+      "date_min": "2021-05-13",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.884
+    },
+    {
+      "symbol": "sh.688577",
+      "status": "fixed",
+      "rows_fixed": 1040,
+      "date_min": "2020-09-16",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.862
+    },
+    {
+      "symbol": "sh.688589",
+      "status": "fixed",
+      "rows_fixed": 1080,
+      "date_min": "2020-07-22",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.829
+    },
+    {
+      "symbol": "sh.688600",
+      "status": "fixed",
+      "rows_fixed": 1093,
+      "date_min": "2020-07-03",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.873
+    },
+    {
+      "symbol": "sh.688611",
+      "status": "fixed",
+      "rows_fixed": 905,
+      "date_min": "2021-04-12",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.945
+    },
+    {
+      "symbol": "sh.688623",
+      "status": "fixed",
+      "rows_fixed": 381,
+      "date_min": "2023-06-08",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.903
+    },
+    {
+      "symbol": "sh.688636",
+      "status": "fixed",
+      "rows_fixed": 907,
+      "date_min": "2021-04-08",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.914
+    },
+    {
+      "symbol": "sh.688658",
+      "status": "fixed",
+      "rows_fixed": 975,
+      "date_min": "2020-12-24",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.887
+    },
+    {
+      "symbol": "sh.688670",
+      "status": "fixed",
+      "rows_fixed": 829,
+      "date_min": "2021-08-02",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.808
+    },
+    {
+      "symbol": "sh.688686",
+      "status": "fixed",
+      "rows_fixed": 970,
+      "date_min": "2020-12-31",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.894
+    },
+    {
+      "symbol": "sh.688698",
+      "status": "fixed",
+      "rows_fixed": 972,
+      "date_min": "2020-12-29",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.933
+    },
+    {
+      "symbol": "sh.688766",
+      "status": "fixed",
+      "rows_fixed": 814,
+      "date_min": "2021-08-23",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.786
+    },
+    {
+      "symbol": "sh.688798",
+      "status": "fixed",
+      "rows_fixed": 819,
+      "date_min": "2021-08-16",
+      "date_max": "2024-12-31",
+      "ratio_median": 99.842
+    }
+  ],
+  "total_rows_fixed": 49490
+}

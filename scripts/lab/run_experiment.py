@@ -102,6 +102,13 @@ _PARAM_CASTERS = {
     "portfolio_max_positions": int,
     "portfolio_hard_limit": int,
     "portfolio_min_position_value": Decimal,
+    # e19 D7 拥挤度熔断：attack 日 crowd_pct>threshold ⇒ 目标仓位 ×cap
+    "use_crowding_breaker": lambda v: v.lower() in ("1", "true", "yes", "on"),
+    "crowding_threshold": Decimal,
+    "crowding_cap": Decimal,
+    # _crowd_file：拥挤度序列 parquet 路径（同 _breadth_file 约定——
+    # 不入 DividendConfig，在 runner 层加载为 crowding_series）
+    "_crowd_file": str,
 }
 
 #: 非策略配置字段——传给 ``run_dividend_backtest_*`` 或本 runner 的运行级参数。
@@ -118,6 +125,15 @@ def _load_breadth_series(path: Path) -> dict:
     df = pd.read_parquet(path)
     # 日期键只保留 YYYY-MM-DD，与策略 day.isoformat() 查表键对齐（⛔ 禁带时间部分）
     return {str(d)[:10]: Decimal(str(b)) for d, b in zip(df["date"], df["breadth20"])}
+
+
+def _load_crowding_series(path: Path) -> dict:
+    """加载拥挤度分位序列 parquet -> {date_str: Decimal}；缺文件 Fail-Closed。"""
+    import pandas as pd
+    if not path.exists():
+        raise SystemExit(f"拥挤度序列文件缺失: {path}（⛔ Fail-Closed：无拥挤度数据不得开启熔断）")
+    df = pd.read_parquet(path)
+    return {str(d)[:10]: Decimal(str(p)) for d, p in zip(df["date"], df["crowd_pct"])}
 
 
 def _parse_overrides(pairs: list[str]) -> dict:
@@ -153,6 +169,7 @@ def run_experiment(name: str, overrides: dict, data_path: Path) -> dict:
     portfolio_max_pos = overrides.pop("portfolio_max_positions", None)
     portfolio_hard_lim = overrides.pop("portfolio_hard_limit", None)
     portfolio_min_pv = overrides.pop("portfolio_min_position_value", None)
+    crowd_file = overrides.pop("_crowd_file", None)
     run_params = {
         "backtest_start": str(bt_start) if bt_start else None,
         "backtest_end": str(bt_end) if bt_end else None,
@@ -169,6 +186,7 @@ def run_experiment(name: str, overrides: dict, data_path: Path) -> dict:
                                  if portfolio_hard_lim is not None else None),
         "portfolio_min_position_value": (str(portfolio_min_pv)
                                          if portfolio_min_pv is not None else None),
+        "crowd_file": crowd_file,
     }
 
     orig_config_init = rdb.DividendConfig
@@ -213,6 +231,14 @@ def run_experiment(name: str, overrides: dict, data_path: Path) -> dict:
         breadth_path = Path(os.environ.get(
             "BREADTH_FILE", str(LAB_ROOT / "market-breadth-a" / "breadth20_daily.parquet")))
         overrides["breadth_series"] = _load_breadth_series(breadth_path)
+
+    # e19 D7：拥挤度熔断开启时注入 roll3y 分位序列——路径优先级
+    # --set _crowd_file > CROWD_FILE 环境变量 > 默认 a1 口径文件
+    if overrides.get("use_crowding_breaker"):
+        crowd_path = Path(crowd_file or os.environ.get(
+            "CROWD_FILE",
+            str(ROOT / "data" / "macro" / "crowding_roll3y_daily.parquet")))
+        overrides["crowding_series"] = _load_crowding_series(crowd_path)
 
     def _patched_config(**kwargs):
         cfg = orig_config_init(**kwargs)

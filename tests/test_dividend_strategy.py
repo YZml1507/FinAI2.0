@@ -1005,3 +1005,98 @@ def test_weight_mode_equal_zero_mc_not_blocked():
     }
     signals = strategy._select_stocks(bars, cfg)
     assert len(signals) == 2
+
+
+# ==============================================================================
+# e19 D7 拥挤度熔断（6 例）：roll3y 分位 > 阈值 ⇒ attack 日目标仓位 ×crowding_cap
+# ==============================================================================
+
+
+def _crowd_cfg(crowd_pct: str | None, **kw) -> DividendConfig:
+    """宽度 attack 档（b=0.50≥0.40）+ 拥挤度熔断配置"""
+    return DividendConfig(
+        min_dividend_yield=Decimal("0.03"),
+        use_breadth_timing=True,
+        use_ma200_timing=False,
+        breadth_series={"2020-01-01": Decimal("0.50")},
+        breadth_attack_threshold=Decimal("0.40"),
+        breadth_defense_threshold=Decimal("0.20"),
+        breadth_mid_cap=Decimal("0.0"),
+        use_crowding_breaker=True,
+        crowding_series=(
+            {} if crowd_pct is None
+            else {"2020-01-01": Decimal(crowd_pct)}),
+        warmup_bars=210,
+        rebalance_days=10,
+        index_symbol="sh.000300",
+        min_positions=1,
+        max_positions=5,
+        default_positions=1,
+        **kw,
+    )
+
+
+def _crowd_run(cfg: DividendConfig):
+    """跑一根 attack 调仓日 bar，返回 (strategy, broker)。"""
+    strategy = DividendStrategy(config=cfg)
+    strategy.watchlist = ["sh.600000"]
+    strategy._bar_count = cfg.warmup_bars
+    strategy._last_rebalance_bar = strategy._bar_count - cfg.rebalance_days
+    book = MockBook(nav=Decimal("100000"))
+    broker = MockBroker()
+    strategy.on_bar(date(2020, 1, 1), _breadth_bars(date(2020, 1, 1)),
+                    book, broker)
+    return strategy, broker
+
+
+def _buy_qty(broker) -> int:
+    return sum(int(o.volume) for o in broker.orders if o.side == OrderSide.BUY)
+
+
+def test_crowding_requires_breadth_timing():
+    """熔断是宽度择时叠加层：未开 use_breadth_timing ⇒ fail-closed 拒配"""
+    with pytest.raises(ValueError):
+        DividendConfig(use_crowding_breaker=True,
+                       crowding_series={"2020-01-01": Decimal("0.9")})
+
+
+def test_crowding_requires_series():
+    """开启熔断但无序列 ⇒ fail-closed 拒配（无证据≠通过）"""
+    with pytest.raises(ValueError):
+        DividendConfig(use_breadth_timing=True,
+                       breadth_series={"2020-01-01": Decimal("0.5")},
+                       use_crowding_breaker=True)
+
+
+def test_crowding_invalid_params_rejected():
+    """threshold/cap 越界或 float ⇒ fail-closed"""
+    with pytest.raises((ValueError, TypeError)):
+        _crowd_cfg("0.9", crowding_threshold=Decimal("1.5"))
+    with pytest.raises((ValueError, TypeError)):
+        _crowd_cfg("0.9", crowding_cap=0.5)  # float 禁入
+
+
+def test_crowding_breaker_halves_plan():
+    """crowd_pct=0.90 > 0.85 ⇒ attack 调仓日目标仓位减半"""
+    strategy, broker = _crowd_run(_crowd_cfg("0.90"))
+    qty_hot = _buy_qty(broker)
+    assert strategy._crowd_break_count == 1
+    _, broker_cold = _crowd_run(_crowd_cfg("0.50"))
+    qty_cold = _buy_qty(broker_cold)
+    assert qty_hot > 0 and qty_cold > 0
+    # 半仓：热态买入量 ≈ 冷态一半（整手取整容差 100 股）
+    assert abs(qty_hot * 2 - qty_cold) <= 100
+
+
+def test_crowding_below_threshold_no_break():
+    """crowd_pct=0.80 ≤ 0.85 ⇒ 不熔断"""
+    strategy, broker = _crowd_run(_crowd_cfg("0.80"))
+    assert strategy._crowd_break_count == 0
+    assert _buy_qty(broker) > 0
+
+
+def test_crowding_missing_date_neutral():
+    """序列缺当日（暖机盲区）⇒ 中性不熔断"""
+    strategy, broker = _crowd_run(_crowd_cfg(None))
+    assert strategy._crowd_break_count == 0
+    assert _buy_qty(broker) > 0

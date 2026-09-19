@@ -240,6 +240,10 @@ class DividendConfig:
     max_dividend_yield: Optional[Decimal] = None      # e16 扰动臂替代机制：股息率上限——dv>cap 的极端高息票剔除（⛔ 默认 None=不设上限）
     weight_mode: str = "market_cap"                 # e17 权重形态：'market_cap'=自由流通市值加权（默认，基线可比）；'equal'=等权；'dividend_yield'=股息率加权（⛔ 默认 market_cap——须显式开启，否则无条件生效污染消融实验）
     cash_yield_series: str = ""                       # e6b GC001 日度利率 parquet 路径（date,rate_annual%）；与 cash_yield_annual 互斥
+    use_crowding_breaker: bool = False                # e19 D7 拥挤度熔断（默认关，显式开启）
+    crowding_series: Optional[Mapping[str, Decimal]] = None  # iso date→roll3y 拥挤分位；缺失日=中性不熔断（roll3y 暖机期结构盲区）
+    crowding_threshold: Decimal = Decimal("0.85")     # 熔断触发分位（预登记冻结 0.85）
+    crowding_cap: Decimal = Decimal("0.5")            # 触发时目标仓位乘数（减半，差额留现金计 GC001 息）
     pead_entry_mode: str = "rebalance"                # 'event'=公告日事件驱动建仓（需 reserve）；'rebalance'=调仓日并入候选源（软叠加，零闲置现金）
     portfolio: PortfolioConfig = field(default_factory=PortfolioConfig)
 
@@ -345,6 +349,21 @@ class DividendConfig:
             raise ValueError("use_breadth_timing 与 use_ma200_timing 互斥，\u26d4 同时开启会产生矛盾择时信号")
         if self.use_breadth_timing and self.breadth_series is None:
             raise ValueError("启用宽度择时时 breadth_series 不得为 None（⛔ Fail-Closed：无证据≠通过）")
+        # e19 D7 拥挤度熔断校验（fail-closed）：宽度择时叠加层，
+        # 序列缺失不得放行；阈值/仓位乘数须在 (0,1]。
+        if self.use_crowding_breaker:
+            if not self.use_breadth_timing:
+                raise ValueError("use_crowding_breaker 为宽度择时叠加层——"
+                                 "请先开启 use_breadth_timing（fail-closed）")
+            if self.crowding_series is None:
+                raise ValueError("启用拥挤度熔断时 crowding_series 不得为 None"
+                                 "（⛔ Fail-Closed：无证据≠通过）")
+            for name in ("crowding_threshold", "crowding_cap"):
+                v = getattr(self, name)
+                if not isinstance(v, Decimal):
+                    raise TypeError(f"{name} 须为 Decimal（⛔ 禁 float）: {type(v).__name__}")
+                if v <= _ZERO_ or v > Decimal("1"):
+                    raise ValueError(f"{name} 须在 (0, 1] 范围内: {v}")
         # Alpha 三层参数校验（fail-closed）
         for name in ("landmine_cooldown_full", "landmine_cooldown_half",
                      "pead_max_slots", "pead_hold_days"):
@@ -435,6 +454,8 @@ class DividendStrategy:
         self._timing_avoid = False                       # True = 已确认破位、处于避险状态
         self._rebuild_streak = 0                         # 避险中连续站回 MA200 天数
         # 市场宽度择时状态机（方案 D，19 号报告 §2.1）
+        self._crowd_today: Decimal | None = None         # e19：当日拥挤分位（None=暖机盲区/无数据=中性）
+        self._crowd_break_count = 0                      # e19：熔断触发计数（附属判据验证用）
         self._breadth_ice_streak = 0                     # 连续处于冰点线下天数
         self._breadth_ice = False                        # True = 已确认冰点、全额避险中
         self._breadth_today: Decimal | None = None       # 当日宽度值（Decimal 纪律）
@@ -587,6 +608,12 @@ class DividendStrategy:
             else:
                 self._breadth_ice_streak = 0
 
+        # ③.6 e19 D7 拥挤度序列查表（每日；缺失日=中性不熔断——roll3y
+        #     暖机段为结构盲区，影子探针已声明，非 fail-closed 项）
+        self._crowd_today = None
+        if cfg.use_crowding_breaker and cfg.crowding_series is not None:
+            self._crowd_today = cfg.crowding_series.get(day.isoformat())
+
         # ③.8 排雷 overlay（每日、先于调仓节拍——事件驱动 T+1 清/减半）
         if cfg.use_landmine_overlay and self._layers is not None:
             self._apply_landmine(day, bars, book, broker)
@@ -683,6 +710,14 @@ class DividendStrategy:
         else:
             if breadth_cap is not None:
                 total_nav = total_nav * breadth_cap
+            # e19 D7 拥挤度熔断：调仓计划日 crowd_pct > threshold ⇒ 目标
+            # 仓位乘 crowding_cap（减半，差额留现金）。e8b 构型
+            # breadth_mid_cap=0 ⇒ 熔断实质只在 attack 档生效；非调仓日
+            # 不主动清（拥挤段以周-月计持续，节拍抽样捕获）。
+            if (cfg.use_crowding_breaker and self._crowd_today is not None
+                    and self._crowd_today > cfg.crowding_threshold):
+                total_nav = total_nav * cfg.crowding_cap
+                self._crowd_break_count += 1
             # PEAD reserve（仅 event 模式）：披露密集月（1/4/7/8/10，R5 实测
             # 公告聚簇）或有在册持仓时预留现金池；非聚簇月不预留（避免进攻档
             # 长期现金拖累）。rebalance 模式恒为 0——PEAD 走正常目标位资金。
