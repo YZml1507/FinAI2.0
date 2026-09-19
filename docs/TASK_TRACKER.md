@@ -13,11 +13,15 @@
   ④ C3 池扩容：**数据面机制已就绪**（见下「C3 数据面」节——487 成员
   分区位级复制+新成员 alla 构建+年度池 provider+runner 接线，8 测）；
   **dividend_events_alla 补采已完成**（5471/5471，empty=12，fails=0）；
-  **fina_alla 在跑**（~2800/5473，setsid 后台，日志
-  experiments/lab/_logs/fina_alla.log；采集只写**新目录**，不触哈希域）；
-  **下一步：fina 完成 → `scripts/lab/c3_pool_rebuild.py` → attrition
-  复核表 → 冻结 P1 → `c3_data_plane.py` 物化 → 跑 C3**（e8b 同参，
-  变量只有池；对照锚=isst-e8b）；
+  ~~fina_alla 在跑~~（已收单，见下）；
+  **fina 已收单**（5473/5473 fails=0，datahubco 单源 pub_date PIT 键）→
+  **P1 已冻结**（1a9fe2d：附录 A 全量 attrition 复核登记，终池年均
+  130.2、2016=21<30 容量告警如实登记不放宽、R7 行业 cap 十年未触发
+  等价 no-op、R5 支付率(0,1) 通过 88.7%/≥1 剔 9.7%）→
+  **data/c3_universe 已物化**（union=692：复制 70 + 新建 622，exdiv
+  692 全覆、mc_cov=1.0、missing=0）→ **C3 实验在跑**
+  （c3-p1-yearly，e8b 同参+C3 数据面+年度池 provider，对照锚
+  isst-e8b，日志 experiments/lab/_logs/c3-p1-yearly.log）；
   **本窗推进（fina 在跑期间并行完成）**：①`base_partition_day` 边界
   bug 修复已提交（7327d1c——「≤去年同期」在 2016 快照无分片可取
   →R6 整年静默失效；改最近分片±10 日，实测 2016 基期=20150105）；
