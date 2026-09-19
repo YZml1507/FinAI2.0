@@ -1183,6 +1183,7 @@ class TestGateDocIgnoreScope:
             "docs/E11_LINEAR_PREREG.md": (1, None),     # e11 预登记的对照实验实测值快照
             "docs/E13A_EXPOSURE_EQUIV_PREREG.md": (1, None),  # e13a 预登记的对照实验实测值快照
             "docs/PEAD_EXPLORATION_DESIGN.md": (1, None),     # PEAD 判负标记行的实验实测值快照
+            "docs/C3_POOL_RESELECT_PREREG.md": (1, None),     # C3 预登记收单裁决的实测对照值快照
         }
         by_file: dict[str, list] = {}
         for h in hits:
