@@ -23,7 +23,10 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[2]
 POOL = ROOT / 'data/c3_pool/pool_yearly.parquet'
 UNI = ROOT / 'data/c3_universe'
+BREADTH = ROOT / 'experiments/lab/market-breadth-a/breadth20_daily.parquet'
 FWD = 20
+FWD_SET = [10, 20, 40]
+ATK_TH = 0.35   # e8b breadth_attack_threshold
 
 
 def exdiv_map(sym):
@@ -65,6 +68,10 @@ def year_frame(year, symbols):
 
 def main():
     pool = pd.read_parquet(POOL)
+    _b = pd.read_parquet(BREADTH)
+    _bc = 'breadth20' if 'breadth20' in _b.columns else         [c for c in _b.columns if c != 'date'][0]
+    breadth = pd.Series(_b[_bc].values,
+                        index=pd.to_datetime(_b['date']).dt.date)
     all_ic, all_spread = [], []
     per_year = []
     for _, prow in pool.sort_values('year').iterrows():
@@ -72,11 +79,43 @@ def main():
         dv, ret = year_frame(year, list(prow['symbols']))
         if dv.empty:
             continue
-        # 前瞻20日收益：fwd_t = prod(1+r_{t+1..t+20})-1（用cumprod近似）
+        # 前瞻FWD日收益：fwd_t = prod(1+r_{t+1..t+FWD})-1（用cumprod近似）
         cum = (1 + ret.fillna(0)).cumprod()
         fwd = cum.shift(-FWD) / cum - 1.0
         common = dv.index.intersection(fwd.dropna(how='all').index)
         dv, fwd = dv.loc[common], fwd.loc[common]
+        # 条件化：仅保留 attack 档日（T日宽度≥attack阈——信号当日可见）与稳健带
+        atk_days = set(d for d in common
+                       if float(breadth.get(d, 0)) >= ATK_TH)
+        cond_common = [d for d in common if d in atk_days]
+        band_cond = {k: [] for k in ['top5', 'r6_15', 'r16_40', 'rest']}
+        hstats = {h: {'top5': [], 'r16_40': []} for h in FWD_SET}
+        for d in cond_common:
+            x = dv.loc[d].dropna()
+            y = fwd.loc[d]
+            both = x.index.intersection(y.dropna().index)
+            if len(both) < 15:
+                continue
+            x, y = x.loc[both], y.loc[both]
+            rk = x.rank(ascending=False)
+            for k, m_ in {'top5': rk <= 5, 'r6_15': (rk > 5) & (rk <= 15),
+                          'r16_40': (rk > 15) & (rk <= 40),
+                          'rest': rk > 40}.items():
+                if m_.any():
+                    band_cond[k].append(y[m_.index[m_]].mean() - y.mean())
+            for h in FWD_SET:
+                fh = cum.shift(-h) / cum - 1.0
+                yh = fh.loc[d]
+                bothh = x.index.intersection(yh.dropna().index)
+                if len(bothh) < 15:
+                    continue
+                rh = x.loc[bothh].rank(ascending=False)
+                hh = yh.loc[bothh]
+                for k, m_ in {'top5': rh <= 5,
+                              'r16_40': (rh > 15) & (rh <= 40)}.items():
+                    if m_.any():
+                        hstats[h][k].append(
+                            hh[m_.index[m_]].mean() - hh.mean())
         ics, spreads = [], []
         for d in common:
             row_dv = dv.loc[d].dropna()
@@ -113,6 +152,17 @@ def main():
     print('  分年：')
     for y, n, m, t, s_ in per_year:
         print(f'    {y}: 池{n:3d}  IC{m:+.4f} t={t:+.1f}  top5={s_.get("top5",0)*10000:+.0f}bp r6_15={s_.get("r6_15",0)*10000:+.0f}bp')
+    print('  ── attack档条件化（仅b≥0.35日, fwd20d）──')
+    for k, v in band_cond.items():
+        vv = pd.Series(v).dropna()
+        if len(vv):
+            print(f'    {k:7s} {vv.mean()*10000:+8.1f}bp  t={vv.mean()/(vv.std()/np.sqrt(len(vv))):+.1f}  N={len(vv)}')
+    print('  ── horizon稳健性（fwd 10/20/40d）──')
+    for h in FWD_SET:
+        for k, v in hstats[h].items():
+            vv = pd.Series(v).dropna()
+            if len(vv):
+                print(f'    fwd{h:2d} {k:7s} {vv.mean()*10000:+8.1f}bp  t={vv.mean()/(vv.std()/np.sqrt(len(vv))):+.1f}')
 
 
 if __name__ == '__main__':
