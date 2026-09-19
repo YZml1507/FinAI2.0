@@ -12,10 +12,10 @@
 - 唯一变量：`breadth_mid_cap = 0.50`（e8b 冠军构型为 0.0）；
   `breadth_weight_mode` 显式 `hard`（与默认一致，留痕）。
 - 对照组：
-  - `e11-linear`（CAGR 6.32% / MDD 24.40% / 换手 6.45）——**主对照**，
-    暴露等价（70.74% vs 70.78%，Δ仅 0.04pp）⇒ 隔离形态因素； <!-- gate-doc-ignore: 历史快照（消融实验实测值，非基线声明），⛔ 不改史 -->
-  - `e8b-gc001-e7-combo`（CAGR 8.58% / MDD 17.40% / 换手 4.607）——次对照，
-    形态相同（皆 hard）⇒ 隔离暴露因素。 <!-- gate-doc-ignore: 历史快照（对照实验实测值，非基线声明），⛔ 不改史 -->
+  - `e11-linear`——**主对照**：CAGR 6.32% / MDD 24.40% / 换手 6.45， <!-- gate-doc-ignore: 历史快照（消融实验实测值，非基线声明），⛔ 不改史 -->
+    暴露等价（70.74% vs 70.78%，Δ仅 0.04pp）⇒ 隔离形态因素；
+  - `e8b-gc001-e7-combo`——次对照：CAGR 8.58% / MDD 17.40% / 换手 4.607， <!-- gate-doc-ignore: 历史快照（对照实验实测值，非基线声明），⛔ 不改史 -->
+    形态相同（皆 hard）⇒ 隔离暴露因素。
 - 同 universe 截面（stock_basic_cache）、同宽度序列
   （market-breadth-a/breadth20_daily.parquet）、同 SHA。
 

@@ -4,7 +4,13 @@
 
 依据：docs/E12_ISST_REBUILD_DESIGN.md（设计冻结，预登记）。
 规则：isST(date)=1  iff  ∃ namechange 行：start_date <= date <= (end_date or +∞)
-      and 'ST' in name.upper()。*ST/ST 统一命中；摘帽（end_date 非空）后恢复 0；
+      and 'ST' in name.upper()。**且票属主板**——⛔ 口径边界（探针实证补记）：
+      isST 列的唯一下游消费是 cleaner.mark_limit_flags 选 5% 档；而 ±5% ST 档
+      仅存在于主板（sh.60*/sz.000/001/002/003）。创业板（sz.300/301，注册制后
+      ±20% 含 ST）、科创板（sh.688，恒 ±20%）、北交所（bj.*，±30%）的 ST 期间
+      **不回写 '1'**（写了会被 st_pct=5 错误触板——isST 恒 0 时代该坑被掩盖，
+      重建首次暴露，属设计外边界补记，非规则变更）。
+      *ST/ST 统一命中；摘帽（end_date 非空）后恢复 0；
       无名称史区间 isST=0（与现状一致，不制造不存在的标记）。
 
 写入目标（按文件原 dtype 回写，str 列写 '0'/'1'、int 列写 0/1，保证幂等）：
@@ -55,12 +61,25 @@ def sha256(p: Path) -> str:
     return hashlib.sha256(p.read_bytes()).hexdigest()
 
 
+def is_main_board(code: str) -> bool:
+    """±5% ST 档仅存在于主板：sh.60* / sz.000|001|002|003（中小板已并主板）。
+    创业板 300/301（±20%）、科创板 688（±20%）、北交所 bj.*（±30%）→ False。"""
+    if code.startswith('sh.60'):
+        return True
+    if code.startswith(('sz.000', 'sz.001', 'sz.002', 'sz.003')):
+        return True
+    return False
+
+
 def load_st_intervals() -> dict:
-    """{code: [(start,end),...]}（YYYYMMDD 字符串，end 缺省=99999999）。"""
+    """{code: [(start,end),...]}（YYYYMMDD 字符串，end 缺省=99999999）。
+    ⛔ 只含主板票（非主板 ST 期间按设计不回写，见模块 docstring 口径边界）。"""
     nc = pd.read_parquet(NC)
     st = nc[nc['name'].str.upper().str.contains('ST', na=False)]
     out: dict[str, list] = {}
     for r in st.itertuples():
+        if not is_main_board(r.code):
+            continue
         end = r.end_date if isinstance(r.end_date, str) and r.end_date else '99999999'
         out.setdefault(r.code, []).append((r.start_date, end))
     return out

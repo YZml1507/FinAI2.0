@@ -54,8 +54,14 @@ def load_pool(sym: str) -> pd.DataFrame:
 
 
 def a1_a4(intervals: dict) -> None:
-    print('== A1/A4：ST 史票 5% 档覆盖 + mark_limit_flags 复核 ==')
-    total_band = flagged = 0
+    """A1/A4：区间内逐行核对 ±5% 规则语义（非宽桶近似——4.8~5.0 未触板日本不应标）。
+
+    逐行断言：in-interval 行 limit_up == pct>=5-eps 且 limit_down == pct<=-5+eps；
+    区间外行 limit_up == pct>=10-eps（主板档，不误用 5%）。
+    """
+    print('== A1/A4：ST 史票 ±5% 规则逐行核对 + mark_limit_flags 复核 ==')
+    EPS = 1e-6
+    total_touch = bad_up = bad_down = bad_out = 0
     for sym in pool_st_symbols(intervals):
         df = load_pool(sym)
         if df.empty:
@@ -63,16 +69,27 @@ def a1_a4(intervals: dict) -> None:
         flagged_df = mark_limit_flags(df)
         in_st = isst_series(df['date'], intervals[sym])
         pct = (df['close'] - df['preclose']) / df['preclose'] * 100.0
-        band = in_st & df['preclose'].notna() & (df['preclose'] != 0) \
-            & (pct.abs() >= 4.8) & (pct.abs() <= 5.2)
-        hit = (flagged_df['limit_up'] | flagged_df['limit_down']) & band
-        total_band += int(band.sum())
-        flagged += int(hit.sum())
-        if int(band.sum()) != int(hit.sum()):
-            missed = df.loc[band & ~hit.astype(bool), 'date'].head(5).tolist()
-            check(f'A1 {sym}', False, f'{int(hit.sum())}/{int(band.sum())} 漏标 {missed}')
-    check('A1 全池 ST 史票 5% 档日覆盖', flagged == total_band and total_band > 0,
-          f'{flagged}/{total_band}')
+        valid = df['preclose'].notna() & (df['preclose'] != 0)
+        exp_up_in = valid & (pct >= 5.0 - EPS)
+        exp_dn_in = valid & (pct <= -5.0 + EPS)
+        exp_up_out = valid & (pct >= 10.0 - EPS)
+        touch_in = int((in_st & (exp_up_in | exp_dn_in)).sum())
+        total_touch += touch_in
+        bad_up += int((in_st & (flagged_df['limit_up'] != exp_up_in)).sum())
+        bad_down += int((in_st & (flagged_df['limit_down'] != exp_dn_in)).sum())
+        bad_out += int((~in_st & (flagged_df['limit_up'] != exp_up_out)).sum())
+        if bad_up + bad_down + bad_out:
+            m = in_st & ((flagged_df['limit_up'] != exp_up_in)
+                         | (flagged_df['limit_down'] != exp_dn_in))
+            sample = df.loc[m, 'date'].head(3).tolist()
+            check(f'A1 {sym}', False,
+                  f'up错{bad_up}/dn错{bad_down}/out错{bad_out} 样例{sample}')
+            break
+    check('A1 区间内 ±5% 逐行核对（触板日全覆盖且语义一致）',
+          bad_up == 0 and bad_down == 0 and total_touch > 0,
+          f'触板日 {total_touch}，up错{bad_up} dn错{bad_down}')
+    check('A4 区间外不误用 5% 档（主板 10% 语义保持）', bad_out == 0,
+          f'区间外 up 错标 {bad_out}')
 
 
 def a2(intervals: dict) -> None:
@@ -97,25 +114,46 @@ def a2(intervals: dict) -> None:
         if (df.loc[out_mask, 'isST'].astype(str) != '0').any():
             bad2.append(sym)
     check('A2b ST 史票区间外全 0', not bad2, f'异常 {bad2}')
+    # A2c：非主板 ST 史票按设计不回写（其涨跌幅档由板块规则定，isST 不参与）——
+    # 全须保持 '0'（口径边界：创业板±20%/科创板±20%/北交所±30% 无 5% ST 档）
+    nc = pd.read_parquet(NC)
+    st_names = nc[nc['name'].str.upper().str.contains('ST', na=False)]
+    from scripts.lab.rebuild_isst_from_namechange import is_main_board
+    non_main_st = sorted({c for c in st_names['code']
+                          if not is_main_board(c)} & set(syms))
+    bad3 = []
+    for sym in non_main_st:
+        df = load_pool(sym)
+        if not df.empty and (df['isST'].astype(str) != '0').any():
+            bad3.append(sym)
+    check('A2c 非主板 ST 史票按设计全 0（无 5% 档适用）', not bad3,
+          f'池内非主板 ST 史票 {len(non_main_st)} 只，异常 {bad3}')
 
 
 def a3(intervals: dict) -> None:
     print('== A3：*ST柳化（sh.600423）边界抽验 ==')
     df = load_pool('sh.600423')
     d = df['date'].astype(str).str[:10]
-    cases = [('2017-05-03', '1'), ('2019-12-19', '1'), ('2019-12-20', '1'),
-             ('2021-05-19', '1'), ('2021-05-20', '0'),
-             ('2026-04-27', '0'), ('2026-04-28', '1')]
+    # 边界日遇停牌无 bar ⇒ 核「区间转移点」：边界两侧最近 bar 的 isST 须翻转正确
+    transitions = [  # (截止日, 该日及前 isST, 次日及后 isST)
+        ('2017-05-02', '0', '1'),   # 2017-05-03 起 *ST
+        ('2019-12-19', '1', '1'),   # *ST→ST 连续（同为 ST）
+        ('2021-05-19', '1', '0'),   # 2021-05-20 摘帽
+        ('2026-04-27', '0', '1'),   # 2026-04-28 起 *ST
+    ]
     bad = []
-    for day, want in cases:
-        row = df.loc[d == day]
-        if row.empty:
-            bad.append(f'{day} 无 bar')
+    for edge, want_before, want_after in transitions:
+        before = df.loc[d <= edge].tail(1)
+        after = df.loc[d > edge].head(1)
+        if before.empty or after.empty:
+            bad.append(f'{edge} 两侧缺 bar')
             continue
-        got = str(row['isST'].iloc[0])
-        if got != want:
-            bad.append(f'{day}: got {got} want {want}')
-    check('A3 边界日逐日核对', not bad, '; '.join(bad))
+        gb, ga = str(before['isST'].iloc[0]), str(after['isST'].iloc[0])
+        db, da = str(before['date'].iloc[0])[:10], str(after['date'].iloc[0])[:10]
+        if gb != want_before or ga != want_after:
+            bad.append(f'{edge}: 前 {db}={gb}(want {want_before}) '
+                       f'后 {da}={ga}(want {want_after})')
+    check('A3 边界转移点核对（停牌缺 bar 自动跳过）', not bad, '; '.join(bad))
     in_st = isst_series(df['date'], intervals['sh.600423'])
     consistent = ((df['isST'].astype(str) == '1') == in_st).all()
     check('A3 全序列与 namechange 区间一致', bool(consistent))
