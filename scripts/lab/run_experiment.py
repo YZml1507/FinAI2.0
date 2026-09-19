@@ -97,6 +97,11 @@ _PARAM_CASTERS = {
     # e17 持仓数臂：组合层目标数覆盖（select_targets 截断数——硬编码默认 5，
     # pos>5 臂不覆盖此键会被截回 5 ⇒ 嵌套 PortfolioConfig 字段，同上行机制）
     "portfolio_target_count": int,
+    # e18 持仓宽度扩展：pos>8 须同时放宽 PortfolioConfig 三约束
+    # （max_positions/hard_limit）+ pos×本金跌破 min_position_value 时须降地板
+    "portfolio_max_positions": int,
+    "portfolio_hard_limit": int,
+    "portfolio_min_position_value": Decimal,
 }
 
 #: 非策略配置字段——传给 ``run_dividend_backtest_*`` 或本 runner 的运行级参数。
@@ -145,6 +150,9 @@ def run_experiment(name: str, overrides: dict, data_path: Path) -> dict:
     yearly_pool = overrides.pop("universe_yearly_pool", None)
     portfolio_min_amt = overrides.pop("portfolio_min_daily_amount", None)
     portfolio_target_cnt = overrides.pop("portfolio_target_count", None)
+    portfolio_max_pos = overrides.pop("portfolio_max_positions", None)
+    portfolio_hard_lim = overrides.pop("portfolio_hard_limit", None)
+    portfolio_min_pv = overrides.pop("portfolio_min_position_value", None)
     run_params = {
         "backtest_start": str(bt_start) if bt_start else None,
         "backtest_end": str(bt_end) if bt_end else None,
@@ -155,6 +163,12 @@ def run_experiment(name: str, overrides: dict, data_path: Path) -> dict:
                                        if portfolio_min_amt is not None else None),
         "portfolio_target_count": (str(portfolio_target_cnt)
                                    if portfolio_target_cnt is not None else None),
+        "portfolio_max_positions": (str(portfolio_max_pos)
+                                    if portfolio_max_pos is not None else None),
+        "portfolio_hard_limit": (str(portfolio_hard_lim)
+                                 if portfolio_hard_lim is not None else None),
+        "portfolio_min_position_value": (str(portfolio_min_pv)
+                                         if portfolio_min_pv is not None else None),
     }
 
     orig_config_init = rdb.DividendConfig
@@ -210,6 +224,15 @@ def run_experiment(name: str, overrides: dict, data_path: Path) -> dict:
         if portfolio_target_cnt is not None:
             cfg = replace(cfg, portfolio=replace(
                 cfg.portfolio, target_count=portfolio_target_cnt))
+        if portfolio_max_pos is not None:
+            cfg = replace(cfg, portfolio=replace(
+                cfg.portfolio, max_positions=portfolio_max_pos))
+        if portfolio_hard_lim is not None:
+            cfg = replace(cfg, portfolio=replace(
+                cfg.portfolio, hard_limit=portfolio_hard_lim))
+        if portfolio_min_pv is not None:
+            cfg = replace(cfg, portfolio=replace(
+                cfg.portfolio, min_position_value=portfolio_min_pv))
         return cfg
 
     # 覆盖配置构造（仅本进程生效，权威脚本的 import 引用不变更）
