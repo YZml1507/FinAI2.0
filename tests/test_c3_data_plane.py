@@ -199,6 +199,22 @@ class TestMaterialize:
         # 指数分区复制
         assert (out / "sh.000300/2015.parquet").exists()
 
+    def test_new_member_mc_merge_date_object(self, tmp_path, monkeypatch):
+        """回归：真实 daily_bars 的 date 列是 datetime.date 对象（非 'YYYY-MM-DD'
+        字符串）——circ 合并按归一化字符串键，否则 market_cap 全 NaN。"""
+        self._sandbox(tmp_path, monkeypatch)
+        bars_p = tmp_path / "daily_bars/sz.000001.parquet"
+        bars = pd.read_parquet(bars_p)
+        bars["date"] = [date(2015, 1, 5), date(2016, 1, 4)]
+        bars.to_parquet(bars_p, index=False)
+        pool = _pool(tmp_path, {2015: ["sz.000001"], 2016: ["sz.000001"]})
+        out = tmp_path / "c3_universe"
+        m = c3.materialize(pool, out, (2015, 2016))
+        df15 = pd.read_parquet(out / "sz.000001/2015.parquet")
+        assert df15["market_cap"].iloc[0] == pytest.approx(8e5 * 1e4)
+        # 2015-01-05 命中、2016-01-04 无分片 → 行覆盖 1/2
+        assert m["mc_row_coverage"] == pytest.approx(0.5)
+
     def test_missing_bars_registered(self, tmp_path, monkeypatch):
         self._sandbox(tmp_path, monkeypatch)
         pool = _pool(tmp_path, {2015: ["sz.999999"]})

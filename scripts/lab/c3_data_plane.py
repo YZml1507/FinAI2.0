@@ -143,8 +143,10 @@ def _build_new_member(sym: str, out_dir: Path, circ: pd.DataFrame,
 
     events = alla_exdiv_events(sym)
     df = compute_pit_fields(df, events, 1.0)  # market_cap 随即被 circ_mv 覆盖
-    mc = circ[circ['code'] == sym][['date', 'circ_mv']]
-    df = df.merge(mc, on='date', how='left')
+    mc = circ[circ['code'] == sym][['date', 'circ_mv']].rename(
+        columns={'date': '_d'})
+    df['_d'] = df['date'].astype(str)
+    df = df.merge(mc, on='_d', how='left').drop(columns=['_d'])
     df['market_cap'] = pd.to_numeric(df['circ_mv'], errors='coerce') * 1e4
     df = df.drop(columns=['circ_mv'])
     stats['mc_rows'] += int(df['market_cap'].notna().sum())
