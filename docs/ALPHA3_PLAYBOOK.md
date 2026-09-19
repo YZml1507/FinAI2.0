@@ -119,7 +119,10 @@ A 股中低频长仓日线量化：10-15 万本金、纯多头、持仓 3-8 只�
 
 - 仓库：`/home/ubuntu/FinAI2.0`；调研仓：`/home/ubuntu/research-finai-latest`
 - 数据底座：红利池日线→2026-09-16；财务 PIT→2026 中报（含扣非）；
-  全 A 宽度 5215 只；forecast/statements/veto/landmine/pead sidecar 已构建
+  全 A 宽度 5215 只；forecast/statements/veto/landmine/pead sidecar 已构建；
+  **现行数据指纹 data_hash=`c7630169`**（2026-09-19 E12 isST 按 namechange
+  PIT 重建，旧指纹 e150ee29；5 组整批重跑逐值同旧=纯语义修正，登记见
+  TASK_TRACKER「isST 整批重跑收单」节）
 - Tushare 双代理凭证在 `.env`（DATAHUBCO_API_KEY/PROMAX_TUSHARE_KEY，
   直连不走代理，limit≤5000、跨年分段、16 并发）
 - 测试：`cd /home/ubuntu/FinAI2.0 && .venv/bin/python -m pytest tests/ -q`
