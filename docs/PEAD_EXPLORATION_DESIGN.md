@@ -1,5 +1,11 @@
 # PEAD（盈余公告后漂移）简化探路实验设计文档
 
+> ⛔ **已判负关闭（终局裁决，2026-09-17）**：E4 修复后干净重跑
+> `e4-rebal-fixed` CAGR 0.03%/MDD 45.35%——PEAD 在 487 红利池内两种 <!-- gate-doc-ignore: 历史快照（判负实验实测值，非基线声明），⛔ 不改史 -->
+> 建仓模式均无正贡献（event 拖现金、rebalance 挤占仓位且 MDD 恶化）。
+> 裁决依据：ALPHA3_PLAYBOOK §一「已裁决（E4 终局）」+ experiments/lab/e4-risk-audit/REPORT.md。
+> 本文档仅作历史研究档案保留，⛔ 不作执行依据、不许重启该路线。
+
 | 项目 | 内容 |
 |---|---|
 | 撰写人 | Hermes（FinAI2.0 调研设计助手） |
