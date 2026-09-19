@@ -235,6 +235,7 @@ class DividendConfig:
     breadth_demote_liquidate: bool = False            # e7 降档即出清：宽度由 attack 跌入 <attack 当日向 mid_cap 收敛（⛔ 默认关——须开关隔离，否则无条件生效污染消融实验）
     breadth_weight_mode: str = "hard"                 # C1 连续权重映射（R9/R10 §B3.1）：'hard'=现行阶跃（默认，基线可比）；'linear'=[defense,attack) 内 mid_cap→1.0 线性裁剪（ice 保留硬阈值）
     attack_instrument: str = ""                       # e15 指数 placebo：非空时 attack 档满仓该单票（如 'sh.510880'），选股层整体旁路（⛔ 默认空——须显式开启，否则无条件生效污染消融实验）
+    low_vol_keep_pct: Optional[Decimal] = None        # D2 低波翼：非 None 时 dv 合格候选先按 trailing-250d 波动率升序保留前 pct（0,1]，再做股息率排序/top5/市值加权（⛔ 默认 None=不启用）
     cash_yield_series: str = ""                       # e6b GC001 日度利率 parquet 路径（date,rate_annual%）；与 cash_yield_annual 互斥
     pead_entry_mode: str = "rebalance"                # 'event'=公告日事件驱动建仓（需 reserve）；'rebalance'=调仓日并入候选源（软叠加，零闲置现金）
     portfolio: PortfolioConfig = field(default_factory=PortfolioConfig)
@@ -305,6 +306,13 @@ class DividendConfig:
         if self.attack_instrument and not self.attack_instrument.startswith(("sh.", "sz.")):
             raise ValueError(f"attack_instrument 须为 'sh./sz.' 前缀代码或空（fail-closed）: "
                              f"{self.attack_instrument!r}")
+        if self.low_vol_keep_pct is not None:
+            if not isinstance(self.low_vol_keep_pct, Decimal):
+                raise TypeError(f"low_vol_keep_pct 须为 Decimal（⛔ 禁 float）: "
+                                f"{type(self.low_vol_keep_pct).__name__}")
+            if not (_ZERO_ < self.low_vol_keep_pct <= Decimal("1")):
+                raise ValueError(f"low_vol_keep_pct 须在 (0, 1] 范围内: "
+                                 f"{self.low_vol_keep_pct}")
         if self.breadth_mid_cap > Decimal("0.8"):
             raise ValueError(f"breadth_mid_cap 警戒档仓位上限不应超 0.8: {self.breadth_mid_cap}")
         if self.cash_yield_series and Decimal(self.cash_yield_annual) != 0:
@@ -412,6 +420,9 @@ class DividendStrategy:
         self._breadth_ice_streak = 0                     # 连续处于冰点线下天数
         self._breadth_ice = False                        # True = 已确认冰点、全额避险中
         self._breadth_today: Decimal | None = None       # 当日宽度值（Decimal 纪律）
+        # D2 低波翼：逐票日收益滚动缓冲（close/preclose−1，250 日窗）——
+        # 策略内自算波动率，PIT 正确、零外部数据依赖
+        self._ret_buffer: dict[str, deque] = {}
 
     # ------------------------------------------------------------------
     # 引擎契约
@@ -449,6 +460,12 @@ class DividendStrategy:
         """
         cfg = self.config
         self._bar_count += 1
+
+        # ⓪- D2：更新逐票日收益缓冲（须在冷启动早退之前——warmup 期也要累积）
+        for _sym, _bar in bars.items():
+            if _bar.preclose is not None and _bar.preclose > _ZERO_:
+                self._ret_buffer.setdefault(_sym, deque(maxlen=250)).append(
+                    float(_bar.close / _bar.preclose) - 1.0)
 
         # ⓪ 当日股票池
         if self.universe_provider is not None:
@@ -675,6 +692,16 @@ class DividendStrategy:
     # 内部
     # ------------------------------------------------------------------
 
+    def _trailing_vol(self, symbol: str) -> float | None:
+        """trailing-250d 日收益波动率（样本 std）；缓冲 <200 日 → None
+        （fail-closed：无足够 vol 史的票不允许过 D2 筛）。"""
+        buf = self._ret_buffer.get(symbol)
+        if buf is None or len(buf) < 200:
+            return None
+        n = len(buf)
+        m = sum(buf) / n
+        return (sum((x - m) ** 2 for x in buf) / (n - 1)) ** 0.5
+
     def _select_stocks(self, bars: Mapping[str, Bar], cfg: DividendConfig,
                        day: _date | None = None) -> list[Signal]:
         """选股：股息率筛选 + 排序 + 市值加权（+ 准入质量否决 + 排雷冷却）。
@@ -703,6 +730,15 @@ class DividendStrategy:
                         and self._layers.landmine_block(symbol, day)):
                     continue
                 candidates.append((symbol, bar.dividend_yield, bar.market_cap))
+
+        # D2 低波翼：dv 合格候选先按 trailing-250d 波动率升序截断
+        # （无 vol 史=缓冲<200 日的票 fail-closed 排除——无法验证低波不买）
+        if cfg.low_vol_keep_pct is not None:
+            vol_ok = [(sym, dv, mc) for sym, dv, mc in candidates
+                      if self._trailing_vol(sym) is not None]
+            vol_ok.sort(key=lambda c: self._trailing_vol(c[0]))
+            keep_n = max(1, int(len(vol_ok) * cfg.low_vol_keep_pct))
+            candidates = vol_ok[:keep_n]
 
         # 按股息率降序排序，取前 N 只
         candidates.sort(key=lambda x: x[1], reverse=True)

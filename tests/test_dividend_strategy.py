@@ -728,3 +728,99 @@ def test_attack_instrument_missing_bar_no_order():
     strategy.on_bar(day, _breadth_bars(day), book, broker)  # 无 ETF bar
 
     assert len(broker.orders) == 0
+
+
+# ==============================================================================
+# D2 low_vol_keep_pct 低波翼（4 例）
+# ==============================================================================
+
+
+def _lowvol_cfg() -> DividendConfig:
+    """宽度择时 attack 档（b=0.50 ≥ attack 0.40）+ low_vol_keep_pct=0.5"""
+    return DividendConfig(
+        min_dividend_yield=Decimal("0.03"),
+        use_breadth_timing=True,
+        use_ma200_timing=False,
+        breadth_series={"2020-01-01": Decimal("0.50")},
+        breadth_attack_threshold=Decimal("0.40"),
+        breadth_defense_threshold=Decimal("0.20"),
+        breadth_ice_confirm_days=1,
+        low_vol_keep_pct=Decimal("0.5"),
+        warmup_bars=210,
+        rebalance_days=10,
+        index_symbol="sh.000300",
+        min_positions=1,
+        max_positions=5,
+        default_positions=1,
+    )
+
+
+def _dv_bar(day: date, symbol: str, dv: str = "0.05") -> Bar:
+    return Bar(
+        date=day, symbol=symbol,
+        open=Decimal("10"), high=Decimal("10"), low=Decimal("10"),
+        close=Decimal("10"), preclose=Decimal("10"),
+        volume=Decimal("1000000"), amount=Decimal("100000000"),
+        dividend_yield=Decimal(dv), market_cap=Decimal("1000000000"),
+    )
+
+
+def test_low_vol_default_none_ok():
+    """默认 None 通过校验（向后兼容：选股语义不变）"""
+    DividendConfig()
+
+
+def test_low_vol_invalid_pct():
+    """越界/非 Decimal → 拒绝（fail-closed）"""
+    with pytest.raises(ValueError, match="low_vol_keep_pct"):
+        DividendConfig(low_vol_keep_pct=Decimal("0"))
+    with pytest.raises(ValueError, match="low_vol_keep_pct"):
+        DividendConfig(low_vol_keep_pct=Decimal("1.5"))
+    with pytest.raises(TypeError, match="low_vol_keep_pct"):
+        DividendConfig(low_vol_keep_pct=0.5)
+
+
+def test_low_vol_filter_prefers_low_vol_candidate():
+    """同 dv 候选 2 只：高波票被截断、低波票获买——筛子有牙"""
+    cfg = _lowvol_cfg()
+    strategy = DividendStrategy(config=cfg)
+    strategy.watchlist = ["sh.600000", "sh.600001"]
+    strategy._bar_count = cfg.warmup_bars
+    strategy._last_rebalance_bar = strategy._bar_count - cfg.rebalance_days
+    # 预填 vol 缓冲：600000 低波（恒定 +0.1%）、600001 高波（±2% 交替）
+    strategy._ret_buffer["sh.600000"] = deque([0.001] * 200, maxlen=250)
+    strategy._ret_buffer["sh.600001"] = deque([0.02, -0.02] * 100, maxlen=250)
+
+    book = MockBook(nav=Decimal("100000"))
+    broker = MockBroker()
+    day = date(2020, 1, 1)
+    bars = {"sh.600000": _dv_bar(day, "sh.600000"),
+            "sh.600001": _dv_bar(day, "sh.600001")}
+
+    strategy.on_bar(day, bars, book, broker)
+
+    buys = [o for o in broker.orders if o.side == OrderSide.BUY]
+    assert len(buys) == 1 and buys[0].symbol == "sh.600000"
+
+
+def test_low_vol_missing_history_excluded():
+    """vol 史不足 200 日的票 fail-closed 排除——无法验证低波不买"""
+    cfg = _lowvol_cfg()
+    strategy = DividendStrategy(config=cfg)
+    strategy.watchlist = ["sh.600000", "sh.600001"]
+    strategy._bar_count = cfg.warmup_bars
+    strategy._last_rebalance_bar = strategy._bar_count - cfg.rebalance_days
+    # 600000 有史（低波），600001 只有 50 日 → 被排除
+    strategy._ret_buffer["sh.600000"] = deque([0.001] * 200, maxlen=250)
+    strategy._ret_buffer["sh.600001"] = deque([0.02, -0.02] * 25, maxlen=250)
+
+    book = MockBook(nav=Decimal("100000"))
+    broker = MockBroker()
+    day = date(2020, 1, 1)
+    bars = {"sh.600000": _dv_bar(day, "sh.600000"),
+            "sh.600001": _dv_bar(day, "sh.600001")}
+
+    strategy.on_bar(day, bars, book, broker)
+
+    buys = [o for o in broker.orders if o.side == OrderSide.BUY]
+    assert len(buys) == 1 and buys[0].symbol == "sh.600000"
