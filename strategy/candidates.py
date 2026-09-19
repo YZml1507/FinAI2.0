@@ -234,6 +234,7 @@ class DividendConfig:
     cash_yield_annual: Decimal = Decimal("0")         # 空仓现金年化收益（e6 防御资产近似：货基/逆回购 ~0.02；0=不计息）
     breadth_demote_liquidate: bool = False            # e7 降档即出清：宽度由 attack 跌入 <attack 当日向 mid_cap 收敛（⛔ 默认关——须开关隔离，否则无条件生效污染消融实验）
     breadth_weight_mode: str = "hard"                 # C1 连续权重映射（R9/R10 §B3.1）：'hard'=现行阶跃（默认，基线可比）；'linear'=[defense,attack) 内 mid_cap→1.0 线性裁剪（ice 保留硬阈值）
+    attack_instrument: str = ""                       # e15 指数 placebo：非空时 attack 档满仓该单票（如 'sh.510880'），选股层整体旁路（⛔ 默认空——须显式开启，否则无条件生效污染消融实验）
     cash_yield_series: str = ""                       # e6b GC001 日度利率 parquet 路径（date,rate_annual%）；与 cash_yield_annual 互斥
     pead_entry_mode: str = "rebalance"                # 'event'=公告日事件驱动建仓（需 reserve）；'rebalance'=调仓日并入候选源（软叠加，零闲置现金）
     portfolio: PortfolioConfig = field(default_factory=PortfolioConfig)
@@ -301,6 +302,9 @@ class DividendConfig:
         if self.breadth_weight_mode not in ("hard", "linear"):
             raise ValueError(f"breadth_weight_mode 须为 'hard'/'linear'（fail-closed）: "
                              f"{self.breadth_weight_mode!r}")
+        if self.attack_instrument and not self.attack_instrument.startswith(("sh.", "sz.")):
+            raise ValueError(f"attack_instrument 须为 'sh./sz.' 前缀代码或空（fail-closed）: "
+                             f"{self.attack_instrument!r}")
         if self.breadth_mid_cap > Decimal("0.8"):
             raise ValueError(f"breadth_mid_cap 警戒档仓位上限不应超 0.8: {self.breadth_mid_cap}")
         if self.cash_yield_series and Decimal(self.cash_yield_annual) != 0:
@@ -454,6 +458,9 @@ class DividendStrategy:
         #   择时永远拿不到数据）。去重靠引擎 ``_symbols_for`` 的 set 语义。
         if cfg.use_ma200_timing and cfg.index_symbol not in self.watchlist:
             self.watchlist.append(cfg.index_symbol)
+        # e15 指数 placebo：攻击资产恒入选股域（feed 需要其 bar 才能计划/成交）
+        if cfg.attack_instrument and cfg.attack_instrument not in self.watchlist:
+            self.watchlist.append(cfg.attack_instrument)
 
         # ① 冷启动期：只收集 MA200 数据，不交易
         if self._bar_count < cfg.warmup_bars:
@@ -574,7 +581,13 @@ class DividendStrategy:
         # ⑤ 调仓日：标记 + 选股（启用择时时，能走到这里即未触发确认破位）
         if scheduled:
             self._last_rebalance_bar = self._bar_count
-        signals = self._select_stocks(bars, cfg, day)
+        if cfg.attack_instrument:
+            # e15 指数 placebo：attack 档满仓单票——选股层整体旁路；
+            # bar 缺失（停牌/无数据）⇒ 空目标计划 ⇒ fail-closed 空仓
+            signals = [Signal(symbol=cfg.attack_instrument, score=Decimal("1"),
+                              reason="attack_instrument placebo")]
+        else:
+            signals = self._select_stocks(bars, cfg, day)
 
         # ⑥ 组合计划（复用 portfolio.py 三段链，传入市值权重）
         scores = {s.symbol: s.score for s in signals}

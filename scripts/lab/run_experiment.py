@@ -74,6 +74,7 @@ _PARAM_CASTERS = {
     "cash_yield_series": str,      # e6b：GC001 日度利率 parquet 路径
     "breadth_demote_liquidate": lambda v: v.lower() in ("1", "true", "yes", "on"),
     "breadth_weight_mode": str,
+    "attack_instrument": str,
     # 回测区间覆盖（非 DividendConfig 字段，run_experiment 单独提取传给 runner）
     "backtest_start": lambda v: _date.fromisoformat(v),
     "backtest_end": lambda v: _date.fromisoformat(v),
@@ -83,6 +84,10 @@ _PARAM_CASTERS = {
     # C3：年度池 universe_provider（pool_yearly.parquet 路径；
     # provider(day)=pool[year(day)]∩alive(day)，与 --data-path data/c3_universe 配套）
     "universe_yearly_pool": str,
+    # e15：ETF 攻击资产的组合层流动性下限覆盖（嵌套 PortfolioConfig 字段——
+    # 二级成交额下限对 ETF 不适用：申赎机制兜底，真实约束是参与率上限；
+    # ⛔ 只用于 placebo 臂，选股池 hygiene 下限语义不变）
+    "portfolio_min_daily_amount": Decimal,
 }
 
 #: 非策略配置字段——传给 ``run_dividend_backtest_*`` 或本 runner 的运行级参数。
@@ -129,12 +134,15 @@ def run_experiment(name: str, overrides: dict, data_path: Path) -> dict:
     initial_capital = Decimal(overrides.pop("initial_capital", "150000"))
     fee_mult = Decimal(overrides.pop("fee_multiplier", "1"))
     yearly_pool = overrides.pop("universe_yearly_pool", None)
+    portfolio_min_amt = overrides.pop("portfolio_min_daily_amount", None)
     run_params = {
         "backtest_start": str(bt_start) if bt_start else None,
         "backtest_end": str(bt_end) if bt_end else None,
         "initial_capital": str(initial_capital),
         "fee_multiplier": str(fee_mult),
         "universe_yearly_pool": yearly_pool,
+        "portfolio_min_daily_amount": (str(portfolio_min_amt)
+                                       if portfolio_min_amt is not None else None),
     }
 
     orig_config_init = rdb.DividendConfig
@@ -184,6 +192,9 @@ def run_experiment(name: str, overrides: dict, data_path: Path) -> dict:
         cfg = orig_config_init(**kwargs)
         if overrides:
             cfg = replace(cfg, **overrides)
+        if portfolio_min_amt is not None:
+            cfg = replace(cfg, portfolio=replace(
+                cfg.portfolio, min_daily_amount=portfolio_min_amt))
         return cfg
 
     # 覆盖配置构造（仅本进程生效，权威脚本的 import 引用不变更）

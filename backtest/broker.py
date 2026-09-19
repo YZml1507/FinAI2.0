@@ -104,6 +104,7 @@ class BacktestBroker:
         *,
         fsm: OrderStateMachine | None = None,
         enable_dividend_tax: bool = False,
+        dividend_tax_exempt: frozenset[str] | None = None,
     ) -> None:
         """
         Args:
@@ -114,12 +115,15 @@ class BacktestBroker:
             fsm: 状态机（默认新建；无状态，可共享单例）。
             enable_dividend_tax: 是否开启 T309 红利税（默认 False 保证向后兼容，
                 红利策略回测开启）。
+            dividend_tax_exempt: 红利税豁免代码集——e15 ETF 攻击资产用：
+                基金分红不适用股息红利差别化个税（该税为股票口径）。
         """
         self.matcher = matcher
         self.ledger = ledger
         self.feed = feed
         self.fsm = fsm or OrderStateMachine()
         self.enable_dividend_tax = bool(enable_dividend_tax)
+        self.dividend_tax_exempt = frozenset(dividend_tax_exempt or ())
         #: client_order_id → Order（只放**未终态**的活动委托）
         self._pending: dict[str, Order] = {}
         #: 全生命周期订单登记（终态也留着，供 BacktestResult 汇总）
@@ -344,7 +348,9 @@ class BacktestBroker:
                 date=date,
                 ref_id=f"EXDIV:{symbol}:{date.isoformat()}",
             )
-            if self.enable_dividend_tax and old_vol > 0 and event.cash_dividend > _ZERO:
+            if (self.enable_dividend_tax and old_vol > 0
+                    and event.cash_dividend > _ZERO
+                    and symbol not in self.dividend_tax_exempt):
                 self._apply_dividend_tax(symbol, event, old_vol, date)
 
         # ③ 刷市值 + NAV（settle.py：停牌市值冻结）。

@@ -645,3 +645,86 @@ def test_breadth_mid_cap_nonzero_still_builds():
 
     # 应产生 BUY 建仓订单（30% 上限下资金充足，可建 1 仓）
     assert any(o.side == OrderSide.BUY for o in broker.orders)
+
+
+# ==============================================================================
+# e15 attack_instrument 指数 placebo（4 例）
+# ==============================================================================
+
+
+def _attack_cfg() -> DividendConfig:
+    """宽度择时 attack 档（b=0.50 ≥ attack 0.40）+ attack_instrument 配置"""
+    return DividendConfig(
+        min_dividend_yield=Decimal("0.03"),
+        use_breadth_timing=True,
+        use_ma200_timing=False,
+        breadth_series={"2020-01-01": Decimal("0.50")},
+        breadth_attack_threshold=Decimal("0.40"),
+        breadth_defense_threshold=Decimal("0.20"),
+        attack_instrument="sh.510880",
+        warmup_bars=210,
+        rebalance_days=10,
+        index_symbol="sh.000300",
+        min_positions=1,
+        max_positions=5,
+        default_positions=1,
+    )
+
+
+def _etf_bar(day: date) -> Bar:
+    """ETF bar：无 dividend_yield / market_cap 字段（⛔ 选股字段不得被读）"""
+    return Bar(
+        date=day, symbol="sh.510880",
+        open=Decimal("3"), high=Decimal("3"), low=Decimal("3"),
+        close=Decimal("3"), preclose=Decimal("3"),
+        volume=Decimal("100000000"), amount=Decimal("300000000"),
+    )
+
+
+def test_attack_instrument_empty_default_ok():
+    """默认空字符串通过校验（向后兼容：选股语义不变）"""
+    DividendConfig()  # 不炸即过
+
+
+def test_attack_instrument_invalid_code():
+    """非 'sh./sz.' 前缀代码 → ValueError（fail-closed，防脏代码静默放行）"""
+    with pytest.raises(ValueError, match="attack_instrument"):
+        DividendConfig(attack_instrument="510880")
+
+
+def test_attack_instrument_bypasses_stock_selection():
+    """配置后调仓信号=单票 ETF：选股层旁路（无 dv/mcap 的 ETF bar 不炸），watchlist 注入"""
+    cfg = _attack_cfg()
+    strategy = DividendStrategy(config=cfg)
+    strategy.watchlist = ["sh.600000"]
+    strategy._bar_count = cfg.warmup_bars
+    strategy._last_rebalance_bar = strategy._bar_count - cfg.rebalance_days  # 当日即调仓
+
+    book = MockBook(nav=Decimal("100000"))
+    broker = MockBroker()
+    day = date(2020, 1, 1)
+    bars = dict(_breadth_bars(day))
+    bars["sh.510880"] = _etf_bar(day)
+
+    strategy.on_bar(day, bars, book, broker)
+
+    assert "sh.510880" in strategy.watchlist  # feed 需要其 bar
+    buys = [o for o in broker.orders if o.side == OrderSide.BUY]
+    assert len(buys) == 1 and buys[0].symbol == "sh.510880"
+
+
+def test_attack_instrument_missing_bar_no_order():
+    """ETF bar 缺失（停牌/未注入）→ 计划剔除 → 无订单（fail-closed 空仓不猜值）"""
+    cfg = _attack_cfg()
+    strategy = DividendStrategy(config=cfg)
+    strategy.watchlist = ["sh.600000"]
+    strategy._bar_count = cfg.warmup_bars
+    strategy._last_rebalance_bar = strategy._bar_count - cfg.rebalance_days
+
+    book = MockBook(nav=Decimal("100000"))
+    broker = MockBroker()
+    day = date(2020, 1, 1)
+
+    strategy.on_bar(day, _breadth_bars(day), book, broker)  # 无 ETF bar
+
+    assert len(broker.orders) == 0

@@ -147,6 +147,8 @@ DEFAULT_PREFILL_TOL = 1e-6
 #:   60 = 沪市主板 A，90 = 沪市 B，00 = 深市主板 A，20 = 深市 B —— 均走 main_pct（默认 ±10%）
 #:   30 = 创业板（注册制改革后）—— chinext_pct（默认 ±20%）
 #:   68 = 科创板 —— star_pct（默认 ±20%）
+#:   51 = 沪市 ETF/场内基金（510xxx-519xxx），15 = 深市 ETF/场内基金
+#:        （159xxx 等）—— 交易所规则 ±10%（e15 指数 placebo 攻击资产登记）
 #: ⭐ 存**字段名**而非字面阈值，是为了让 ``LimitFlagsConfig`` 覆盖（FR-EXT-6）对
 #: 这些前缀真正生效：否则表内写死数值会把配置旁路（测试已抓到该 bug）。
 #: 北交所（43/83/87/92，±30%）未登记 ⇒ 触 ``UnknownBoardError``，需要用须显式登记。
@@ -154,6 +156,7 @@ DEFAULT_PREFILL_TOL = 1e-6
 #: 否则登记表与缺省阈值漂移 —— 有测试钉死这一点。
 BOARD_LIMIT_PCT: Mapping[str, str] = {
     "60": "main_pct", "00": "main_pct", "90": "main_pct", "20": "main_pct",
+    "51": "main_pct", "15": "main_pct",
     "30": "chinext_pct",
     "68": "star_pct",
 }

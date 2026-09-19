@@ -603,6 +603,64 @@ def run_dividend_backtest_2015_2024(
         if sp.exists():
             exdiv_sidecars[sym] = pd.read_parquet(sp)
 
+    # e15 指数 placebo：attack_instrument 单票 bar + 除权事件注入
+    # （ETF 不在 dividend_stocks 池目录 ⇒ 不污染池语义；分红由 etf_bars
+    # 复权因子跳变合成 cash_dividend，⛔ 缺数据即 fail-closed raise）
+    _attack_instr = getattr(strategy_config, "attack_instrument", "") or ""
+    _etf_dir: Path | None = None
+    if _attack_instr:
+        _etf_dir = _root / "data" / "etf_bars" / _attack_instr
+        # 仅吃年份分区（2*.parquet）——exdiv.parquet sidecar 列不兼容，混入会污染 bar 帧
+        _frames = [pd.read_parquet(p)
+                   for p in sorted(_etf_dir.glob("2*.parquet"))]
+        if not _frames:
+            raise FileNotFoundError(
+                f"attack_instrument={_attack_instr} 在 {_etf_dir} 无 bar 数据"
+                "——⛔ Fail-Closed：攻击资产缺数据不得静默全程空仓")
+        etf = pd.concat(_frames, ignore_index=True).sort_values("date")
+        etf = etf.reset_index(drop=True)
+        # ETF 无 preclose 列 ⇒ 由上一交易日 close 合成（涨跌停标记需要）；
+        # isST='0'（baostock 口径，ETF 无 ST 制度）；无 tradestatus ⇒ feed 跳过滤
+        etf["preclose"] = etf["close"].shift(1)
+        etf["isST"] = "0"   # baostock 口径 '0'/'1' 字符串（ETF 无 ST 制度）
+        tables[_attack_instr] = etf
+        _etf_exdiv = _etf_dir / "exdiv.parquet"
+        if _etf_exdiv.exists():
+            # 权威除权事件 sidecar（采集器登记的真实除息日口径）
+            _ev = pd.read_parquet(_etf_exdiv)
+            _ev["date"] = _ev["date"].astype(str).str[:10]
+        elif "factor" in etf.columns:
+            # 无 sidecar ⇒ 复权因子跳变日 = 分红除权日：
+            # cash_div = prev_close×(f_t−f_{t−1})/f_t
+            _f = etf["factor"].astype(float)
+            _pc = etf["close"].astype(float).shift(1)
+            _fp = _f.shift(1)
+            _jump = (_f - _fp).abs() > 1e-9
+            _ev = pd.DataFrame({
+                "date": etf.loc[_jump, "date"].astype(str).str[:10],
+                "factor": 1.0,
+                "cash_dividend": (_pc[_jump] * (_f[_jump] - _fp[_jump])
+                                  / _f[_jump]),
+            }) if _jump.any() else pd.DataFrame(
+                columns=["date", "factor", "cash_dividend"])
+        else:
+            _ev = pd.DataFrame(columns=["date", "factor", "cash_dividend"])
+        if len(_ev):
+            exdiv_sidecars[_attack_instr] = _ev
+            exdiv_events[_attack_instr] = [
+                ExdivEvent(
+                    symbol=_attack_instr,
+                    factor=Decimal("1"),
+                    cash_dividend=Decimal(str(r["cash_dividend"])),
+                    date=_parse_iso(r["date"]),
+                )
+                for r in _ev.to_dict(orient="records")
+            ]
+            for e in exdiv_events[_attack_instr]:
+                exdiv_by_date.setdefault(e.date, {})[_attack_instr] = e
+            logger.info(f"attack_instrument={_attack_instr}: "
+                        f"{len(exdiv_events[_attack_instr])} 个因子跳变除权事件")
+
     feed = ParquetDailyFeed(
         root=data_path,
         trade_calendar=lambda s, e: [d for d in cal_days if s <= d <= e],
@@ -658,7 +716,9 @@ def run_dividend_backtest_2015_2024(
                     cash_yield_series=cash_yield_series)
     matcher = MatchEngine(fee_model=make_fee_model(), price_model=make_price_model())
     broker = BacktestBroker(
-        matcher=matcher, ledger=ledger, feed=feed, enable_dividend_tax=True
+        matcher=matcher, ledger=ledger, feed=feed, enable_dividend_tax=True,
+        # e15：基金分红不适用股息红利差别化个税（股票口径税）——攻击资产豁免
+        dividend_tax_exempt=frozenset({_attack_instr}) if _attack_instr else None,
     )
     engine = BacktestEngine(broker=broker, feed=feed)
 
@@ -725,12 +785,18 @@ def run_dividend_backtest_2015_2024(
     if signal_layers is not None:
         # 信号层 sidecar 内容指纹并入数据出处（G-1 三件套可比性）
         data_version += f"+layers@{signal_layers.manifest_hash}"
+    data_hash = hash_path_manifest(data_path)                  # ★ 数据清单内容哈希
+    if _attack_instr and _etf_dir is not None:
+        # ETF 攻击资产内容指纹并入 data_hash（出处覆盖注入帧，G-1 可比性）
+        data_hash = hash_sequence(
+            [data_hash, hash_path_manifest(_etf_dir)], label="data")
+        data_version += f"+etf@{_attack_instr}"
     registry = ExperimentRegistry(
         root=registry_root or (_root / "experiments"),
         code_version="t312-dividend-v1",                       # 人类可读标签（仅供参考）
         data_version=data_version,
         code_hash=_git_code_hash(),                            # ★ 内容寻址（M2/PM-1）
-        data_hash=hash_path_manifest(data_path),               # ★ 数据清单内容哈希
+        data_hash=data_hash,
         calendar_hash=hash_sequence(cal_days, label="cal"),    # ★ 实际交易日历
         universe_hash=hash_sequence(universe_codes, label="universe"),  # ★ 候选池时点快照
     )
