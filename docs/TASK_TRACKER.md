@@ -25,8 +25,12 @@
   `scripts/repair_688_unit_fix.py`：以 alla daily_bars（腾讯 RAW 权威源）
   逐行覆盖 bad 行 volume/amount，原子写回分区，manifest=
   `docs/data_repair_688_units_manifest.json`，幂等复跑 0 残留。
-  **同 SHA 锚点重跑 isst-e8b-fix688 在跑**（量化基线冲击，预期 ≤0.1pp
-  ——被穿透票须同时满足 dv≥3%+排进 top5 才影响持仓）。
+  **同 SHA 锚点重跑 isst-e8b-fix688 已收单：CAGR 8.5814%/MDD
+  17.3990%/trips 156/fees 22328.60——与原锚逐值一致 Δ=0**
+  （run 20260920-044708；缺陷真实存在但本策略未踩中——688 票
+  在受影响期内从未排进 top5 持仓，伪过地板未转化为实际买入）。
+  修复仍必要（语义正确性+容量矩阵等下游消费者），锚点数字不变
+  ⇒ e19 对照值沿用 8.58%/17.40%。
 
 - **e17 DOF 矩阵 6 臂全收单**（E17_DOF_PREREG §六/七回填）：
   pos3 −4.57pp / pos8 **+1.05pp 弱正** / rebal10 −2.15pp / rebal40 −3.96pp /
