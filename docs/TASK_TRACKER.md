@@ -16,6 +16,10 @@
   `ROOT=/home/ubuntu/FinAI2.0` → `__file__` 相对定位。
 
 ## 当前接续（2026-09-20 e20 收单窗口）：OOS 留出检验收单——红旗触线，模拟盘不建议启动
+- **e23 立项（2026-09-20）**：影子筛选预登记 `docs/E23_SHADOW_SCREEN_PREREG.md`
+  冻结（全 A 截面 6 假设一次性登记，双闸 G1–G4 + Bonferroni 分层，§二–§四
+  首跑后改动即作废）；未运行。方案 D+E 详见 research-finai
+  `reports/e23_20260920/`（E23_PLAN + t1/t2/t3 + inventory）。
 - **e22b 取消 + 幸存者偏差实测披露（2026-09-20）**：盘点证明 C3 管线已是
   规则化 PIT 含退市票（c3_universe 覆盖缺口=0）；去偏参照=既有实测臂
   c3-p1-yearly（同 params_hash/calendar_hash）：ΔCAGR +0.66pp、ΔMDD
