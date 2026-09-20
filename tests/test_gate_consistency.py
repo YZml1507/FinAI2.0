@@ -1192,6 +1192,8 @@ class TestGateDocIgnoreScope:
             "docs/CAPACITY_MATRIX_20260920.md": (1, None),  # 容量矩阵交付文档的分层实测值快照
             "docs/DEEP_RESEARCH_DIVIDEND_20260919.md": (1, None),  # 外部调研引用的券商/学术实测值，非本项目基线
             "docs/DEEP_ANALYSIS_GAP_20260919.md": (1, None),  # 差距剖析文：外部调研值+历史实验快照值混合豁免
+            "docs/E20_OOS_HOLDOUT_PREREG.md": (1, None),     # e20 预登记的 OOS 两臂实测值快照
+            "docs/delivery/FINAL_DELIVERY_20260920.md": (1, None),  # 交付结论书的基线/容量/OOS 实测值快照
         }
         by_file: dict[str, list] = {}
         for h in hits:
