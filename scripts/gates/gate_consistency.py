@@ -23,8 +23,10 @@
 from __future__ import annotations
 
 import argparse
+import functools
 import json
 import re
+import subprocess
 import sys
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
@@ -40,6 +42,7 @@ from .constants import TEST_BASELINE_PASSED
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 
 #: 白名单：仅允许「运行期生成物」路径缺失（由运行产生，不在版本库中预置）。
+#: 白名单 = 显式前缀 ∪ .gitignore 命中路径（运行期采集/生成物，按两仓/数据分离设计不入库）。
 _REFERENCE_WHITELIST_PREFIXES: tuple[str, ...] = (
     "experiments/runs/",
     "experiments/acceptance/",
@@ -1166,8 +1169,22 @@ def _clean_reference(raw: str) -> str:
     return ref
 
 
+@functools.lru_cache(maxsize=None)
+def _is_gitignored(ref: str) -> bool:
+    """``git check-ignore`` 命中 ⇒ 按两仓/数据分离设计不入库的运行期产物，
+    视同白名单豁免。git 不可用/出错 ⇒ False（退化回仅显式前缀）。"""
+    try:
+        r = subprocess.run(
+            ["git", "check-ignore", "-q", "--", ref],
+            cwd=_REPO_ROOT, capture_output=True, timeout=5,
+        )
+    except Exception:                   # noqa: BLE001
+        return False
+    return r.returncode == 0
+
+
 def _is_whitelisted(ref: str) -> bool:
-    return any(ref.startswith(prefix) for prefix in _REFERENCE_WHITELIST_PREFIXES)
+    return any(ref.startswith(prefix) for prefix in _REFERENCE_WHITELIST_PREFIXES) or _is_gitignored(ref)
 
 
 def _is_low_risk_path_drift(ref: str) -> bool:
