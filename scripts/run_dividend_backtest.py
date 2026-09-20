@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date as _date, datetime as _datetime, timezone as _timezone
 from decimal import Decimal
 from pathlib import Path
@@ -72,19 +73,26 @@ def _load_index_frame(data_path: Path) -> pd.DataFrame | None:
 
 
 def _load_universe_tables(data_path: Path) -> dict[str, pd.DataFrame]:
-    """全部红利股分区 -> {symbol: bars 帧}（preloaded 形态）。"""
-    tables: dict[str, pd.DataFrame] = {}
-    for sym_dir in sorted(data_path.iterdir()):
-        if not sym_dir.is_dir():
-            continue
-        if sym_dir.name == INDEX_SYMBOL:
-            continue
-        if not (sym_dir.name.startswith("sh.") or sym_dir.name.startswith("sz.")):
-            continue
+    """全部红利股分区 -> {symbol: bars 帧}（preloaded 形态）。
+
+    线程池并行读分区（pyarrow IO 释 GIL）；``map`` 保输入序 ⇒ 字典序与串行版一致。
+    """
+    def _load_one(sym_dir: Path):
         parts = [pd.read_parquet(p) for p in sorted(sym_dir.glob("*.parquet"))
                  if p.stem.isdigit()]
-        if parts:
-            tables[sym_dir.name] = pd.concat(parts, ignore_index=True)
+        return sym_dir.name, (pd.concat(parts, ignore_index=True) if parts else None)
+
+    dirs = [
+        d for d in sorted(data_path.iterdir())
+        if d.is_dir()
+        and d.name != INDEX_SYMBOL
+        and (d.name.startswith("sh.") or d.name.startswith("sz."))
+    ]
+    tables: dict[str, pd.DataFrame] = {}
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        for name, frame in pool.map(_load_one, dirs):
+            if frame is not None:
+                tables[name] = frame
     return tables
 
 
