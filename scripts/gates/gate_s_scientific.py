@@ -9,9 +9,8 @@
 
 from __future__ import annotations
 
-from datetime import date as _date, timedelta as _timedelta
 from decimal import Decimal
-from typing import Any, Sequence
+from typing import Any
 
 from .base import BaseGate, GateCategory, GateResult, GateSeverity, GateStatus
 

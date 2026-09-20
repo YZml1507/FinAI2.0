@@ -29,7 +29,7 @@ if str(repo_root) not in sys.path:
     sys.path.insert(0, str(repo_root))
 
 from scripts.gates.gate_master_audit import GateMasterAudit
-from scripts.gates.base import GateStatus, GateSeverity, is_blocking_result
+from scripts.gates.base import GateStatus, is_blocking_result
 
 
 #: 历史核准的单测最低通过基线（任何时候不得低于此数值）。

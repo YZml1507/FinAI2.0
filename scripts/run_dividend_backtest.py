@@ -40,8 +40,8 @@ from reporting.registry import ExperimentRegistry
 from reporting.provenance import hash_path_manifest, hash_sequence
 from strategy.candidates import DividendConfig, DividendStrategy
 from strategy.portfolio import PortfolioConfig
-from data.universe import load_stock_basic, alive_universe, AliveUniverseIndex
-from scripts.gates import GateBlockerError, run_post_run_gates, run_pre_run_gates
+from data.universe import load_stock_basic, AliveUniverseIndex
+from scripts.gates import run_post_run_gates, run_pre_run_gates
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
