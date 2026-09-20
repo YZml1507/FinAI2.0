@@ -318,7 +318,10 @@ def mark_limit_flags(
             "close 存在 NaN/非数值 —— ⛔ 不按'未触板'静默处理（该行涨跌停不可判定）")
     pre = pd.to_numeric(out["preclose"], errors="coerce")
     st = out["isST"].map(_is_st)
-    board_thr = out["code"].map(lambda c: board_limit_pct(c, cfg))
+    # code 在单标的帧内恒定——按 unique 值算阈值再映射（逐行 _code_digits
+    # 全字符串扫描是 feed 派生层热点，~6M 次 isdigit/全窗）。
+    thr_map = {c: board_limit_pct(c, cfg) for c in out["code"].unique()}
+    board_thr = out["code"].map(thr_map)
     thr = pd.Series(
         [cfg.st_pct if s else b for s, b in zip(st, board_thr)],
         index=out.index)
