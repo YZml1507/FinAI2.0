@@ -99,7 +99,7 @@ def fetch(kind: str, **params: Any) -> FetchResult:
         return make_result(frame, source=SOURCE,
                            evidence={"kind": kind,
                                      "params": {k: str(v)[:40] for k, v in params.items()}})
-    except BaseException as exc:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001 —— ⛔ 不用 BaseException：KeyboardInterrupt/SystemExit 必须传播
         return FetchResult(
             state="FAIL_UNREACHABLE" if isinstance(
                 exc, (requests.RequestException, TimeoutError)) else "FAIL_DETERMINISTIC",
