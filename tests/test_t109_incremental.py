@@ -292,3 +292,35 @@ def test_smoke_5d_insufficient_trade_days_raises(tmp_path) -> None:
 
     with pytest.raises(ValueError):
         up.smoke_test_5d(["sh.600000"], "2024-01-31")
+
+
+# ══════════════════════════════════════════════════════════════════════
+# ④ 坏分区 fail-closed（PartitionCorruptError）
+# ══════════════════════════════════════════════════════════════════════
+
+def test_corrupt_partition_raises_on_watermark(tmp_path) -> None:
+    """坏分区 ⇒ last_partition_date 显式 raise（⛔ 不许跳过用过新水位烙印数据洞）。"""
+    col = _make_collector(tmp_path, _make_fetch_fn())
+    up = inc.IncrementalUpdater(col, trade_calendar=_trade_calendar)
+    up.update(["sh.600000"], "2024-01-10")
+    # 破坏一个年份分区（写垃圾字节）
+    bad = tmp_path / "sh.600000" / "2024.parquet"
+    bad.write_bytes(b"not-a-parquet-file")
+    with pytest.raises(inc.PartitionCorruptError, match="2024.parquet"):
+        up.last_partition_date("sh.600000")
+
+
+def test_corrupt_partition_marks_symbol_failed_not_silent(tmp_path) -> None:
+    """批量更新：坏分区 symbol 记 state='failed'（显式），其他 symbol 不受影响。"""
+    col = _make_collector(tmp_path, _make_fetch_fn())
+    up = inc.IncrementalUpdater(col, trade_calendar=_trade_calendar)
+    up.update(["sh.600000"], "2024-01-10")
+    (tmp_path / "sh.600000" / "2024.parquet").write_bytes(b"junk")
+
+    res = up.update(["sh.600000", "sz.000001"], "2024-01-20")
+    r_bad = res["sh.600000"]
+    assert r_bad.state == "failed"
+    assert r_bad.meta["reason"] == "partition_corrupt"
+    assert "2024.parquet" in r_bad.meta["error"]
+    # 健康 symbol 正常完成（批量韧性，不被单点污染拖死）
+    assert res["sz.000001"].state == "ok"

@@ -49,8 +49,16 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
     "IncrementResult", "SmokeReport",
-    "IncrementalUpdater",
+    "IncrementalUpdater", "PartitionCorruptError",
 ]
+
+
+class PartitionCorruptError(RuntimeError):
+    """分区文件损坏 ⇒ 水位无法可信计算。
+
+    ⛔ 不得跳过续采：跳过 = 用「其他可读分区的过新水位」当水位，坏年留下的
+    数据洞会被永久烙进存储（幂等承诺失效）。损坏必须显式失败。
+    """
 
 #: 首次全量采集的默认起点（系统回测自 2015-01-01，数据字典 §4.1）。
 DEFAULT_START_DATE = "2015-01-01"
@@ -130,9 +138,12 @@ class IncrementalUpdater:
         for pf in sorted(pdir.glob("*.parquet")):
             try:
                 frame = pd.read_parquet(pf, engine="pyarrow", columns=["date"])
-            except Exception as exc:  # noqa: BLE001 - 坏分区如实记账不吞
-                logger.warning("读分区失败 %s: %s", pf, exc)
-                continue
+            except Exception as exc:
+                # ⛔ Fail-Closed：坏分区不能跳过——跳过会让 max_d 取自「其他年份」，
+                # 续采起点越过坏年，数据洞被永久烙印（幂等承诺失效）。显式 raise。
+                raise PartitionCorruptError(
+                    f"读分区失败 {pf}: {exc}（⛔ 水位不可信，拒绝继续——"
+                    f"请先修复/重采该分区）") from exc
             if frame.empty:
                 continue
             d = pd.to_datetime(frame["date"]).max().date()
@@ -158,7 +169,15 @@ class IncrementalUpdater:
         out: dict[str, IncrementResult] = {}
         end_d = pd.to_datetime(end_date).date()
         for symbol in symbols:
-            last = self.last_partition_date(symbol)
+            try:
+                last = self.last_partition_date(symbol)
+            except PartitionCorruptError as exc:
+                # 坏分区 ⇒ 该 symbol 记 failed（显式可见），不拖累批量里其他标的
+                out[symbol] = IncrementResult(
+                    symbol=symbol, state="failed",
+                    start_date="", end_date=end_date,
+                    meta={"reason": "partition_corrupt", "error": str(exc)})
+                continue
             if start_date is not None:
                 req_start = start_date
             elif last is not None:
