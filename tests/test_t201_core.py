@@ -306,6 +306,19 @@ def test_tx_hash_changes_when_payload_changes():
     assert compute_tx_hash(dict(_entry_payload(), volume=200)) != base
 
 
+def test_tx_hash_normalizes_negative_zero():
+    """Decimal("-0") 与 Decimal("0") 语义等价 → 必须同 hash。
+
+    normalize() 后 str 为 "-0"，不归一会让同一语义的零值在不同计算路径
+    下产出不同 tx_hash（幂等键分裂）。
+    """
+    base = _entry_payload()
+    assert compute_tx_hash(dict(base, amount=D("-0"))) == compute_tx_hash(
+        dict(base, amount=D("0")))
+    assert compute_tx_hash(dict(base, amount=D("-0.00"))) == compute_tx_hash(
+        dict(base, amount=D("0")))
+
+
 def test_tx_hash_rejects_float_amount():
     """float 入账直接 raise（精度不可复现 → 禁止）。"""
     with pytest.raises(LedgerError):

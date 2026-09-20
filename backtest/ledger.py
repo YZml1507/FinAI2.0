@@ -104,7 +104,9 @@ def _canonicalize(value: Any) -> Any:
         # 归一化去掉尾随零，保证 Decimal("10") 与 Decimal("10.00") 同 hash
         normalized = value.normalize()
         text = format(normalized, "f")
-        return text
+        # 负零归一：Decimal("-0") == Decimal("0") 但 str 为 "-0"，不归一会
+        # 让同一语义的零值在不同路径下产出不同 tx_hash
+        return "0" if text == "-0" else text
     if isinstance(value, bool):
         return value
     if isinstance(value, Enum):
