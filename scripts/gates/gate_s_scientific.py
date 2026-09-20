@@ -58,7 +58,24 @@ class TurnoverCeilingGate(BaseGate):
                 evidence=self.evidence,
             )
 
-        t_val = float(turnover)
+        try:
+            t_val = float(turnover)
+        except (TypeError, ValueError, ArithmeticError):
+            t_val = float("nan")
+        # ⛔ Fail-Closed：负值/NaN/inf 是不可能的换手率 ⇒ 产物指标损坏，判 FAIL（qa_final_round §73）
+        # NaN>=0 为 False 已被 not() 覆盖；-inf/+inf 同理拦截
+        if not (0.0 <= t_val < float("inf")):
+            return GateResult(
+                gate_id=self.gate_id,
+                name=self.name,
+                category=self.category,
+                status=GateStatus.FAIL,
+                severity=self.severity,
+                message=f"年化单边换手率为非法值 {turnover!r}（负值/NaN/inf 不可能），产物指标损坏",
+                metrics={"annualized_turnover_raw": str(turnover)},
+                threshold=self.threshold_desc,
+                evidence=self.evidence,
+            )
         if t_val > self.max_turnover:
             return GateResult(
                 gate_id=self.gate_id,

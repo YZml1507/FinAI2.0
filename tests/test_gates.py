@@ -562,6 +562,26 @@ class TestSGate:
         assert res.status == GateStatus.FAIL
         assert "超过散户硬顶 400%" in res.message
 
+    def test_s1_turnover_ceiling_fail_negative(self):
+        # qa_final_round §73：负值换手率此前静默 PASS（只判上界），现为 fail-closed
+        gate = TurnoverCeilingGate(max_turnover=4.0)
+        res = gate.evaluate({"annualized_turnover": -3.0})
+        assert res.status == GateStatus.FAIL
+        assert "非法值" in res.message
+
+    def test_s1_turnover_ceiling_fail_nan_inf(self):
+        gate = TurnoverCeilingGate(max_turnover=4.0)
+        for bad in [float("nan"), float("inf"), float("-inf"), "abc"]:
+            res = gate.evaluate({"annualized_turnover": bad})
+            assert res.status == GateStatus.FAIL, f"{bad!r} 应判 FAIL"
+            assert "非法值" in res.message
+
+    def test_s1_turnover_ceiling_pass_zero(self):
+        # 0 换手（全程空仓）是合法值
+        gate = TurnoverCeilingGate(max_turnover=4.0)
+        res = gate.evaluate({"annualized_turnover": 0.0})
+        assert res.status == GateStatus.PASS
+
     def test_s2_timing_exit_survival_pass(self):
         gate = TimingExitSurvivalGate()
         context = {
