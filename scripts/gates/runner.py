@@ -553,6 +553,8 @@ def run_post_run_gates(
             s2_ctx["breadth_defense_threshold"] = ctx["breadth_defense_threshold"]
         if "daily_positions_ratio" in ctx:
             s2_ctx["daily_positions_ratio"] = ctx["daily_positions_ratio"]
+        if "run_calendar_bounds" in ctx:
+            s2_ctx["run_calendar_bounds"] = ctx["run_calendar_bounds"]
         if "breadth_timing_grace_dates" in ctx:
             s2_ctx["timing_grace_dates"] = ctx["breadth_timing_grace_dates"]
     else:

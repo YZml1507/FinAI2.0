@@ -138,6 +138,20 @@ class TimingExitSurvivalGate(BaseGate):
                 thr = _get("breadth_defense_threshold", 0.20)
                 thr_f = float(thr)
                 below_dates = sorted(d for d, b in breadth_series.items() if float(b) < thr_f)
+                # 取证边界：宽度序列常覆盖回测窗口之外的日期（序列全程 vs 本轮
+                # [start,end]）——窗口外的冰点日本轮没有持仓可判，属「不适用」
+                # 而非「缺证据」。界优先取产出方声明的 run_calendar_bounds
+                # （本轮日历首尾），缺省回退 pos_ratios 键 min/max（其键集=
+                # 本轮交易日历）。界内缺 ratio 的冰点日仍由下方 missing_dates 捕获。
+                bounds = _get("run_calendar_bounds")
+                if bounds and len(bounds) == 2:
+                    _lo, _hi = str(bounds[0]), str(bounds[1])
+                elif pos_ratios:
+                    _lo, _hi = min(pos_ratios), max(pos_ratios)
+                else:
+                    _lo = _hi = None
+                if _lo is not None:
+                    below_dates = [d for d in below_dates if _lo <= d <= _hi]
                 criterion = "breadth"
             else:
                 # 宽度模式开启但缺宽度数据 ⇒ Fail-Closed，不得退回 MA200 口径

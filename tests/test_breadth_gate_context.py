@@ -110,3 +110,50 @@ def test_s2_ma200_caliber_still_works():
         "timing_grace_dates": ["2024-02-01"],
     })
     assert res.status == GateStatus.PASS, res.message
+
+
+def test_s2_breadth_out_of_window_ice_days_excluded():
+    """宽度序列覆盖回测窗口之外的日期 ⇒ 界外冰点是「不适用」而非「缺证据」。
+
+    回归锁：此前 below_dates 吃全序列 ⇒ 任何早于序列末尾结束的回测
+    永远 INCONCLUSIVE（界外日不可能有仓位比例）。界内缺失仍须拦。
+    """
+    from scripts.gates.gate_s_scientific import TimingExitSurvivalGate
+    from scripts.gates.base import GateStatus
+
+    ctx = _breadth_ctx({"2024-01-02": 1.0, "2024-01-03": 1.0,
+                        "2024-01-04": 0.0})
+    # 追加窗口外冰点日（2025 年，pos_ratios 不覆盖）
+    ctx["breadth_series"]["2025-06-01"] = 0.05
+    ctx["breadth_series"]["2025-06-02"] = 0.05
+    res = TimingExitSurvivalGate().evaluate(ctx)
+    assert res.status == GateStatus.PASS, res.message
+
+
+def test_s2_breadth_in_window_missing_ratio_still_inconclusive():
+    """界内冰点日缺仓位比例 ⇒ 仍 INCONCLUSIVE（窗口化不削弱缺证据拦截）。
+
+    窗口界用产出方声明的 run_calendar_bounds（与生产 ctx 同口径）——
+    即使该缺失日恰在 pos_ratios 键的边界上，声明界仍把它判为界内缺证据。
+    """
+    from scripts.gates.gate_s_scientific import TimingExitSurvivalGate
+    from scripts.gates.base import GateStatus
+
+    ctx = _breadth_ctx({"2024-01-02": 1.0, "2024-01-03": 0.0})
+    ctx["run_calendar_bounds"] = ["2024-01-02", "2024-01-04"]
+    # 2024-01-04 在声明窗口内但 pos_ratios 缺键 ⇒ 缺证据
+    res = TimingExitSurvivalGate().evaluate(ctx)
+    assert res.status == GateStatus.INCONCLUSIVE, res.message
+
+
+def test_s2_breadth_declared_bounds_exclude_series_tail():
+    """声明窗口裁剪全程序列：窗口后冰点日不参与判定（fix 回归锁）。"""
+    from scripts.gates.gate_s_scientific import TimingExitSurvivalGate
+    from scripts.gates.base import GateStatus
+
+    ctx = _breadth_ctx({"2024-01-02": 1.0, "2024-01-03": 1.0,
+                        "2024-01-04": 0.0})
+    ctx["run_calendar_bounds"] = ["2024-01-02", "2024-01-04"]
+    ctx["breadth_series"]["2025-06-01"] = 0.05   # 窗口后冰点日
+    res = TimingExitSurvivalGate().evaluate(ctx)
+    assert res.status == GateStatus.PASS, res.message

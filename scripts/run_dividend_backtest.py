@@ -318,6 +318,10 @@ def _build_post_run_gate_context(
         "code_evidence": "scripts/run_dividend_backtest.py + backtest/metrics.py (T205 PerformanceReport)",
         "index_below_ma200_dates": below_dates,
         "timing_grace_dates": _compute_timing_grace_dates(below_dates, cal_days),
+        # 本轮日历首尾：S-2 等门禁据此把全程序列（宽度/破位）裁到本轮窗口——
+        # 界外日期是「不适用」而非「缺证据」（产出方声明优于由键集反推）。
+        "run_calendar_bounds": (
+            [cal_days[0].isoformat(), cal_days[-1].isoformat()] if cal_days else []),
         "daily_positions_ratio": _compute_daily_positions_ratio(result, cal_days),
         "must_fail_results": must_fail,
         "failed_cases": [k for k, v in must_fail.items() if not v],
