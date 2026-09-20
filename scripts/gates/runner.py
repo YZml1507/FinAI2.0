@@ -355,19 +355,8 @@ def run_pre_run_gates(
                 for ev in exdiv_events[symbol]:
                     if getattr(ev, "date", None):
                         exdiv_dates.add(ev.date.isoformat() if hasattr(ev.date, "isoformat") else str(ev.date))
-            bars = []
-            prev_d_str = None
-            for idx, row in enumerate(df.itertuples()):
-                d_str = str(getattr(row, "date"))[:10]
-                is_ex = (
-                    bool(getattr(row, "is_exdiv", False))
-                    or (d_str in exdiv_dates)
-                    or (prev_d_str and any(prev_d_str < ed <= d_str for ed in exdiv_dates))
-                    or (idx < 5)
-                )
-                bars.append({"date": d_str, "close": float(getattr(row, "close")), "is_exdiv": is_ex})
-                prev_d_str = d_str
-            d1_results.append(d1_gate.evaluate({"bars": bars, "symbol": symbol}))
+            # 向量化快路径：整帧直交门禁（其内部完成 is_exdiv 标记与跳变判定，语义同逐行循环）
+            d1_results.append(d1_gate.evaluate({"frame": df, "exdiv_dates": exdiv_dates, "symbol": symbol}))
         # ⛔ Fail-Closed（GATE-R3）：逐票结果按 FAIL>INCONCLUSIVE>SKIP>PASS 汇总上抛——
         # ⛔ 不再「无 FAIL 即自造 PASS」（旧逻辑会掩蔽逐票 INCONCLUSIVE/SKIP；真实回测路径
         # 以 tables= 调用本函数，D-1 的 INCONCLUSIVE 曾被合成 PASS 绕开）。
@@ -407,16 +396,7 @@ def run_pre_run_gates(
         d4_results: list[GateResult] = []
         for symbol, df in tables.items():
             if "tradestatus" in df.columns and "volume" in df.columns and not df.empty:
-                has_date = "date" in df.columns
-                bars = [
-                    {
-                        "date": str(r["date"]) if has_date else "",
-                        "tradestatus": str(r["tradestatus"]),
-                        "volume": float(r["volume"]),
-                    }
-                    for _, r in df.iterrows()
-                ]
-                d4_results.append(d4_gate.evaluate({"bars": bars, "symbol": symbol}))
+                d4_results.append(d4_gate.evaluate({"frame": df, "symbol": symbol}))
         if d4_results:
             _check_result(_aggregate_gate_results(d4_gate, d4_results, "全部股票停牌日成交量检验"))
         else:

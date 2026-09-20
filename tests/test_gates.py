@@ -8,6 +8,7 @@
 import datetime
 from decimal import Decimal
 import os
+import pandas as pd
 import pytest
 
 from scripts.gates import (
@@ -148,6 +149,100 @@ class TestDGate:
         res = gate.evaluate({"bars": bars})
         assert res.status == GateStatus.FAIL
         assert "停牌日成交量非零脏数据" in res.message
+
+    # ------------------------------------------------------------------
+    # 向量化 frame 快路径等价性（audit 路径，须与逐行循环逐位同义）
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _legacy_d1_bars(rows, exdiv_dates):
+        """复刻 runner 旧逐行 is_exdiv 标记逻辑（对照基线）。"""
+        bars, prev_d = [], None
+        for idx, (d_str, close) in enumerate(rows):
+            is_ex = (
+                d_str in exdiv_dates
+                or (prev_d and any(prev_d < ed <= d_str for ed in exdiv_dates))
+                or (idx < 5)
+            )
+            bars.append({"date": d_str, "close": close, "is_exdiv": is_ex})
+            prev_d = d_str
+        return bars
+
+    @staticmethod
+    def _mk_frame(rows, **extra_cols):
+        df = pd.DataFrame(
+            {"date": [r[0] for r in rows], "close": [r[1] for r in rows]}
+        )
+        for k, v in extra_cols.items():
+            df[k] = v
+        return df
+
+    @pytest.mark.parametrize("seed", range(8))
+    def test_d1_frame_path_equivalent_to_row_loop(self, seed):
+        """同一合成数据上 frame 路径与逐行 bars 路径判定结果逐位一致。"""
+        import random
+        rng = random.Random(seed)
+        base = datetime.date(2024, 1, 1)
+        rows, price = [], 10.0
+        for i in range(60):
+            d = (base + datetime.timedelta(days=i)).isoformat()
+            price *= 1 + rng.uniform(-0.06, 0.06)
+            if i in (20, 41):                     # 注入两处 >30% 跳变
+                price *= 0.55 if i == 20 else 2.1
+            rows.append((d, round(price, 4)))
+        exdiv_dates = {(base + datetime.timedelta(days=20)).isoformat()}  # 豁免第 20 行跳变
+        frame = self._mk_frame(rows)
+        bars = self._legacy_d1_bars(rows, exdiv_dates)
+
+        gate = RawPriceJumpGate(max_jump_ratio=0.30)
+        r_frame = gate.evaluate({"frame": frame, "exdiv_dates": exdiv_dates, "symbol": "t"})
+        r_bars = gate.evaluate({"bars": bars, "symbol": "t"})
+        assert r_frame.status == r_bars.status
+        assert r_frame.metrics.get("valid_pairs") == r_bars.metrics.get("valid_pairs")
+        assert r_frame.metrics.get("violations_count") == r_bars.metrics.get("violations_count")
+        assert r_frame.metrics.get("max_jump_pct") == r_bars.metrics.get("max_jump_pct")
+
+    def test_d1_frame_exdiv_interval_rule(self):
+        """除权日落在两个交易日之间（非交易日除权）⇒ 后一交易日行标记豁免。"""
+        gate = RawPriceJumpGate(max_jump_ratio=0.30)
+        rows = [("2024-01-0%d" % i, c) for i, c in
+                zip([2, 3, 4, 5, 8, 9, 10, 11], [20, 20, 20, 20, 10, 10, 10, 10])]
+        exdiv_dates = {"2024-01-06"}          # 周六除权 → 01-08 行被区间规则豁免
+        frame = self._mk_frame(rows)
+        res = gate.evaluate({"frame": frame, "exdiv_dates": exdiv_dates, "symbol": "t"})
+        assert res.status == GateStatus.PASS
+
+    def test_d1_frame_is_exdiv_column_and_head5(self):
+        """帧自带 is_exdiv 列生效；且首 5 行豁免（与原实现一致）。"""
+        gate = RawPriceJumpGate(max_jump_ratio=0.30)
+        rows = [(f"2024-01-{i:02d}", c) for i, c in
+                zip(range(1, 9), [10, 5, 10, 15, 10, 10, 10, 10])]
+        frame = self._mk_frame(rows, is_exdiv=[False, True, False, False, False, False, False, False])
+        res = gate.evaluate({"frame": frame, "symbol": "t"})
+        assert res.status == GateStatus.PASS   # 行1 is_exdiv 豁免 + 行2~4 在首5行内豁免
+
+    def test_d1_frame_edge_cases(self):
+        gate = RawPriceJumpGate(max_jump_ratio=0.30)
+        assert gate.evaluate({"frame": self._mk_frame([("2024-01-02", 1.0)]), "symbol": "t"}).status == GateStatus.INCONCLUSIVE
+        # 全部 prev_close<=0 → 无有效对 → INCONCLUSIVE
+        frame = self._mk_frame([("2024-01-02", 0.0), ("2024-01-03", 5.0), ("2024-01-04", 6.0)])
+        res = gate.evaluate({"frame": frame, "symbol": "t"})
+        assert res.status == GateStatus.PASS   # 5→6 是有效对且正常
+
+    def test_d4_frame_path(self):
+        gate = SuspensionVolumeGate()
+        df = pd.DataFrame({
+            "date": ["2024-01-02", "2024-01-03", "2024-01-04"],
+            "tradestatus": ["1", "0", "1"],
+            "volume": [100000.0, 0.0, 90000.0],
+        })
+        assert gate.evaluate({"frame": df}).status == GateStatus.PASS
+        df.loc[1, "volume"] = 5000.0
+        res = gate.evaluate({"frame": df})
+        assert res.status == GateStatus.FAIL
+        assert "停牌日成交量非零脏数据" in res.message
+        df2 = df[df["tradestatus"] == "1"]
+        assert gate.evaluate({"frame": df2}).status == GateStatus.SKIP
 
     def test_d5_high_price_lot_pass(self):
         gate = HighPriceLotGate()

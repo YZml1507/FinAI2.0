@@ -47,21 +47,22 @@ class RawPriceJumpGate(BaseGate):
 
         bars = context.get("bars") if isinstance(context, dict) else getattr(context, "bars", None)
         symbol = context.get("symbol", "UNKNOWN") if isinstance(context, dict) else getattr(context, "symbol", "UNKNOWN")
+
+        # 向量化快路径：context 携带 "frame"（含 date/close 列日线帧，可含 is_exdiv 列）时，
+        # 以 numpy 全帧评估（与逐行循环同语义：exdiv 区间规则 prev_d < ed <= d、首 5 行豁免、
+        # max_seen_jump 覆盖全部 valid 对）——前置门禁逐票全帧扫描的 128s 热点在此。
+        frame = context.get("frame") if isinstance(context, dict) else getattr(context, "frame", None)
+        if frame is not None:
+            exdiv_dates = (
+                context.get("exdiv_dates") if isinstance(context, dict) else getattr(context, "exdiv_dates", None)
+            ) or set()
+            return self._evaluate_frame(frame, exdiv_dates, symbol)
+
         bars = list(bars or [])
 
         # ⛔ Fail-Closed：缺 bars / 样本不足 2 条 ⇒ INCONCLUSIVE（无证据 ≠ 通过；⛔ 不得 len(None) 崩溃）
         if len(bars) < 2:
-            return GateResult(
-                gate_id=self.gate_id,
-                name=self.name,
-                category=self.category,
-                status=GateStatus.INCONCLUSIVE,
-                severity=self.severity,
-                message=f"[{symbol}] 原始日线样本不足 2 条，无法判定跳变率（无证据 ≠ 通过）",
-                metrics={"bars_count": len(bars)},
-                threshold=self.threshold_desc,
-                evidence=self.evidence,
-            )
+            return self._result_insufficient(symbol, len(bars))
 
         violations = []
         max_seen_jump = 0.0
@@ -93,40 +94,121 @@ class RawPriceJumpGate(BaseGate):
                 })
 
         if violations:
-            return GateResult(
-                gate_id=self.gate_id,
-                name=self.name,
-                category=self.category,
-                status=GateStatus.FAIL,
-                severity=self.severity,
-                message=f"[{symbol}] 检出 {len(violations)} 处异常日跳变 (最大 {max_seen_jump*100:.1f}%)，疑存脏日线或后复权污染",
-                metrics={"violations_count": len(violations), "max_jump_pct": round(max_seen_jump * 100, 2), "samples": violations[:3]},
-                threshold=self.threshold_desc,
-                evidence=self.evidence,
-            )
+            return self._result_fail(symbol, violations, max_seen_jump)
 
         # ⛔ Fail-Closed：有 bars 但无任何"前收 > 0"的相邻可比对 ⇒ 无法计算跳变率 ⇒ INCONCLUSIVE（不得记 PASS）。
         if valid_pairs == 0:
-            return GateResult(
-                gate_id=self.gate_id,
-                name=self.name,
-                category=self.category,
-                status=GateStatus.INCONCLUSIVE,
-                severity=self.severity,
-                message=f"[{symbol}] 有 {len(bars)} 根日线，但无任何前收盘价 > 0 的可比对相邻日，无法计算跳变率（退化输入 ≠ 通过）",
-                metrics={"bars_count": len(bars), "valid_pairs": 0},
-                threshold=self.threshold_desc,
-                evidence=self.evidence,
-            )
+            return self._result_no_valid_pairs(symbol, len(bars))
 
+        return self._result_pass(symbol, len(bars), valid_pairs, max_seen_jump)
+
+    def _evaluate_frame(self, frame: Any, exdiv_dates: Any, symbol: str) -> GateResult:
+        """向量化评估路径（context['frame']）。语义与逐行循环严格一致：
+
+        - is_exdiv[i] = 帧自带 is_exdiv 列 OR date 命中 exdiv_dates OR
+          ∃ed∈exdiv_dates 使 d[i-1] < ed <= d[i]（区间规则，捕捉落在非交易日的除权事件）
+          OR i < 5（首 5 行豁免，与原实现一致）
+        - 相邻对 (i-1, i) 中 c_prev <= 0 的不计入 valid_pairs
+        - violations = jump >= max_jump_ratio 且 curr 非 exdiv
+        """
+        import numpy as np
+
+        n = len(frame)
+        if n < 2:
+            return self._result_insufficient(symbol, n)
+
+        d_arr = frame["date"].astype(str).str[:10].to_numpy()
+        close = frame["close"].astype(float).to_numpy(dtype=float)
+
+        if "is_exdiv" in frame.columns:
+            is_ex = frame["is_exdiv"].fillna(False).to_numpy(dtype=bool, copy=True)
+        else:
+            is_ex = np.zeros(n, dtype=bool)
+        if exdiv_dates:
+            eds = sorted(str(ed)[:10] for ed in exdiv_dates)
+            is_ex |= np.isin(d_arr, eds)
+            # 区间规则：对每个除权日 ed，标记首个 d >= ed 且其前一行 < ed 的行
+            for ed in eds:
+                pos = int(np.searchsorted(d_arr, ed))
+                if pos < n and (pos == 0 or d_arr[pos - 1] < ed):
+                    is_ex[pos] = True
+        is_ex[: min(5, n)] = True
+
+        c_prev = close[:-1]
+        c_curr = close[1:]
+        valid = c_prev > 0
+        valid_pairs = int(valid.sum())
+
+        jumps = np.zeros(n - 1, dtype=float)
+        jumps[valid] = np.abs(c_curr[valid] - c_prev[valid]) / c_prev[valid]
+        max_seen_jump = float(jumps.max()) if n > 1 else 0.0
+
+        viol_idx = np.nonzero(valid & (jumps >= self.max_jump_ratio) & ~is_ex[1:])[0]
+        if len(viol_idx):
+            violations = [
+                {
+                    "date": str(d_arr[i + 1]),
+                    "prev_close": float(c_prev[i]),
+                    "curr_close": float(c_curr[i]),
+                    "jump_pct": round(float(jumps[i]) * 100, 2),
+                }
+                for i in viol_idx
+            ]
+            return self._result_fail(symbol, violations, max_seen_jump)
+
+        if valid_pairs == 0:
+            return self._result_no_valid_pairs(symbol, n)
+
+        return self._result_pass(symbol, n, valid_pairs, max_seen_jump)
+
+    def _result_insufficient(self, symbol: str, n_bars: int) -> GateResult:
+        return GateResult(
+            gate_id=self.gate_id,
+            name=self.name,
+            category=self.category,
+            status=GateStatus.INCONCLUSIVE,
+            severity=self.severity,
+            message=f"[{symbol}] 原始日线样本不足 2 条，无法判定跳变率（无证据 ≠ 通过）",
+            metrics={"bars_count": n_bars},
+            threshold=self.threshold_desc,
+            evidence=self.evidence,
+        )
+
+    def _result_no_valid_pairs(self, symbol: str, n_bars: int) -> GateResult:
+        return GateResult(
+            gate_id=self.gate_id,
+            name=self.name,
+            category=self.category,
+            status=GateStatus.INCONCLUSIVE,
+            severity=self.severity,
+            message=f"[{symbol}] 有 {n_bars} 根日线，但无任何前收盘价 > 0 的可比对相邻日，无法计算跳变率（退化输入 ≠ 通过）",
+            metrics={"bars_count": n_bars, "valid_pairs": 0},
+            threshold=self.threshold_desc,
+            evidence=self.evidence,
+        )
+
+    def _result_fail(self, symbol: str, violations: list, max_seen_jump: float) -> GateResult:
+        return GateResult(
+            gate_id=self.gate_id,
+            name=self.name,
+            category=self.category,
+            status=GateStatus.FAIL,
+            severity=self.severity,
+            message=f"[{symbol}] 检出 {len(violations)} 处异常日跳变 (最大 {max_seen_jump*100:.1f}%)，疑存脏日线或后复权污染",
+            metrics={"violations_count": len(violations), "max_jump_pct": round(max_seen_jump * 100, 2), "samples": violations[:3]},
+            threshold=self.threshold_desc,
+            evidence=self.evidence,
+        )
+
+    def _result_pass(self, symbol: str, n_bars: int, valid_pairs: int, max_seen_jump: float) -> GateResult:
         return GateResult(
             gate_id=self.gate_id,
             name=self.name,
             category=self.category,
             status=GateStatus.PASS,
             severity=self.severity,
-            message=f"[{symbol}] 连续 {len(bars)} 根日线跳变率正常 (最大跳变 {max_seen_jump*100:.1f}%)",
-            metrics={"bars_count": len(bars), "valid_pairs": valid_pairs, "max_jump_pct": round(max_seen_jump * 100, 2)},
+            message=f"[{symbol}] 连续 {n_bars} 根日线跳变率正常 (最大跳变 {max_seen_jump*100:.1f}%)",
+            metrics={"bars_count": n_bars, "valid_pairs": valid_pairs, "max_jump_pct": round(max_seen_jump * 100, 2)},
             threshold=self.threshold_desc,
             evidence=self.evidence,
         )
@@ -343,6 +425,13 @@ class SuspensionVolumeGate(BaseGate):
                 evidence=self.evidence,
             )
 
+        # 向量化快路径：context 携带 "frame"（含 tradestatus/volume 列日线帧）时全帧评估——
+        # 与逐行循环同语义（tradestatus != '1' 视为停牌、停牌日 volume>0 即违例、
+        # 无停牌日判 SKIP 不适用）。消除前置门禁逐票 iterrows 造 dict 的热点。
+        frame = context.get("frame") if isinstance(context, dict) else getattr(context, "frame", None)
+        if frame is not None:
+            return self._evaluate_frame(frame)
+
         bars = context.get("bars", []) if isinstance(context, dict) else getattr(context, "bars", [])
         if not bars:
             # ⛔ Fail-Closed：无日线证据 ⇒ INCONCLUSIVE（无证据 ≠ 通过）
@@ -394,6 +483,73 @@ class SuspensionVolumeGate(BaseGate):
                 severity=self.severity,
                 message=f"样本内 {len(bars)} 根日线无任何停牌交易日（tradestatus != '1'），停牌日成交量检验不适用（有证据表明不适用）",
                 metrics={"bars_count": len(bars), "suspended_days": 0},
+                threshold=self.threshold_desc,
+                evidence=self.evidence,
+            )
+
+        return GateResult(
+            gate_id=self.gate_id,
+            name=self.name,
+            category=self.category,
+            status=GateStatus.PASS,
+            severity=self.severity,
+            message=f"停牌日成交量检验通过 (共 {suspended_days} 个停牌日成交量均为 0)",
+            metrics={"suspended_days": suspended_days},
+            threshold=self.threshold_desc,
+            evidence=self.evidence,
+        )
+
+    def _evaluate_frame(self, frame: Any) -> GateResult:
+        """向量化评估路径（context['frame']）：tradestatus != '1' 为停牌日，
+        停牌日 volume > 0 判违例；无停牌日判 SKIP。与逐行循环同语义。"""
+        import numpy as np
+
+        n = len(frame)
+        if n == 0:
+            return GateResult(
+                gate_id=self.gate_id,
+                name=self.name,
+                category=self.category,
+                status=GateStatus.INCONCLUSIVE,
+                severity=self.severity,
+                message="无日线数据，无法判定停牌日成交量是否为零（无证据 ≠ 通过）",
+                threshold=self.threshold_desc,
+                evidence=self.evidence,
+            )
+
+        status = frame["tradestatus"].astype(str).to_numpy()
+        volume = frame["volume"].astype(float).to_numpy(dtype=float)
+        susp = status != "1"
+        suspended_days = int(susp.sum())
+
+        viol_idx = np.nonzero(susp & (volume > 0))[0]
+        if len(viol_idx):
+            dates = frame["date"].astype(str).to_numpy() if "date" in frame.columns else np.array([""] * n)
+            violations = [
+                {"date": str(dates[i]), "tradestatus": str(status[i]), "volume": float(volume[i])}
+                for i in viol_idx
+            ]
+            return GateResult(
+                gate_id=self.gate_id,
+                name=self.name,
+                category=self.category,
+                status=GateStatus.FAIL,
+                severity=self.severity,
+                message=f"检出 {len(violations)} 处停牌日成交量非零脏数据",
+                metrics={"violations_count": len(violations), "samples": violations[:3]},
+                threshold=self.threshold_desc,
+                evidence=self.evidence,
+            )
+
+        if suspended_days == 0:
+            return GateResult(
+                gate_id=self.gate_id,
+                name=self.name,
+                category=self.category,
+                status=GateStatus.SKIP,
+                severity=self.severity,
+                message=f"样本内 {n} 根日线无任何停牌交易日（tradestatus != '1'），停牌日成交量检验不适用（有证据表明不适用）",
+                metrics={"bars_count": n, "suspended_days": 0},
                 threshold=self.threshold_desc,
                 evidence=self.evidence,
             )
