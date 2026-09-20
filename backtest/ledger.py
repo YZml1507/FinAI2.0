@@ -275,7 +275,7 @@ class Journal:
         """从头重放构建 BookView（验证性：与在线视图逐字段比对可查账本漂移）。
 
         只重放**可推导**的条目：CASH_IN / TRADE / DIVIDEND / FEE / EXDIV_ADJUST
-        / CASH_INTEREST。
+        / CASH_INTEREST / DIVIDEND_TAX（红利税 amount 为负，现金流出）。
         SETTLE 只携带快照，不参与推导（市值须由 bars 重新刷新）。
         """
         first_date = initial_date or (
@@ -287,6 +287,7 @@ class Journal:
             if entry.entry_type in (
                 JournalType.CASH_IN,
                 JournalType.DIVIDEND,
+                JournalType.DIVIDEND_TAX,
                 JournalType.FEE,
                 JournalType.CASH_INTEREST,
             ):

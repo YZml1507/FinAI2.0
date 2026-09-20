@@ -675,6 +675,26 @@ def test_cash_interest_accrues_on_settle():
     assert ledger.journal.replay().cash == ledger.cash
 
 
+def test_journal_replay_includes_dividend_tax():
+    """DIVIDEND_TAX 流水（amount<0 现金流出）必须参与重放——漏放会让
+    重建现金偏高，漂移校验假阳性。"""
+    ledger = Ledger(D("100000"), date=_D1)
+    tax = D("123.45")
+    ledger.journal.append(JournalEntry.create(
+        date=_D1,
+        entry_type=JournalType.DIVIDEND_TAX,
+        symbol="sh.600000",
+        amount=-tax,
+        fees={FeeItem.DIVIDEND_TAX: tax},
+        ref_id="DIVTAX:sh.600000:2024-01-04",
+    ))
+    # 模拟 broker 侧同步扣款
+    ledger.book.cash -= tax
+    ledger.book.recompute_nav()
+    replayed = ledger.journal.replay()
+    assert replayed.cash == ledger.cash == D("100000") - tax
+
+
 def test_cash_interest_default_zero_noop():
     """默认不计息：无 CASH_INTEREST 流水，现金不变。"""
     ledger = Ledger(D("100000"), date=_D1)
