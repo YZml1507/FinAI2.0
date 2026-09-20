@@ -618,8 +618,9 @@ def run_dividend_backtest_2015_2024(
         etf = pd.concat(_frames, ignore_index=True).sort_values("date")
         etf = etf.reset_index(drop=True)
         # ETF 无 preclose 列 ⇒ 由上一交易日 close 合成（涨跌停标记需要）；
-        # isST='0'（baostock 口径，ETF 无 ST 制度）；无 tradestatus ⇒ feed 跳过滤
-        etf["preclose"] = etf["close"].shift(1)
+        # 首行 NaN 回填为当日 close（日收益=0，无幻觉跳空）——否则 NaN→Decimal
+        # 后任何比较都抛 InvalidOperation（⛔ 数据起点落在窗口内即崩）
+        etf["preclose"] = etf["close"].shift(1).fillna(etf["close"])
         etf["isST"] = "0"   # baostock 口径 '0'/'1' 字符串（ETF 无 ST 制度）
         tables[_attack_instr] = etf
         _etf_exdiv = _etf_dir / "exdiv.parquet"
