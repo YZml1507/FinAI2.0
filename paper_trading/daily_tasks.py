@@ -192,7 +192,7 @@ class DailyTaskRunner:
 
             # ===== 6. 结算 =====
             logger.info("[6/10] 结算中...")
-            book = self.broker.ledger.book_view()
+            book = self.broker.book
             settle_report = settle_day_detail(book, trade_date, bars, exdiv_events)
             report.nav = settle_report.nav
             report.cash = book.cash

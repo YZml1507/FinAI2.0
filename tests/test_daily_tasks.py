@@ -49,13 +49,13 @@ def mock_broker():
     broker.match_pending_orders = Mock(return_value=[])
     broker.ledger = Mock()
     broker.ledger.process_exdiv = Mock()
-    broker.ledger.book_view = Mock(return_value=Mock(
+    broker.book = Mock(
         cash=Decimal("100000"),
         frozen_cash=_ZERO,
         nav=Decimal("100000"),
         positions={},
         date=dt(2026, 9, 2),
-    ))
+    )
     return broker
 
 
