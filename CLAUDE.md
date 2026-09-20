@@ -39,6 +39,8 @@ A 股中低频**长仓（long-only）日线**量化系统。**代码在本仓（
 
 - ✅ **e21 复现硬化（2026-09-20）**：一键复现脚本 `scripts/repro/reproduce_final_delivery.{py,sh}`（三臂容差-0 比对），数据 Release `data-20260920b` 已发（GC001→2026-09-18 + ETF 续版）；交付书 §八。
 
+- 🔐 **安全加固（2026-09-20）**：代理 key 硬编码事故（公开仓历史已泄露，待轮换）→ 全仓改经 `scripts/_secrets.py::require_env` 读取，新增 `test_no_hardcoded_secrets.py` 扫描门禁；测试基线 1139。
+
 ## 1. 两仓纪律（最重要）
 
 | | 本地路径 | GitHub 远程 | 角色 |

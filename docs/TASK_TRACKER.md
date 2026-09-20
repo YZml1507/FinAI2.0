@@ -8,6 +8,13 @@
   数据续版 `data-20260920b`（GC001→2026-09-18、ETF 2025/26 分区，
   MD5 db22da0c…5234cd）。交付书 §八 登记复现路径。
 
+- **安全加固（2026-09-20）**：datahubco/promax 代理 key 曾以字面量硬编码进
+  5 个采集脚本并入公开仓历史（自 14ae0f0 起）——**安全事件，用户已被通知轮换
+  密钥**。已改读 `.env`/环境变量（`scripts/_secrets.py::require_env`，缺失
+  fail-closed 不回显值）；新增 `tests/test_no_hardcoded_secrets.py` 扫描门禁
+  （git ls-files 全树，命中即 FAIL，重插入实测会红）。另修两处旧机路径硬编码
+  `ROOT=/home/ubuntu/FinAI2.0` → `__file__` 相对定位。
+
 ## 当前接续（2026-09-20 e20 收单窗口）：OOS 留出检验收单——红旗触线，模拟盘不建议启动
 
 - **e20 样本外留出检验已收单**（预登记 `docs/E20_OOS_HOLDOUT_PREREG.md`

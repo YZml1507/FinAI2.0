@@ -28,14 +28,17 @@ from pathlib import Path
 import pandas as pd
 import requests
 
-ROOT = Path('/home/ubuntu/FinAI2.0')
+ROOT = Path(__file__).resolve().parents[2]
 LAB = ROOT / 'experiments/lab/market-breadth-a'
 OUT_DIR = LAB / 'delisted_bars'
 REPORT = LAB / 'DELISTED_COLLECTION_REPORT.json'
 DONE_SUFFIX = '.done'
 
 URL = 'http://datahubco.com/app-api/openapi/v1/tushare/daily'
-KEY = 'dba548a206a453c197f9175189b757374fa6db9554bb29e69efea127'
+sys.path.insert(0, str(ROOT))
+from scripts._secrets import require_env  # noqa: E402
+
+KEY = None  # ⛔ 不再硬编码；fetch 时经 require_env 惰性取 DATAHUBCO_API_KEY
 WINDOW_START = '2015-01-01'
 WINDOW_END = '2024-12-31'
 SLEEP = 0.12
@@ -65,7 +68,7 @@ def fetch_year(ts_code: str, y0: str, y1: str) -> list:
     for attempt in range(RETRIES):
         try:
             r = requests.get(URL, params=params,
-                             headers={'X-API-Key': KEY}, timeout=TIMEOUT)
+                             headers={'X-API-Key': require_env('DATAHUBCO_API_KEY')}, timeout=TIMEOUT)
             j = r.json()
             if r.status_code == 200:
                 return (j.get('data') or {}).get('items', []) or []
