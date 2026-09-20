@@ -317,9 +317,12 @@ def mark_limit_flags(
         raise InvalidPriceError(
             "close 存在 NaN/非数值 —— ⛔ 不按'未触板'静默处理（该行涨跌停不可判定）")
     pre = pd.to_numeric(out["preclose"], errors="coerce")
-    st = out["isST"].map(_is_st)
-    # code 在单标的帧内恒定——按 unique 值算阈值再映射（逐行 _code_digits
-    # 全字符串扫描是 feed 派生层热点，~6M 次 isdigit/全窗）。
+    # isST/code 在单标的帧内取值极少（'0'/'1'、同一代码）——按 unique 值
+    # 预映射再 map（逐行 Python 回调是 feed 派生层热点：_code_digits 全字符串
+    # 扫描 ~6M 次 isdigit/全窗）。fail-closed 语义保持：isST 含 NaN/非法值 ⇒
+    # 建映射时 _is_st 即 raise InvalidIsSTError（同原逐行路径，仅时机提前）。
+    st_map = {v: _is_st(v) for v in out["isST"].unique()}
+    st = out["isST"].map(st_map)
     thr_map = {c: board_limit_pct(c, cfg) for c in out["code"].unique()}
     board_thr = out["code"].map(thr_map)
     thr = pd.Series(
