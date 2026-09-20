@@ -15,7 +15,7 @@ daily_basic sidecar). No high/low extremes are produced by this axis.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Iterable
 

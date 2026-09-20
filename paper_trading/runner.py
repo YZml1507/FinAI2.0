@@ -34,7 +34,7 @@ from typing import Any
 
 from backtest.feed import ParquetDailyFeed
 from backtest.fees import make_fee_model, make_price_model
-from backtest.ledger import BookView, Ledger
+from backtest.ledger import Ledger
 from backtest.matching import MatchEngine
 from data.collector import DailyCollector
 from data.incremental import IncrementalUpdater

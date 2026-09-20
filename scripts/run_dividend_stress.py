@@ -16,7 +16,7 @@
 """
 import sys
 from pathlib import Path
-from datetime import date, timedelta
+from datetime import timedelta
 from decimal import Decimal as D
 
 # 添加项目根到 sys.path

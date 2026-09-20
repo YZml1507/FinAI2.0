@@ -13,8 +13,6 @@ from __future__ import annotations
 
 import json
 import sys
-from datetime import date as _date
-from decimal import Decimal
 from pathlib import Path
 import pandas as pd
 
@@ -22,7 +20,6 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from backtest.constants import FeeItem
 
 
 def audit_dividend_tax_call_chain() -> dict:

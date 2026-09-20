@@ -31,7 +31,7 @@ from typing import Any
 
 from backtest.broker import BacktestBroker
 from backtest.constants import OrderSide, OrderStatus
-from backtest.ledger import Ledger, Position
+from backtest.ledger import Position
 from backtest.types import Order
 
 logger = logging.getLogger(__name__)

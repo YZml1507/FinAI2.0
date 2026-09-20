@@ -57,7 +57,6 @@ import pandas as pd
 import requests
 
 from finai.sources.base import (
-    EMPTY_OK,
     FetchResult,
     classify_exception,
     make_result,

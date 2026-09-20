@@ -10,16 +10,13 @@ from __future__ import annotations
 import argparse
 import datetime
 import json
-import os
 import sys
 from typing import Any, Sequence
 
 from .base import (
     BaseGate,
     GateBlockerError,
-    GateCategory,
     GateResult,
-    GateSeverity,
     GateStatus,
     is_blocking_result,
 )

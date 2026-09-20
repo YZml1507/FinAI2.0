@@ -14,21 +14,16 @@ from __future__ import annotations
 
 import datetime
 import logging
-import os
 import subprocess
 from decimal import Decimal
-from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any, Sequence
 
-from backtest.constants import FeeItem, OrderSide
-from backtest.fees import compute_fees
+from backtest.constants import FeeItem
 
 from .base import (
     BaseGate,
     GateBlockerError,
-    GateCategory,
     GateResult,
-    GateSeverity,
     GateStatus,
     is_blocking_result,
 )
@@ -39,35 +34,27 @@ from .base import (
 from .gate_a_accounting import (
     DailyCashConserveGate,
     FeeSumBalanceGate,
-    GoldenRoundtripGate,
     SegmentRateScheduleGate,
 )
 from .gate_d_data import (
-    FloatMarketCapGate,
-    HighPriceLotGate,
     PitDividendYieldGate,
     RawPriceJumpGate,
     SuspensionVolumeGate,
 )
 from .gate_e_engine import (
-    BonusSplitFifoGate,
     MustFailCasesGate,
     SlippagePriceCapGate,
 )
 from .gate_g_governance import (
     MasterFindingGate,
     ProvenanceTriadGate,
-    TasksSignGate,
 )
 from .gate_l_liveness import (
-    AllocationFidelityGate,
     FeatureLivenessGate,
-    StaticAstCallGate,
 )
 from .gate_consistency import MaxDrawdownCeilingGate
 from .gate_s_scientific import (
     AttributionEvidenceGate,
-    DividendTaxLockGate,
     DynamicSlippageAdvGate,
     TimingExitSurvivalGate,
     TurnoverCeilingGate,

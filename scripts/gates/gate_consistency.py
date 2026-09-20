@@ -30,7 +30,7 @@ import subprocess
 import sys
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from typing import Any, Iterable, Sequence
+from typing import Any, Sequence
 
 from .base import BaseGate, GateCategory, GateResult, GateSeverity, GateStatus
 from .constants import TEST_BASELINE_PASSED

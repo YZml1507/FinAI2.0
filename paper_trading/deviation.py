@@ -22,7 +22,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date as _date
 from decimal import ROUND_HALF_UP, Decimal
-from typing import Mapping, Sequence
+from typing import Sequence
 
 __all__ = [
     "DeviationError",

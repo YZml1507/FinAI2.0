@@ -56,7 +56,6 @@ import pandas as pd
 from finai.sources import tdx_source
 from finai.sources.adjustment_mode import AdjustmentMode, UnknownAdjustment
 from finai.sources.base import (
-    EMPTY_OK,
     FetchResult,
     classify_exception,
     make_result,

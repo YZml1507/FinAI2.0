@@ -21,7 +21,6 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import os
 import subprocess
 import sys
 from datetime import date as _date, datetime, timezone
@@ -33,15 +32,11 @@ from typing import Any
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_REPO_ROOT))
 
-from backtest.constants import OrderStatus
-from backtest.ledger import Ledger
-from paper_trading.broker import PaperBroker
 from paper_trading.config import PaperTradingConfig
 from paper_trading.reconciliation import ReconciliationError, reconcile_account
 from paper_trading.runner import DailyRunResult, PaperTradingRunner
-from paper_trading.state import PaperTradingState
 from reporting.registry import _params_hash
-from scripts.gates.tamper_guard import compute_run_signature, sign_run_record
+from scripts.gates.tamper_guard import sign_run_record
 from strategy.candidates import DividendConfig, DividendStrategy
 
 # Windows 终端输出 UTF-8 保障

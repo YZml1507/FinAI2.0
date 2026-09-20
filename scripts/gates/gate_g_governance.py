@@ -9,13 +9,11 @@
 
 from __future__ import annotations
 
-import datetime
-import glob
 import os
 import re
 from typing import Any
 
-from .base import BaseGate, GateBlockerError, GateCategory, GateResult, GateSeverity, GateStatus
+from .base import BaseGate, GateCategory, GateResult, GateSeverity, GateStatus
 
 
 class ProvenanceTriadGate(BaseGate):

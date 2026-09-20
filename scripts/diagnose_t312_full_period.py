@@ -25,7 +25,6 @@ from backtest.fees import make_fee_model, make_price_model
 from backtest.ledger import JournalType, Ledger
 from backtest.matching import MatchEngine
 from backtest.metrics import compute_metrics
-from dataclasses import replace
 from scripts.run_dividend_backtest import (
     END,
     INDEX_SYMBOL,
