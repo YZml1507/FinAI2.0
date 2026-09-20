@@ -26,12 +26,13 @@ urllib3.disable_warnings()
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from data.collector import _atomic_write_parquet, _canonicalize, hash_file  # noqa
+from scripts._secrets import require_env  # noqa: E402
 
 ENDPOINTS = [
     ("datahubco", "http://datahubco.com/app-api/openapi/v1/tushare",
-     "dba548a206a453c197f9175189b757374fa6db9554bb29e69efea127", False),
+     "DATAHUBCO_API_KEY", False),
     ("promax", "https://pcd.mobcvb.cn/tushare/pro",
-     "tsr_1FjRkziz3M7m0aLcTk0ZgnK03__xO3EYq0ZdwQqdwSE", True),
+     "PROMAX_TUSHARE_KEY", True),
 ]
 
 #: 防御期候选 ETF（symbol: ts_code）
@@ -49,7 +50,8 @@ _FIELDS = ["ts_code", "trade_date", "open", "high", "low", "close",
 
 
 def fetch(api: str, ep_idx: int, **params):
-    name, url, key, noverify = ENDPOINTS[ep_idx % len(ENDPOINTS)]
+    name, url, key_env, noverify = ENDPOINTS[ep_idx % len(ENDPOINTS)]
+    key = require_env(key_env)   # ⛔ 不再硬编码；惰性取秘密
     last = None
     for attempt in range(5):
         try:

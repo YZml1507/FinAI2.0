@@ -62,12 +62,10 @@ def _parse_iso(value: Any) -> _date | None:
 
 
 def _load_index_frame(data_path: Path) -> pd.DataFrame | None:
-    """指数日线（2015-2024 分区拼接）。缺失返回 None。"""
-    parts = []
-    for year in range(START.year, END.year + 1):
-        p = data_path / INDEX_SYMBOL / f"{year}.parquet"
-        if p.exists():
-            parts.append(pd.read_parquet(p))
+    """指数日线（全部年度分区拼接）。缺失返回 None。"""
+    idx_dir = data_path / INDEX_SYMBOL
+    parts = [pd.read_parquet(p) for p in sorted(idx_dir.glob("*.parquet"))
+             if p.stem.isdigit()]
     if not parts:
         return None
     return pd.concat(parts, ignore_index=True).sort_values("date").reset_index(drop=True)

@@ -244,3 +244,29 @@ def test_engine_exdiv_settlement_on_raw_prices(tmp_path):
     prev, post = navs[idx - 1], navs[idx]
     assert abs(post - prev) < Decimal("3"), (
         f"除权日 NAV 跳变 {prev}->{post}（RAW 价漏结算）")
+
+
+class TestIndexFrameAllPartitions:
+    """e20 修复回归：_load_index_frame 须读全部数字年度分区，
+    不再硬编码 START..END（否则 2025+ 日历为空 → nav_curve 空 fail-closed）。"""
+
+    def _mk(self, tmp_path, years):
+        d = tmp_path / "dividend_stocks" / "sh.000300"
+        d.mkdir(parents=True)
+        for y in years:
+            pd.DataFrame({"date": [f"{y}-01-05", f"{y}-06-01"],
+                          "open": [1.0, 1.0], "close": [1.0, 1.0]}
+                         ).to_parquet(d / f"{y}.parquet")
+        return tmp_path / "dividend_stocks"
+
+    def test_loads_partitions_beyond_2024(self, tmp_path):
+        from scripts.run_dividend_backtest import _load_index_frame
+        frame = _load_index_frame(self._mk(tmp_path, [2024, 2025, 2026]))
+        assert frame is not None
+        assert str(frame["date"].max())[:10] == "2026-06-01"
+        assert len(frame) == 6
+
+    def test_missing_dir_returns_none(self, tmp_path):
+        from scripts.run_dividend_backtest import _load_index_frame
+        (tmp_path / "dividend_stocks").mkdir()
+        assert _load_index_frame(tmp_path / "dividend_stocks") is None

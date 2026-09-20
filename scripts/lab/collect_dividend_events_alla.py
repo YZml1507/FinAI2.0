@@ -28,7 +28,10 @@ ROOT = Path(__file__).resolve().parents[2]
 OUT_DIR = ROOT / 'data/dividend_events_alla'
 REPORT = OUT_DIR / 'DIVIDEND_ALLA_COLLECTION_REPORT.json'
 URL = 'http://datahubco.com/app-api/openapi/v1/tushare/dividend'
-KEY = 'dba548a206a453c197f9175189b757374fa6db9554bb29e69efea127'
+sys.path.insert(0, str(ROOT))
+from scripts._secrets import require_env  # noqa: E402
+
+KEY = None  # ⛔ 不再硬编码；fetch 时经 require_env 惰性取 DATAHUBCO_API_KEY
 SLEEP = 0.12
 RETRIES = 3
 TIMEOUT = 20
@@ -65,7 +68,7 @@ def fetch(ts_code: str) -> list:
     for attempt in range(RETRIES):
         try:
             r = requests.get(URL, params={'ts_code': ts_code},
-                             headers={'X-API-Key': KEY}, timeout=TIMEOUT)
+                             headers={'X-API-Key': require_env('DATAHUBCO_API_KEY')}, timeout=TIMEOUT)
             if r.status_code == 200:
                 return (r.json().get('data') or {}).get('items', []) or []
         except Exception:

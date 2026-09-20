@@ -92,7 +92,7 @@ PEAD 与红利宽度策略是**两种互斥的持仓生成器**，不应同时�
 
 **切换的执行边界（复用既有代码路径，不新写状态机）**：档位判定已经存在于 `DividendStrategy.on_bar` 的 ③.5 段（`candidates.py:431-456`）。PEAD 探路实验**只实现进攻档的持仓生成器**，警戒/冰点档的清仓与上限语义直接沿用现有 `diff_to_orders(current, {}, ...)` 与 `total_nav * breadth_mid_cap` 两条路径。这样探路实验的代码增量只剩「选股 + 缺口确认」，状态机风险为零。
 
-**互斥与开关纪律**：PEAD 实验的配置必须显式 `use_breadth_timing=True`、`use_ma200_timing=False`，并注入 `breadth_series`（来自 `data/market-breadth-a/breadth20_daily.parquet`）。违反任一项触发既有 `__post_init__` 校验直接 raise，属于 Fail-Closed 保护而非待修缺陷。
+**互斥与开关纪律**：PEAD 实验的配置必须显式 `use_breadth_timing=True`、`use_ma200_timing=False`，并注入 `breadth_series`（来自 `experiments/lab/market-breadth-a/breadth20_daily.parquet`）。违反任一项触发既有 `__post_init__` 校验直接 raise，属于 Fail-Closed 保护而非待修缺陷。
 
 ---
 
@@ -150,7 +150,7 @@ PEAD 与红利宽度策略是**两种互斥的持仓生成器**，不应同时�
 
 - **同参重跑一致性**（FR-REP-2）：同一配置跑两遍，除 run_id/timestamp 外逐字段一致。
 - **零成交即失败**：沿袭 T302 的判据（`test_rebalances_and_reports` 断言零成交即失败），防止「信号过滤过严导致全程空仓」被误读为「低风险」。
-- **出处三件套**：每个 lab 产物必须带 Git SHA + 数据哈希 + 时间戳。Git SHA 取 `git rev-parse HEAD`（当前 `c944917`）；数据哈希对 `data/financial_pit/` + `data/dividend_stocks/` + `data/market-breadth-a/` 三目录取 SHA-256 摘要（financial_pit 的 meta.json 已内含逐票 sha256，可直接复用为细粒度指纹）；时间戳取实验运行时刻。
+- **出处三件套**：每个 lab 产物必须带 Git SHA + 数据哈希 + 时间戳。Git SHA 取 `git rev-parse HEAD`（当前 `c944917`）；数据哈希对 `data/financial_pit/` + `data/dividend_stocks/` + `experiments/lab/market-breadth-a/` 三目录取 SHA-256 摘要（financial_pit 的 meta.json 已内含逐票 sha256，可直接复用为细粒度指纹）；时间戳取实验运行时刻。
 
 ---
 
@@ -160,7 +160,7 @@ PEAD 与红利宽度策略是**两种互斥的持仓生成器**，不应同时�
 |---|---|---|
 | R-1 | **归母口径偏差（本实验首要风险）** | 归母净利润含非经常性损益（政府补助、资产处置、投资收益）。非经常性收益高增的公司不具持续漂移性，会稀释信号。**缓解**：S3 质量地板 + 1.3 节现金流污染率实测；无法消除，只能在验收门槛上折价（第五节已折价） |
 | R-2 | **小样本 / 统计功效不足** | 487 只、约 600–1700 个可交易事件、跨 10 年。胜率 ±4pp 的置信区间意味着「50% vs 45%」可能无法显著区分。**缓解**：门槛设 +3pp/5pp 的实质差值而非边缘差值；报告必须给出置信区间而非点估计 |
-| R-3 | **选股域偏窄（样本选择偏差）** | financial_pit 的 487 只是**红利策略股票池**（data/dividend_stocks 的 488 = 487 个股 + sh.000300 指数，两池完全重合），不是全市场。PEAD 的经典牛股（沪电股份、长春高新、广和通，19 号报告 §1.2）多为成长股，可能系统性**不在本池**。这会让本实验的 CAGR 系统性低于广发/中泰的全市场口径。**缓解**：这是探路实验的已知天花板，第五节的 +5% 门槛已按小池折价；若要正式版，须评估扩充选股域 |
+| R-3 | **选股域偏窄（样本选择偏差）** | financial_pit 的 487 只是**红利策略股票池**（data/dividend_stocks 的 488 = 487 个股 + sh.000300 指数，两池完全重合），不是全市场。（⚠ 更正 2026-09-20：487 池实为 `collect_dividend_stocks.py::pick_sample` 全 A 在市名单等距抽样 500 的产物，无股息率过滤，「红利池」仅为历史命名；见 FINAL_DELIVERY §五/§九）PEAD 的经典牛股（沪电股份、长春高新、广和通，19 号报告 §1.2）多为成长股，可能系统性**不在本池**。这会让本实验的 CAGR 系统性低于广发/中泰的全市场口径。**缓解**：这是探路实验的已知天花板，第五节的 +5% 门槛已按小池折价；若要正式版，须评估扩充选股域 |
 | R-4 | **财报披露时滞与公告日精度** | financial_pit 的 `pub_date` 是 citydata 口径的公告日期。盘后公告的，T+1 开盘买入无前视；**盘前/盘中公告的**，同日收盘前已可交易，本实验一律 T+1 次一开盘成交，属**保守口径**（放弃当日涨幅，成本可接受）。时滞风险来自：预告/快报/正式公告三种来源在 financial_pit 中**未区分**，而预告往往是跳空最猛烈的时点 —— 本实验只覆盖正式财报，会**漏掉最强的漂移起点**。**缓解**：在报告中登记为已知缺口，不试图用 stat_date 反推（那会引入前视） |
 | R-5 | **过拟合风险（参数自由度）** | 本实验的自由度：S1 阈值（30）、持有期 N（3 档）、mid_cap、宽度阈值（0.20/0.40）。在 10 年样本上调参，最优组合大概率部分由噪声驱动。**缓解**：沿用 `strategy/param_scan.py::ParamScan` 的单参数 ±20% 扰动悬崖判定（CAGR 翻负 / MDD≥基准×2 且>5% / 零成交）；基线先悬崖即炸，不允许带病扫描；**宽度阈值不在本实验调参范围内**（已有独立网格任务） |
 | R-6 | **跳空缺口的复权陷阱** | F1 必须在 RAW 不复权序列上算。`data/dividend_stocks` 全池 `adjust_mode=RAW`（meta.json: `tencent-kline(RAW)`），但**须在实验代码里显式断言 adjust_mode == 'RAW'**，否则未来数据层若混入复权序列，除权日会产生假跳空（母库 R4 复权口径红线） |

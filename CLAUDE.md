@@ -31,8 +31,17 @@ A 股中低频**长仓（long-only）日线**量化系统。**代码在本仓（
 - ✅ **T401/T403 模拟盘与报告模块测试修复**（2026-09-02，commit `964ca91`；测试基线 **619 passed** = 616 原有 + 10 修复 - 7 重复计数）。落点：① T401 Ledger 构造函数适配（移除废弃 BookView 手工构造 → 新构造 `Ledger(initial_capital, date=today)`，15 单测全绿）；② T403 报告序列化修复（`paper_trading/reporting.py::_decimal_to_str` 支持 tuple 键转换 `(year, month)` → `"YYYY-MM"`，FeeItem 枚举名纠正 EXCHANGE_FEE/REGULATION_FEE → HANDLING_FEE/MANAGEMENT_FEE，10 单测全绿）；③ 文档补充（T404_DELIVERY_SUMMARY.md 台账自动化交付摘要 + filing_checklist.md 程序化交易报备清单精简 + strategy_description_template.md 策略说明书模板）。全局 **0 failed, 0 errors**。
 - ✅ **T312 数据层底层硬伤与回测引擎真实集成彻底修复（测试基线 629 passed）**（2026-09-07，commit 待固化）。落点：① 根除数据层四大硬伤（清除 18 只 Baostock 历史后复权污染日线改为腾讯 RAW 不复权真实日线；批量抓取 487 只股票真实流通股本还原每日真实流通市值，根治成交额 amount 冒充市值；实现 Point-in-Time 滚动 395 天真实股息率，彻底消除全年单一均值常数的未来前视泄露；防御巨潮无分红个股异常补齐 488 只标的除权 sidecar）；② 修复组合层市值加权（`portfolio.py` 支持 `weights` 参数，`candidates.py` 传入 `weights=scores`，彻底解决底层被 `total_nav / N` 强制等权均分）；③ 修复回测引擎红利税集成（`broker.py` 开启 `enable_dividend_tax=True`，FIFO 持股期扣减现金、重算 NAV、写入 `DIVIDEND_TAX` 流水，修复拆股送转股数同步扩充避免卖出缺股崩溃；`metrics.py` 与 `registry.py` 完整透视并上报 `fees_total`）；④ 自动化防伪审计工具 `scripts/audit_evidence_integrity.py` 实证 5 项全 PASS；⑤ 真实 10 年全周期回测跑通（Run ID `20260907-150402`）：总收益 -27.72%，CAGR -3.20%，总费用 9,738.26 元（红利税实扣 5,043.75 元，每一分钱有账可查）。全库 629 项单测全绿。
 - ✅ **Colab 云端链路验收 + T312 全周期诊断；Phase 4 暂停待策略 v2**（2026-09-10）。① GitHub 改 public 后 Colab 公开 clone `bb235c0`；数据流=**代码→GitHub、数据→本地采集→Drive zip→Colab**；云端 725 单测与全周期回测（`20260910-034719`）与本地逐项一致。② 诊断 `scripts/diagnose_t312_full_period.py` + `docs/diagnosis/t312_full_period_diagnosis.md` + `1.ipynb` 第 1–7 步：**P0=仓位长期不足**（日均持仓 0.5–1.8 只/目标 5；零持仓日 54.7%；平均现金 65.4%）；2019/2020/2024 相对 510300 与 512890 大幅跑输；红利税占费用 51.8%。③ 流程图/Obsidian/tasks TK-29 已同步。**待拍板：A 修仓位+降频 / B ETF 增强（512890）**。
+- ✅ **e19 D7 拥挤度熔断收单判负→关闭；研究面全闭，交付定稿**（2026-09-20 新机窗口）。环境恢复（Release `data-20260920` MD5 校验 + breadth 序列由 leaderboard `isst-e8b` 记录逐值重建）→ 锚点 `isst-e8b-fix688-v2` 复测 Δ=0 → e19 四臂收单（t0.85/t0.80 判负、t0.90/A2 不可分辨，`docs/E19_CROWDING_PREREG.md` §六）→ 全维度消融证实 e8b 局部最优，D7 关闭、`use_crowding_breaker` 留默认 False。交付定稿 `docs/delivery/FINAL_DELIVERY_20260920.md`（基线/方向裁决表/容量 ~500 万·平台段 ~7.4%/数据缺陷披露/口径声明）。pytest 1127 绿、门禁全绿。**下一步=用户决定是否进入 T4xx 模拟盘路径；研究面全闭，不再开新参数搜索。**
 
 ---
+
+- ⚠️ **e20 样本外留出检验收单（2026-09-20）**：e8b 构型 2025-01→2026-09 首次 OOS 暴露——R2（−24.91pp vs 512890）+R4（空仓 83.1%）同触 ⇒ 因子层跑输+择时层失效红旗，**T4xx 模拟盘不建议启动**；2025-01-05 后区间永久保留 OOS；详见 docs/E20_OOS_HOLDOUT_PREREG.md §九 与交付书 §七。测试基线 1132 绿。
+
+- ✅ **e21 复现硬化（2026-09-20）**：一键复现脚本 `scripts/repro/reproduce_final_delivery.{py,sh}`（三臂容差-0 比对），数据 Release `data-20260920b` 已发（GC001→2026-09-18 + ETF 续版）；交付书 §八。
+
+- 🔐 **安全加固（2026-09-20）**：代理 key 硬编码事故（公开仓历史已泄露，待轮换）→ 全仓改经 `scripts/_secrets.py::require_env` 读取，新增 `test_no_hardcoded_secrets.py` 扫描门禁；测试基线 1139。
+
+- 📝 **池规格更正（2026-09-20）**：487 池 = akshare 在市全 A 等距抽样 500（`pick_sample`），无任何股息率过滤——旧文档「连续 3 年 dv≥3% 筛选」为误记，已更正（FINAL_DELIVERY §五）；e22 PIT 重选评估**不发车**（§九）。
 
 ## 1. 两仓纪律（最重要）
 
