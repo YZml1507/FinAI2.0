@@ -20,7 +20,7 @@ flowchart TD
   F -->|镜像同步| R
   H -->|调研报告| F
   ENV["本机 = 服务器（CPU 瓶颈）<br/>.venv/bin/python · .env 双代理凭证<br/>stock_basic_cache.parquet 权威宇宙缓存"]
-  DATA["数据底座<br/>红利池 487 日线 → 2026-09-16 · 全 A 宽度 5215<br/>bar 宇宙 5473 = 在市 5220 + 退市 253（2015-2024）<br/>财务 PIT→2026 中报 · forecast/veto/landmine/pead sidecar<br/>GC001 利率 · H20955/H00922 全收益 · namechange PIT<br/>daily_basic_alla 2431 日分片 · dividend_events_alla ✅<br/>fina_alla 补采在跑（只写新目录，不触哈希域）"]
+  DATA["数据底座<br/>静态抽样池 487 日线（⛔非股息率筛选池，命名更正见 FINAL_DELIVERY §五） → 2026-09-16 · 全 A 宽度 5215<br/>bar 宇宙 5473 = 在市 5220 + 退市 253（2015-2024）<br/>财务 PIT→2026 中报 · forecast/veto/landmine/pead sidecar<br/>GC001 利率 · H20955/H00922 全收益 · namechange PIT<br/>daily_basic_alla 2431 日分片 · dividend_events_alla ✅<br/>fina_alla 补采在跑（只写新目录，不触哈希域）"]
   FP["复现指纹（现行）<br/>universe_hash ac50e9da<br/>data_hash c7630169（E12 isST 重建后）<br/>权威产物 20260907-150402"]
   F --> ENV --> DATA --> FP
   style F fill:#dcfce7,stroke:#16a34a,color:#0f172a
