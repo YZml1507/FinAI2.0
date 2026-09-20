@@ -16,6 +16,7 @@
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import asdict
 from datetime import date as _date
 from decimal import Decimal
@@ -73,8 +74,10 @@ def save_report_json(
     data = asdict(report)
     data = _decimal_to_str(data)  # Decimal → str
 
-    with output_path.open("w", encoding="utf-8") as f:
+    tmp = output_path.with_suffix(".tmp")
+    with tmp.open("w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
+    os.replace(tmp, output_path)
 
 
 def save_report_html(
