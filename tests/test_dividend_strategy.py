@@ -1100,3 +1100,19 @@ def test_crowding_missing_date_neutral():
     strategy, broker = _crowd_run(_crowd_cfg(None))
     assert strategy._crowd_break_count == 0
     assert _buy_qty(broker) > 0
+
+
+def test_low_vol_buffer_disabled_by_default():
+    """low_vol_keep_pct=None（默认）→ on_bar 不维护收益缓冲（零开销保证）"""
+    cfg = _breadth_cfg("0.0")
+    assert cfg.low_vol_keep_pct is None
+    strategy = DividendStrategy(config=cfg)
+    strategy.watchlist = ["sh.600000"]
+    strategy._bar_count = cfg.warmup_bars
+    strategy._last_rebalance_bar = strategy._bar_count - cfg.rebalance_days
+
+    book = MockBook(nav=Decimal("100000"))
+    broker = MockBroker()
+    strategy.on_bar(date(2020, 1, 1), _breadth_bars(date(2020, 1, 1)), book, broker)
+
+    assert strategy._ret_buffer == {}

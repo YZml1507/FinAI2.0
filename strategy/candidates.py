@@ -500,11 +500,13 @@ class DividendStrategy:
         cfg = self.config
         self._bar_count += 1
 
-        # ⓪- D2：更新逐票日收益缓冲（须在冷启动早退之前——warmup 期也要累积）
-        for _sym, _bar in bars.items():
-            if _bar.preclose is not None and _bar.preclose > _ZERO_:
-                self._ret_buffer.setdefault(_sym, deque(maxlen=250)).append(
-                    float(_bar.close / _bar.preclose) - 1.0)
+        # ⓪- D2：更新逐票日收益缓冲（须在冷启动早退之前——warmup 期也要累积；
+        #   仅在低波翼启用时维护——默认构型零开销）
+        if cfg.low_vol_keep_pct is not None:
+            for _sym, _bar in bars.items():
+                if _bar.preclose is not None and _bar.preclose > _ZERO_:
+                    self._ret_buffer.setdefault(_sym, deque(maxlen=250)).append(
+                        float(_bar.close / _bar.preclose) - 1.0)
 
         # ⓪ 当日股票池
         if self.universe_provider is not None:
@@ -791,9 +793,10 @@ class DividendStrategy:
         # D2 低波翼：dv 合格候选先按 trailing-250d 波动率升序截断
         # （无 vol 史=缓冲<200 日的票 fail-closed 排除——无法验证低波不买）
         if cfg.low_vol_keep_pct is not None:
-            vol_ok = [(sym, dv, mc) for sym, dv, mc in candidates
-                      if self._trailing_vol(sym) is not None]
-            vol_ok.sort(key=lambda c: self._trailing_vol(c[0]))
+            vol_map = {sym: self._trailing_vol(sym)
+                       for sym, _dv, _mc in candidates}
+            vol_ok = [c for c in candidates if vol_map[c[0]] is not None]
+            vol_ok.sort(key=lambda c: vol_map[c[0]])
             keep_n = max(1, int(len(vol_ok) * cfg.low_vol_keep_pct))
             candidates = vol_ok[:keep_n]
 
