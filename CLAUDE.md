@@ -60,6 +60,9 @@ A 股中低频**长仓（long-only）日线**量化系统。**代码在本仓（
 
 **两仓已建立硬链接**（2026-08-29，commit `911a857`；两仓各自推送到对应 GitHub 远程）：
 - 本仓 `git push` → `origin=https://github.com/YZml1507/FinAI2.0.git`；计划仓在 `D:\Projects\research-finai` 内 `git push` → `origin=https://github.com/YZml1507/research-finai.git`；
+  - ⚠ 推送通道实测（2026-09-21）：HTTPS 间歇性 GnuTLS/超时不可用；**SSH 可用**——
+    `GIT_SSH_COMMAND="ssh -i ~/.ssh/github_finai" git push git@github.com:YZml1507/FinAI2.0.git master`
+    （账号 YZml1507，22 端口握手正常）。
 - 本仓附加本地只读 remote `research → D:/Projects/research-finai`（`git fetch research` 取计划仓提交，仅本地文件路径，非 GitHub）；
 - spec 快照：`docs/spec/001-a-stock-longonly-daily-quant/`（嵌套目录，含 spec/plan/tasks/data_dictionary_v1，逐字节与计划仓一致；可读，⛔ 可过期；以 research-finai 原件为权威）；
 - 指针：本仓 `README.md`。
