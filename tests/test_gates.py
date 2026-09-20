@@ -104,7 +104,7 @@ class TestDGate:
         amts = [Decimal(f"{200 + i * 50}00000000") for i in range(10)]
         res = gate.evaluate({"float_mv_list": mvs, "amount_list": amts})
         assert res.status == GateStatus.FAIL
-        assert "存在将成交额当作市值的伪造特征" in res.message
+        assert "系统性伪造特征" in res.message
 
     def test_d2_float_market_cap_fail_low_std(self):
         gate = FloatMarketCapGate()
@@ -114,6 +114,36 @@ class TestDGate:
         res = gate.evaluate({"float_mv_list": mvs, "amount_list": amts})
         assert res.status == GateStatus.FAIL
         assert "流通市值分布过于集中" in res.message
+
+    def test_d2_float_market_cap_pass_minority_high_turnover(self):
+        gate = FloatMarketCapGate()
+        # 35 只样本：1 只真实高换手票（amount≈0.37*mv, dev=0.63<=0.80）不构成系统性伪造
+        mvs = [Decimal(f"{500 + i * 50}00000000") for i in range(35)]
+        amts = [Decimal("200000000") for _ in range(35)]
+        mvs[3] = Decimal("7600000000")
+        amts[3] = Decimal("2840000000")  # 单日换手 ~37%，dev≈0.63
+        res = gate.evaluate({"float_mv_list": mvs, "amount_list": amts})
+        assert res.status == GateStatus.PASS
+
+    def test_d2_float_market_cap_fail_partial_near_copy(self):
+        gate = FloatMarketCapGate()
+        # 35 只样本：4 只 mv==amount 逐值复制（占比 11.4% >= 10%）→ 部分替换仍判负
+        mvs = [Decimal(f"{500 + i * 50}00000000") for i in range(35)]
+        amts = [Decimal("200000000") for _ in range(35)]
+        for i in range(4):
+            amts[i] = mvs[i]
+        res = gate.evaluate({"float_mv_list": mvs, "amount_list": amts})
+        assert res.status == GateStatus.FAIL
+        assert "系统性伪造特征" in res.message
+
+    def test_d2_float_market_cap_fail_majority_close(self):
+        gate = FloatMarketCapGate()
+        # 多数行 mv≈amount（统一缩放 k=1.5, dev=0.33）：过半即系统性伪造
+        mvs = [Decimal(f"{300 + i * 40}00000000") for i in range(35)]
+        amts = [Decimal(float(mv) * 1.5) for mv in mvs]  # dev = 1/3 <= 0.80 全行
+        res = gate.evaluate({"float_mv_list": mvs, "amount_list": amts})
+        assert res.status == GateStatus.FAIL
+        assert "系统性伪造特征" in res.message
 
     def test_d3_pit_dividend_yield_pass(self):
         gate = PitDividendYieldGate()

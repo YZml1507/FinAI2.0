@@ -221,7 +221,7 @@ class FloatMarketCapGate(BaseGate):
     category = GateCategory.D_GATE
     severity = GateSeverity.BLOCKER
     evidence = "FinAI2.0 T311 真实硬伤实证: 使用 2 亿成交额冒充流通市值，全池几乎无分化"
-    threshold_desc = "|float_mv - amount| / float_mv > 80% 达标率 100%，全池市值标准差 Std > 100 亿"
+    threshold_desc = "多数样本 |float_mv - amount| / float_mv ≤ 80% 或 ≥10% 样本偏离度 ≤5% 判负（系统性伪造特征）；全池市值标准差 Std > 100 亿"
 
     def evaluate(self, context: Any = None) -> GateResult:
         """context 包含:
@@ -278,7 +278,8 @@ class FloatMarketCapGate(BaseGate):
                 evidence=self.evidence,
             )
 
-        # 检验偏离度
+        # 检验偏离度：伪造特征为"系统性"（整列复制/统一缩放），故按样本占比判定；
+        # 单票 dev<=80% 等价于当日换手 20%~180%，真实高换手票会零星命中，不作伪造证据
         if amounts and len(amounts) == len(float_mvs):
             deviations = []
             for mv, amt in zip(mvs, [float(a) for a in amounts]):
@@ -286,16 +287,26 @@ class FloatMarketCapGate(BaseGate):
                     dev = abs(mv - amt) / mv
                     deviations.append(dev)
 
+            m_dev = len(deviations)
             sub_80_count = sum(1 for d in deviations if d <= 0.80)
-            if sub_80_count > 0:
+            near_copy_count = sum(1 for d in deviations if d <= 0.05)
+            if m_dev and (sub_80_count * 2 > m_dev or near_copy_count * 10 >= m_dev):
                 return GateResult(
                     gate_id=self.gate_id,
                     name=self.name,
                     category=self.category,
                     status=GateStatus.FAIL,
                     severity=self.severity,
-                    message=f"发现 {sub_80_count} 笔流通市值与成交额偏离度 <= 80%，存在将成交额当作市值的伪造特征",
-                    metrics={"sub_80_count": sub_80_count, "min_dev": round(min(deviations), 4)},
+                    message=(
+                        f"流通市值与成交额偏离度呈系统性伪造特征："
+                        f"dev<=80% 占比 {sub_80_count}/{m_dev}，dev<=5% 近复制 {near_copy_count}/{m_dev}"
+                    ),
+                    metrics={
+                        "sub_80_count": sub_80_count,
+                        "near_copy_count": near_copy_count,
+                        "dev_sample_size": m_dev,
+                        "min_dev": round(min(deviations), 4),
+                    },
                     threshold=self.threshold_desc,
                     evidence=self.evidence,
                 )
