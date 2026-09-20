@@ -183,3 +183,27 @@ warm −19.88pp vs 512890）；R3 未触；**R4 触线**（post-warmup 口径
 **结论修订**：在此前证据下**不建议进入模拟盘**。数据面 GC001 已续至
 2026-09-18（append-only、重叠 242/242、锚点行恒等），引擎修复一处
 （`_load_index_frame` 年度分区硬编码→全分区 glob，锚点区间不受影响）。
+
+## 八、复现路径与数据 Release（2026-09-20 追加）
+
+**数据包**：
+- `data-20260920`：`finai_data_20260920.tar.gz`，MD5 `0017521be62787034114ab1f1b63c278`（原始交付包）。
+- `data-20260920b`：`finai_data_20260920b.tar.gz`，MD5 `db22da0cb6ae750341c921ddf65234cd`，SHA256 `269b209b1eb2a2c68dee69dce95c97db2a19c896c46cd1c5957bea132abb2334`。 <!-- gate-doc-ignore: 历史快照（发布包校验值快照，非指标声明），⛔ 不改史 -->
+  增量 vs a 版：GC001 续至 2026-09-18（腾讯 sh204001 append-only + manifest 出处）、
+  ETF 510300/512890 2025/2026 分区（价格收益口径）。
+
+**复现入口**：`scripts/repro/reproduce_final_delivery.sh`（薄封装）/
+`reproduce_final_delivery.py`——前置检查（数据恢复/宽度序列在则跳过重建、
+GC001 覆盖 ≥2026-09-16、leaderboard 在位，fail-closed）→ 并行复跑三臂
+（`*-repro` 命名，不覆盖权威记录）→ 与 leaderboard 冻结期望**容差 0** 比对，
+打印 PASS/FAIL 表，任一不符 exit 1。支持 `--only anchor|cold|warm`、
+`--dry-run`（只打印命令）、`--serial`。
+
+**期望输出**（逐字比对，取 leaderboard `isst-e8b-fix688-v2` /
+`e20-oos-2025` / `e20-oos-warm` 记录）：
+
+| 臂 | 期望（容差 0） |
+|---|---|
+| anchor | CAGR 8.5814% / MDD 17.3990% / RT 156 / fees 22328.60 / 换手 4.6074 | <!-- gate-doc-ignore: 历史快照（复现期望值引用权威记录，非新声明），⛔ 不改史 -->
+| cold | 总收益 −15.43% / MDD 19.47% / RT 19 | <!-- gate-doc-ignore: 历史快照（复现期望值引用权威记录，非新声明），⛔ 不改史 -->
+| warm | 总收益 −9.54% / MDD 12.69% / RT 28 | <!-- gate-doc-ignore: 历史快照（复现期望值引用权威记录，非新声明），⛔ 不改史 -->
