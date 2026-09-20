@@ -78,6 +78,7 @@ class BacktestResult:
     final_nav: Decimal = _ZERO
     final_book: BookView | None = None
     trading_dates: list[_date] = field(default_factory=list)
+    # ⛔ 存量字段，不再逐日写入（内存原因，见 run()）；保留供 metrics hasattr 守卫。
     bars_by_date: dict[_date, dict[str, Any]] = field(default_factory=dict)  # date → {symbol → Bar}
 
     @property
@@ -143,8 +144,9 @@ class BacktestEngine:
 
         for day in dates:
             bars = self.feed.get_bars(sorted(self._symbols_for(strategy)), day)
-            # Store bars for metrics calculation
-            result.bars_by_date[day] = bars
+            # ⛔ 不再逐日留存量 bars（全窗 ~650 万 Bar 常驻数 GB 内存）：
+            #    全仓唯一消费方是 metrics._suspension_trapped_days 的 hasattr 守卫，
+            #    字段保留（默认空 dict）以维持其 fail-closed 语义。
             # ② 先撮合（⛔ 不可与 ③ 互换：先信号即前视）
             self.broker.on_bars(day, bars)
             # ③ 后信号
