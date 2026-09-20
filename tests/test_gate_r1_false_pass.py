@@ -808,5 +808,35 @@ class TestL2EndpointDeterminismAndWording:
         assert "4×" in desc
 
 
+class TestGitCommitNoFakeFallback:
+    """出处哨兵：git 不可得 ⇒ 空串（G-1 如实判负），⛔ 不得回退常量 SHA。"""
+
+    def test_runner_git_commit_empty_on_failure(self, monkeypatch):
+        import subprocess as sp
+        from scripts.gates import runner as gate_runner
+
+        def _boom(*a, **k):
+            raise sp.CalledProcessError(128, "git")
+
+        monkeypatch.setattr(gate_runner.subprocess, "check_output", _boom)
+        assert gate_runner._get_git_commit() == ""
+
+    def test_backtest_git_head_empty_on_failure(self, monkeypatch):
+        import subprocess as sp
+        import scripts.run_dividend_backtest as rdb
+
+        def _boom(*a, **k):
+            raise sp.CalledProcessError(128, "git")
+
+        monkeypatch.setattr(sp, "check_output", _boom)
+        assert rdb._git_head() == ""
+
+    def test_runner_git_commit_real_sha_when_git_ok(self):
+        from scripts.gates import runner as gate_runner
+        import re
+        out = gate_runner._get_git_commit()
+        assert re.fullmatch(r"[0-9a-f]{40}", out), f"本仓在 git 环境下应得真 SHA: {out!r}"
+
+
 if __name__ == "__main__":   # pragma: no cover
     raise SystemExit(pytest.main([__file__, "-q"]))
