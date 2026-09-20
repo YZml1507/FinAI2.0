@@ -231,19 +231,25 @@ class ExperimentRegistry:
             repro_fingerprint=fingerprint,
             gate_statuses=dict(gate_statuses) if gate_statuses else None,
         )
+        record_payload = _canonicalize({
+            "run_id": record.run_id, "status": record.status,
+            "timestamp": record.timestamp, "code_version": record.code_version,
+            "data_version": record.data_version, "seed": record.seed,
+            "params_hash": record.params_hash, "params": record.params,
+            "metrics": record.metrics, "error": record.error,
+            "schema_version": record.schema_version,
+            "code_hash": record.code_hash, "data_hash": record.data_hash,
+            "calendar_hash": record.calendar_hash, "universe_hash": record.universe_hash,
+            "repro_fingerprint": record.repro_fingerprint,
+            "gate_statuses": record.gate_statuses,
+        })
+        # ⛔ 防篡改签名随产物落盘（qa_final_round #24：签名此前只进内存 gate ctx，
+        #    新产物天然 PROV-SIG FAIL）；对 canonical 形态签名 ⇒ 与
+        #    ``verify_run_signature`` 的 JSON 重载口径一致（Decimal→str 已归一）。
+        from scripts.gates.tamper_guard import compute_run_signature
+        record_payload["anti_tamper_signature"] = compute_run_signature(record_payload)
         payload = json.dumps(
-            _canonicalize({
-                "run_id": record.run_id, "status": record.status,
-                "timestamp": record.timestamp, "code_version": record.code_version,
-                "data_version": record.data_version, "seed": record.seed,
-                "params_hash": record.params_hash, "params": record.params,
-                "metrics": record.metrics, "error": record.error,
-                "schema_version": record.schema_version,
-                "code_hash": record.code_hash, "data_hash": record.data_hash,
-                "calendar_hash": record.calendar_hash, "universe_hash": record.universe_hash,
-                "repro_fingerprint": record.repro_fingerprint,
-                "gate_statuses": record.gate_statuses,
-            }),
+            record_payload,
             ensure_ascii=False, indent=2, sort_keys=True,
         )
         tmp = self.root / "runs" / f".{run_id}.tmp"
@@ -257,6 +263,7 @@ class ExperimentRegistry:
                 "params_hash": record.params_hash,
                 "repro_fingerprint": record.repro_fingerprint,
                 "schema_version": record.schema_version,
+                "anti_tamper_signature": record_payload["anti_tamper_signature"],
             }, ensure_ascii=False) + "\n")
         return run_id
 

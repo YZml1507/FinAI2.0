@@ -71,6 +71,30 @@ class TestRecord:
         # .tmp 不留渣
         assert not list((tmp_path / "exp" / "runs").glob("*.tmp"))
 
+    def test_record_carries_verifiable_signature(self, tmp_path) -> None:
+        """qa_final_round #24：落盘产物必须带 anti_tamper_signature 且验签通过。"""
+        from scripts.gates.tamper_guard import verify_run_signature
+        reg = _reg(tmp_path)
+        rid = reg.record_run({"a": 1}, _report(), seed=7)
+        data = json.loads((tmp_path / "exp" / "runs" / f"{rid}.json").read_text("utf-8"))
+        assert data["anti_tamper_signature"]
+        ok, msg = verify_run_signature(data)
+        assert ok, msg
+        # index.jsonl 追加行同样带签名（交叉校验面）
+        idx = (tmp_path / "exp" / "runs" / "index.jsonl").read_text("utf-8").strip()
+        assert json.loads(idx.splitlines()[-1])["anti_tamper_signature"] == data["anti_tamper_signature"]
+
+    def test_record_signature_detects_tamper(self, tmp_path) -> None:
+        """改 metrics 不重算签名 ⇒ 验签必须失败（完整性，非防伪）。"""
+        from scripts.gates.tamper_guard import verify_run_signature
+        reg = _reg(tmp_path)
+        rid = reg.record_run({"a": 1}, _report(), seed=7)
+        f = tmp_path / "exp" / "runs" / f"{rid}.json"
+        data = json.loads(f.read_text("utf-8"))
+        data["metrics"]["cagr"] = "9.99"
+        ok, _ = verify_run_signature(data)
+        assert not ok
+
     def test_duplicate_run_id_rejected(self, tmp_path) -> None:
         reg = _reg(tmp_path)
         reg.record_run({"a": 1}, _report(), seed=7)
