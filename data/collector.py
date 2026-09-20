@@ -337,7 +337,7 @@ def _build_bars(
     for c in _NUMERIC_COLS:
         if c in out.columns:
             out[c] = pd.to_numeric(out[c], errors="coerce")
-    out = (out.sort_values("date")
+    out = (out.sort_values("date", kind="stable")
               .drop_duplicates(subset=["date"], keep="last")
               .reset_index(drop=True))
     out["adjust_mode"] = mode.value          # ⭐ FR-DATA-3：每行口径可追溯
@@ -511,7 +511,7 @@ def _canonicalize(frame: pd.DataFrame) -> pd.DataFrame:
     """
     out = frame.copy()
     out["date"] = pd.to_datetime(out["date"]).dt.date
-    out = (out.sort_values("date")
+    out = (out.sort_values("date", kind="stable")
               .drop_duplicates(subset=["date"], keep="last")
               .reset_index(drop=True))
     return out

@@ -333,7 +333,7 @@ def collect_financials(
             raise FinancialPitError(
                 f"采集拼接帧缺 (code, pubDate) 列：{list(combined.columns)}。"
                 f"⛔ 表 {table!r} 查询器违反数据字典 v1 §2.1 公共字段契约，拒绝静默去重")
-        combined = (combined.sort_values(["code", "pubDate"])
+        combined = (combined.sort_values(["code", "pubDate"], kind="stable")
                             .drop_duplicates(["code", "pubDate"], keep="last")
                             .reset_index(drop=True))
 

@@ -632,7 +632,7 @@ def run_dividend_backtest_2015_2024(
             raise FileNotFoundError(
                 f"attack_instrument={_attack_instr} 在 {_etf_dir} 无 bar 数据"
                 "——⛔ Fail-Closed：攻击资产缺数据不得静默全程空仓")
-        etf = pd.concat(_frames, ignore_index=True).sort_values("date")
+        etf = pd.concat(_frames, ignore_index=True).sort_values("date", kind="stable")
         etf = etf.reset_index(drop=True)
         # ETF 无 preclose 列 ⇒ 由上一交易日 close 合成（涨跌停标记需要）；
         # 首行 NaN 回填为当日 close（日收益=0，无幻觉跳空）——否则 NaN→Decimal

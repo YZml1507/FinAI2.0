@@ -341,7 +341,7 @@ class ParquetDailyFeed:
         sub = frame.loc[mask]
         if sub.empty:
             return None
-        return sub.sort_values("_date")
+        return sub.sort_values("_date", kind="stable")   # 同日重复 keep='last' 需保序
 
     def _enriched(self, symbol: str, year: int | None) -> pd.DataFrame | None:
         """``(symbol, year)`` 的补派生列帧（带缓存；``None`` = 该分区不存在）。"""
@@ -396,7 +396,10 @@ class ParquetDailyFeed:
         # ③ 除权（FR-BT-4：结算依赖，⛔ 取数失败绝不伪装成"无除权"—— 由 cleaner raise）。
         out = self._apply_exdiv(symbol, out)
         out["_date"] = _canon_dates(out["date"])
-        return out.sort_values("_date").reset_index(drop=True)
+        # kind="stable"：同日重复行的相对次序须保序——keep='last' 口径
+        # （collector 落盘去重 / _day_index pos_map / _frame_for_range 取末行）
+        # 依赖「最后出现=原序最后」，quicksort 不保证 ⇒ 显式归并排序。
+        return out.sort_values("_date", kind="stable").reset_index(drop=True)
 
     def _apply_exdiv(self, symbol: str, frame: pd.DataFrame) -> pd.DataFrame:
         """把除权事件合并进帧（``exdiv`` bool 列）。
