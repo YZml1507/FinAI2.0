@@ -368,7 +368,8 @@ def _build_post_run_gate_context(
 
 
 def _git_head() -> str:
-    """当前 HEAD 短哈希（离线不可得时回退常量，出处仅作留痕）。"""
+    """当前 HEAD 哈希；git 不可得时返回空串（⛔ 不得回退常量 SHA——
+    那会把历史 commit 冒充当前出处，G-1 将对「缺失」如实判负）。"""
     import subprocess
     try:
         out = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True, stderr=subprocess.DEVNULL).strip()
@@ -376,7 +377,7 @@ def _git_head() -> str:
             return out
     except Exception:                       # noqa: BLE001
         pass
-    return "b57feae79ac66a3f1907f572a42d4aece29cf047"
+    return ""
 
 
 def _git_code_hash() -> str | None:

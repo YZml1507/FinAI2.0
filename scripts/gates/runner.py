@@ -148,7 +148,9 @@ def _get_git_commit() -> str:
             return out
     except Exception:
         pass
-    return "b57feae79ac66a3f1907f572a42d4aece29cf047"
+    # ⛔ Fail-Closed：git 不可得 ⇒ 返回空串（G-1 判「git_commit 无效或缺失」），
+    #    不得回退常量 SHA——那会把一个历史 commit 冒充当前出处（假 provenance）。
+    return ""
 
 
 #: 滑点/跳空压力情景：在基准成交滑点（T204，5bps）之上按单边额外 50bps 推演。
