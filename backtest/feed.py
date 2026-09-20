@@ -117,7 +117,7 @@ def _to_decimal(value: Any, default: Decimal = Decimal("0")) -> Decimal:
     if value is None:
         return default
     if isinstance(value, Decimal):
-        return value
+        return value if value.is_finite() else default
     try:
         if pd.isna(value):
             return default
@@ -126,7 +126,8 @@ def _to_decimal(value: Any, default: Decimal = Decimal("0")) -> Decimal:
     text = str(value).strip()
     if not text or text.lower() == "nan":
         return default
-    return Decimal(text)
+    out = Decimal(text)
+    return out if out.is_finite() else default
 
 
 def _opt_decimal(value: Any) -> Decimal | None:
@@ -139,7 +140,7 @@ def _opt_decimal(value: Any) -> Decimal | None:
     if value is None:
         return None
     if isinstance(value, Decimal):
-        return value
+        return value if value.is_finite() else None
     try:
         if pd.isna(value):
             return None
@@ -148,7 +149,8 @@ def _opt_decimal(value: Any) -> Decimal | None:
     text = str(value).strip()
     if not text or text.lower() == "nan":
         return None
-    return Decimal(text)
+    out = Decimal(text)
+    return out if out.is_finite() else None
 
 
 def _is_st_value(value: Any) -> bool:

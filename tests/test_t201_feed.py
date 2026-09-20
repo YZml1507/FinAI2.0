@@ -148,6 +148,28 @@ def test_decimal_no_float_tail():
     assert bar.close != D(0.1)          # ⛔ Decimal(float) 的反面教材
 
 
+def test_inf_values_fall_back_to_default():
+    """非有限值（inf/-inf/Decimal("NaN")）必须归 default——
+    Decimal("inf") 构造合法且 inf>0 为真，会静默毒化撮合与净值。"""
+    feed = _feed([_row(_D1, close=float("inf"), preclose=float("-inf"),
+                       open_=float("inf"))])
+    bar = feed.get_bars([_SYM], _D1)[_SYM]
+    assert bar.close == D("0")
+    assert bar.preclose == D("0")
+    assert bar.open == D("0")
+    # Decimal 直输路径同样拦截（测试/手工构造帧可达）
+    feed2 = ParquetDailyFeed(preloaded={
+        _SYM: pd.DataFrame([{
+            "date": _D1, "open": D("NaN"), "high": D("10.8"),
+            "low": D("9.9"), "close": D("10.5"), "preclose": D("10.0"),
+            "volume": D("100"), "amount": D("1050"), "turn": 1.0,
+            "pctChg": 5.0, "tradestatus": "1", "isST": "0",
+            "code": _SYM, "adjust_mode": "hfq", "source": "baostock",
+        }], columns=list(_COLS))})
+    bar2 = feed2.get_bars([_SYM], _D1)[_SYM]
+    assert bar2.open == D("0")
+
+
 def test_current_date_tracks_last_get_bars():
     feed = _feed([_row(_D1), _row(_D2)])
     with pytest.raises(FeedError):
