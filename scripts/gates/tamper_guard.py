@@ -41,8 +41,13 @@ def _canonical_str(val: Any) -> str:
 
 
 def compute_run_signature(record: Mapping[str, Any]) -> str:
-    """计算回测落盘记录的防篡改密码学哈希签名。
-    
+    """计算回测落盘记录的防篡改哈希签名。
+
+    ⚠ 诚实口径：这是**无密钥** SHA-256 摘要——能检出「改了字段但没重算签名」的
+    篡改/误写/传输损坏，**不能**抵御会重算摘要的主动伪造（无密钥即无真伪分界）。
+    真正的防伪纵深是 git 历史 + index.jsonl 追加 + registry 原子写；本签名是
+    其中一环的完整性校验，⛔ 不得单独当作伪造防护。
+
     签名字段绑定：
     - run_id
     - code_version
