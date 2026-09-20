@@ -43,7 +43,6 @@ import pandas as pd
 from data.collector import (
     DailyCollector,
     _partition_dir,
-    hash_file,
 )
 
 logger = logging.getLogger(__name__)

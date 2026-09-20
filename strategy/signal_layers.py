@@ -34,7 +34,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import date as _date, timedelta as _td
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Optional, Sequence
+from typing import Any, Iterable, Mapping, Sequence
 
 import pandas as pd
 
