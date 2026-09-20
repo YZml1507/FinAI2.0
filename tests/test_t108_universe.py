@@ -229,3 +229,74 @@ def test_index_missing_code_column_raises(monkeypatch: pytest.MonkeyPatch) -> No
     _patch_index(monkeypatch, pd.DataFrame({"updateDate": ["2026-01-01"]}))
     with pytest.raises(RuntimeError, match="code"):
         uni.index_constituents("sz50")
+
+
+# ------------------------------------------------- AliveUniverseIndex 等价性
+# （逐日回放加速层：snapshot(d) 必须与 alive_universe(df, d) 逐字段一致）
+
+
+def _rich_basic_table() -> pd.DataFrame:
+    """覆盖 canon_date 两种格式、缺失形态（''/NaN/'nan'）、边界日的合成表。"""
+    return pd.DataFrame({
+        "code": [
+            "sh.600000", "sz.000001", "sh.601398", "sz.300750",
+            "sh.600001", "sz.000002", "sh.600601", "sh.000001",
+            "sz.002001", "sh.601888",
+        ],
+        "ipoDate": [
+            "1999-11-10", "19910403", "2006-10-27", "2018-06-11",
+            "2002-01-01", "2015-06-30", "1990-12-19", "1990-12-19",
+            "",                 # ipoDate 缺失 ⇒ 保守剔除（两路径都要剔）
+            "2010-01-05",
+        ],
+        "outDate": [
+            "", "", "", "",
+            "2015-06-30", "", "2015-05-21", "",
+            "2020-01-01", float("nan"),   # NaN 缺失形态 ⇒ 视为未退市
+        ],
+        "type": ["1", "1", "1", "1", "1", "1", "1", "2", "1", "1"],
+        "status": ["1", "1", "1", "1", "0", "1", "0", "1", "1", "1"],
+    })
+
+
+def test_alive_index_snapshot_matches_alive_universe_per_day() -> None:
+    """逐日对拍：边界日前后 + 常态日，codes 与 meta 全字段一致。"""
+    table = _rich_basic_table()
+    index = uni.AliveUniverseIndex(table)
+    days = [
+        "2001-12-31", "2015-05-20", "2015-05-21", "2015-05-22",  # 退市边界
+        "2015-06-29", "2015-06-30", "2015-07-01",               # 上市/退市当日
+        "2018-06-10", "2018-06-11", "2018-06-12",               # 新上市边界
+        "2019-12-31", "2020-01-01", "2020-01-02", "2025-12-31",
+    ]
+    for d in days:
+        ref = uni.alive_universe(table, d)
+        snap = index.snapshot(d)
+        assert snap.codes == ref.codes, f"{d} codes 不一致"
+        assert dict(snap.meta) == dict(ref.meta), f"{d} meta 不一致"
+        assert snap.as_of == ref.as_of
+
+
+def test_alive_index_format_normalization_parity() -> None:
+    """'YYYYMMDD' 与 'YYYY-MM-DD' 混排输入 ⇒ 两条路径同样规范化。"""
+    table = _rich_basic_table()
+    index = uni.AliveUniverseIndex(table)
+    for d in ["20150101", "2015-06-30"]:
+        assert index.snapshot(d).codes == uni.alive_universe(table, d).codes
+
+
+def test_alive_index_missing_columns_raises() -> None:
+    """缺必需列 ⇒ 与 alive_universe 同样 fail-closed raise。"""
+    table = _rich_basic_table().drop(columns=["outDate"])
+    with pytest.raises(ValueError, match="outDate"):
+        uni.AliveUniverseIndex(table)
+
+
+def test_alive_index_empty_stock_frame() -> None:
+    """全表无 type='1' 行（或空表）⇒ 空池不炸（object dtype 比较守卫）。"""
+    empty = _rich_basic_table().iloc[0:0]
+    index = uni.AliveUniverseIndex(empty)
+    snap = index.snapshot("2020-01-01")
+    assert snap.codes == ()
+    assert snap.meta["alive"] == 0
+    assert snap.codes == uni.alive_universe(empty, "2020-01-01").codes

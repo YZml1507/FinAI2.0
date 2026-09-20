@@ -40,7 +40,7 @@ from reporting.registry import ExperimentRegistry
 from reporting.provenance import hash_path_manifest, hash_sequence
 from strategy.candidates import DividendConfig, DividendStrategy
 from strategy.portfolio import PortfolioConfig
-from data.universe import load_stock_basic, alive_universe
+from data.universe import load_stock_basic, alive_universe, AliveUniverseIndex
 from scripts.gates import GateBlockerError, run_post_run_gates, run_pre_run_gates
 
 logger = logging.getLogger(__name__)
@@ -511,8 +511,13 @@ def _make_universe_provider(logger: logging.Logger, data_path: Path) -> Any:
                 tmp.replace(cache_path)
                 logger.info(f"stock_basic 已缓存 → {cache_path}")
 
+        # 逐日回放走预计算索引（AliveUniverseIndex）：ipoDate/outDate 规范化
+        # 只算一次，snapshot() 与 alive_universe 逐字段同义（测试对拍覆盖）——
+        # 直接逐日调 alive_universe 是全窗 ~39s 的引擎主循环热点。
+        universe_index = AliveUniverseIndex(stock_basic)
+
         def provider(day: _date) -> list[str]:
-            return list(alive_universe(stock_basic, day.isoformat()))
+            return list(universe_index.snapshot(day.isoformat()))
 
         return provider
     except Exception as exc:                # noqa: BLE001

@@ -217,8 +217,11 @@ def alive_universe(stock_basic: pd.DataFrame, as_of: str) -> UniverseSnapshot:
     #   对 nan 为 True，随后 `nan <= day` 在 CI 上炸 TypeError。统一走 `_missing`。
     out = candidates["outDate"].map(lambda v: None if _missing(v) else canon_date(v))
     delisted_mask = out.map(lambda v: (not _missing(v)) and (str(v) <= day))
-    n_delisted = int(delisted_mask.fillna(False).sum())
-    alive = candidates[~delisted_mask.fillna(False)]
+    # 空 candidates 时 delisted_mask 为 str/object 空序列，裸 sum() 得 '' 而非 0
+    # ⇒ 显式 astype(bool)（非空路径取值与原先 ~fillna(False) 逐位一致）
+    alive_mask = delisted_mask.fillna(False).astype(bool)
+    n_delisted = int(alive_mask.sum())
+    alive = candidates[~alive_mask]
 
     codes = tuple(sorted(alive["code"].astype(str).str.strip()))
     meta: dict[str, Any] = {
@@ -234,6 +237,64 @@ def alive_universe(stock_basic: pd.DataFrame, as_of: str) -> UniverseSnapshot:
                  "⛔ status 列未参与判定（当前快照，防幸存者偏差/未来函数）"),
     }
     return UniverseSnapshot(as_of=day, codes=codes, meta=meta)
+
+
+class AliveUniverseIndex:
+    """``alive_universe`` 的逐日回放加速层（同语义，与日期无关的部分只算一次）。
+
+    ``alive_universe`` 每次调用都对全帧重做 ``type`` 过滤与 ipoDate/outDate
+    字符串规范化——引擎主循环按交易日逐日回放（~2400 次 × 数千行）时成为热点。
+    本类在构造期一次性完成静态部分，``snapshot(as_of)`` 只剩纯向量比较。
+
+    ⛔ 语义契约：``snapshot(d).codes/meta`` 与 ``alive_universe(df, d)``
+    逐字段一致（测试逐日对拍覆盖）。缺失 ``outDate`` 用哨兵 ``9999-12-31``
+    参与比较（任何真实交易日都 < 哨兵 ⇒ 等价于"不判退市"）。构造后
+    ``stock_basic`` 若被外部原地修改，本索引不感知（同 pandas 视图约束）。
+    """
+
+    #: outDate 缺失哨兵——须晚于一切真实日期且本身是合法 ISO（与 canon_date 口径同域）
+    _OUT_SENTINEL = "9999-12-31"
+
+    def __init__(self, stock_basic: pd.DataFrame) -> None:
+        missing_cols = [c for c in _REQUIRED_COLS if c not in stock_basic.columns]
+        if missing_cols:
+            raise ValueError(
+                f"stock_basic 缺必需列 {missing_cols}（T108 回放需要全部 {_REQUIRED_COLS}）")
+        self._total = len(stock_basic)
+        stocks = stock_basic[
+            stock_basic["type"].astype(str).str.strip() == _STOCK_TYPE]
+        self._n_non_stock = self._total - len(stocks)
+        ipo = stocks["ipoDate"].map(
+            lambda v: None if _missing(v) else canon_date(v))
+        known = stocks.loc[ipo[ipo.notna()].index]
+        self._n_unknown_ipo = len(stocks) - len(known)
+        self._codes = known["code"].astype(str).str.strip().to_numpy()
+        # dtype=object：空帧时默认 float64 会与 str 比较炸 TypeError；ISO 字符串
+        # 字典序=时序（canon_date 保证 'YYYY-MM-DD' 定宽），object 逐元素 str<=str 同义
+        self._ipo = ipo.loc[known.index].to_numpy(dtype=object)
+        out = known["outDate"].map(
+            lambda v: self._OUT_SENTINEL if _missing(v) else canon_date(v))
+        self._out = out.to_numpy(dtype=object)
+
+    def snapshot(self, as_of: str) -> UniverseSnapshot:
+        """``as_of`` 当日存活池——与 ``alive_universe`` 逐字段同义。"""
+        day = canon_date(as_of)
+        listed = self._ipo <= day
+        alive_mask = listed & ~(self._out <= day)
+        codes = tuple(sorted(self._codes[alive_mask].tolist()))
+        meta: dict[str, Any] = {
+            "as_of": day,
+            "source": "baostock.query_stock_basic",
+            "total_rows": self._total,
+            "excluded_non_stock": self._n_non_stock,
+            "excluded_not_yet_listed": int((~listed).sum()),
+            "excluded_delisted": int((listed & (self._out <= day)).sum()),
+            "excluded_unknown_ipo": self._n_unknown_ipo,
+            "alive": len(codes),
+            "rule": ("ipoDate <= as_of < outDate（outDate 空=未退市；退市日当天起剔除）；"
+                     "⛔ status 列未参与判定（当前快照，防幸存者偏差/未来函数）"),
+        }
+        return UniverseSnapshot(as_of=day, codes=codes, meta=meta)
 
 
 # ---------------------------------------------------------------- baostock 薄壳
