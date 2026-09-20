@@ -92,7 +92,7 @@ PEAD 与红利宽度策略是**两种互斥的持仓生成器**，不应同时�
 
 **切换的执行边界（复用既有代码路径，不新写状态机）**：档位判定已经存在于 `DividendStrategy.on_bar` 的 ③.5 段（`candidates.py:431-456`）。PEAD 探路实验**只实现进攻档的持仓生成器**，警戒/冰点档的清仓与上限语义直接沿用现有 `diff_to_orders(current, {}, ...)` 与 `total_nav * breadth_mid_cap` 两条路径。这样探路实验的代码增量只剩「选股 + 缺口确认」，状态机风险为零。
 
-**互斥与开关纪律**：PEAD 实验的配置必须显式 `use_breadth_timing=True`、`use_ma200_timing=False`，并注入 `breadth_series`（来自 `data/market-breadth-a/breadth20_daily.parquet`）。违反任一项触发既有 `__post_init__` 校验直接 raise，属于 Fail-Closed 保护而非待修缺陷。
+**互斥与开关纪律**：PEAD 实验的配置必须显式 `use_breadth_timing=True`、`use_ma200_timing=False`，并注入 `breadth_series`（来自 `experiments/lab/market-breadth-a/breadth20_daily.parquet`）。违反任一项触发既有 `__post_init__` 校验直接 raise，属于 Fail-Closed 保护而非待修缺陷。
 
 ---
 
@@ -150,7 +150,7 @@ PEAD 与红利宽度策略是**两种互斥的持仓生成器**，不应同时�
 
 - **同参重跑一致性**（FR-REP-2）：同一配置跑两遍，除 run_id/timestamp 外逐字段一致。
 - **零成交即失败**：沿袭 T302 的判据（`test_rebalances_and_reports` 断言零成交即失败），防止「信号过滤过严导致全程空仓」被误读为「低风险」。
-- **出处三件套**：每个 lab 产物必须带 Git SHA + 数据哈希 + 时间戳。Git SHA 取 `git rev-parse HEAD`（当前 `c944917`）；数据哈希对 `data/financial_pit/` + `data/dividend_stocks/` + `data/market-breadth-a/` 三目录取 SHA-256 摘要（financial_pit 的 meta.json 已内含逐票 sha256，可直接复用为细粒度指纹）；时间戳取实验运行时刻。
+- **出处三件套**：每个 lab 产物必须带 Git SHA + 数据哈希 + 时间戳。Git SHA 取 `git rev-parse HEAD`（当前 `c944917`）；数据哈希对 `data/financial_pit/` + `data/dividend_stocks/` + `experiments/lab/market-breadth-a/` 三目录取 SHA-256 摘要（financial_pit 的 meta.json 已内含逐票 sha256，可直接复用为细粒度指纹）；时间戳取实验运行时刻。
 
 ---
 

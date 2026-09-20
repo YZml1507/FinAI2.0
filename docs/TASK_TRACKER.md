@@ -474,8 +474,8 @@
 
 ### C2 分母漂移检验（2026-09-19 04:3x，已完成）★判负
 
-- **报告**：`docs/audit/c2_denominator_drift_20260919.md`
-  （复跑 `scripts/lab/c2_denominator_drift_20260919.py`，产物
+- **报告**：`docs/audit/c2_denominator_drift_20260919.md`（未入库：原机产物缺失，仅存本登记摘要）
+  （复跑 `scripts/lab/c2_denominator_drift_20260919.py`——未入库：原机产物缺失，仅存登记摘要，产物
   `experiments/lab/c2-denominator-drift/`）。
 - **结果**：浮动分母 vs 固定分母（2015-06-30 前上市 2,541 只）两序列
   **相关系数 0.9905**、平均绝对差 0.024；def/atk 跨界日逐年分布几乎一致
