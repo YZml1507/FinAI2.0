@@ -221,10 +221,10 @@ class ParquetDailyFeed:
         #: 既无预注入事件、又无取数器 ⇒ 已 warning 过的 symbol（只吼一次）。
         self._exdiv_warned: set[str] = set()
         self._current_date: _date | None = None
-        #: 单日取数快路径：``(symbol, 年分区键)`` → ``(帧, {日期: 行位置})``。
+        #: 单日取数快路径：``(symbol, 年分区键)`` → ``(列名, values, {日期: 行位置})``。
         #: 与 ``_cache`` 同生命周期（``clear_cache`` 一并清）；keep='last' 去重口径
         #: 由「同日期后写覆盖先写」承载（与落盘 ``keep='last'`` 一致）。
-        self._day_index: dict[tuple[str, "int | None"], tuple[pd.DataFrame, dict] | None] = {}
+        self._day_index: dict[tuple[str, "int | None"], tuple[tuple, Any, dict] | None] = {}
 
     # ------------------------------------------------------------------ 公开 API
 
@@ -241,11 +241,11 @@ class ParquetDailyFeed:
             entry = self._day_entry(symbol, None if symbol in self.preloaded else target.year)
             if entry is None:
                 continue                       # 停牌 = 缺席
-            frame, pos_map = entry
+            cols, values, pos_map = entry
             pos = pos_map.get(target)
             if pos is None:
                 continue                       # 停牌 = 缺席
-            out[symbol] = self._row_to_bar(symbol, frame.iloc[pos])
+            out[symbol] = self._row_to_bar(symbol, dict(zip(cols, values[pos])))
         self._current_date = target
         return out
 
@@ -283,12 +283,14 @@ class ParquetDailyFeed:
 
     def _day_entry(
         self, symbol: str, year: "int | None",
-    ) -> tuple[pd.DataFrame, dict] | None:
-        """``(symbol, year)`` 的 ``(已派生帧, {日期: 行位置})`` 索引（懒建、带缓存）。
+    ) -> tuple[tuple, Any, dict] | None:
+        """``(symbol, year)`` 的 ``(列名, values, {日期: 行位置})`` 索引（懒建、带缓存）。
 
         单日 ``get_bars`` 专用：免去逐日对整年帧 mask+loc+sort（每符号每日一次
         全帧扫描 ⇒ 引擎主循环热点）。帧本身仍走 ``_enriched`` 缓存，索引只在
-        其上多挂一层 ``{date: 最后出现行号}``（keep='last' 语义）。
+        其上多挂一层 ``{date: 最后出现行号}``（keep='last' 语义）；取行用
+        ``dict(zip(cols, values[pos]))`` 代替 ``iloc``（省每 Bar 一次 Series 构造，
+        ``_row_to_bar`` 对 dict 的 ``get``/``[]``/``in`` 访问原生兼容）。
         """
         key = (symbol, year)
         if key not in self._day_index:
@@ -298,7 +300,7 @@ class ParquetDailyFeed:
                 pos_map: dict = {}
                 for i, d in enumerate(frame["_date"].tolist()):
                     pos_map[d] = i             # 重复日期取最后出现（keep='last'）
-                entry = (frame, pos_map)
+                entry = (tuple(frame.columns), frame.to_numpy(copy=False), pos_map)
             self._day_index[key] = entry
         return self._day_index[key]
 
