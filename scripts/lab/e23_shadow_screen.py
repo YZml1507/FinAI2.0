@@ -111,10 +111,10 @@ def first_seen_listed(r: pd.DataFrame, close_w: pd.DataFrame) -> pd.Series:
     sb = pd.read_parquet(STOCK_BASIC)
     ipo = sb.set_index('code')['ipoDate'].astype(str).str[:10]
 
-    def to_repo(ts: str) -> str:
-        c, m = ts.split('.')
-        return f"{m.lower()}.{c}"
-    return ipo.rename(index=to_repo)
+    def to_ts(code: str) -> str:  # sh.600000 → 600000.SH（面板列名口径）
+        m, c = code.split('.')
+        return f"{c}.{m.upper()}"
+    return ipo.rename(index=to_ts)
 
 
 def month_ends(idx: pd.DatetimeIndex) -> pd.DatetimeIndex:
@@ -145,13 +145,13 @@ def signal_frames(r, turn_w, close_w):
 def pit_fina_signal(T: pd.Timestamp, fina_cache: dict, field: str) -> pd.Series:
     """pub_date ≤ T 最新一条（fina_cache: code -> DataFrame sorted by pub_date）。"""
     out = {}
-    cutoff = (T - pd.Timedelta(days=PEAD_FRESH_DAYS)).strftime('%Y-%m-%d')
+    cutoff = T - pd.Timedelta(days=PEAD_FRESH_DAYS)
     for code, df in fina_cache.items():
-        m = df[df['pub_date'] <= T.strftime('%Y-%m-%d')]
+        m = df[pd.to_datetime(df['pub_date']) <= T]
         if m.empty:
             continue
         row = m.iloc[-1]
-        if row['pub_date'] < cutoff:
+        if pd.to_datetime(row['pub_date']) < cutoff:
             continue
         out[code] = row[field]
     return pd.Series(out, dtype=np.float64)
@@ -194,6 +194,9 @@ def run_screen(limit_days: int | None, hyps: list[str]) -> dict:
     sigs = signal_frames(r, turn_w, close_w)
     fina = load_fina() if any(h in hyps for h in ('H5', 'H6')) else {}
     fwd = fwd_returns(close_w, r)
+    # n_nan_ratio：good 样本 fwd 窗（D[i+2..i+21]）内 NaN 填充占比均值
+    valid_cum = (~r.isna()).astype(float).cumsum()
+    nanfrac = 1 - (valid_cum.shift(-HORIZON) - valid_cum.shift(-1)) / HORIZON
     Ts = month_ends(idx)
     # 最后 T：i+21 ≤ 最后日
     Ts = [T for T in Ts if pos[T] + HORIZON <= len(idx) - 1]
@@ -231,7 +234,9 @@ def run_screen(limit_days: int | None, hyps: list[str]) -> dict:
             spread = fg[list(top)].mean() - fg[list(bot)].mean()
             excess = fg[list(top)].mean() - fg.mean()
             monthly_rows.append(dict(hyp=h, T=str(T.date()), n=n, spread=spread,
-                                     excess=excess, _top=top))
+                                     excess=excess,
+                                     nan_ratio=float(nanfrac.loc[T][good].mean()),
+                                     _top=top))
     return monthly_rows
 
 
@@ -273,7 +278,9 @@ def stats(monthly_rows: list[dict]) -> dict:
                       half1=float(h1), half2=float(h2),
                       turn_top=turn_top, cost=cost,
                       G1=g1, G2=g2, G3=g3, G4=g4, grade=grade,
-                      n_min=int(g['n'].min()), n_median=float(g['n'].median()))
+                      n_min=int(g['n'].min()), n_median=float(g['n'].median()),
+                      n_nan_ratio=float(g['nan_ratio'].mean())
+                      if 'nan_ratio' in g else np.nan)
     return out, df.drop(columns=['_top'], errors='ignore')
 
 
@@ -302,8 +309,8 @@ def main() -> int:
         (OUT_DIR / 'e23_results.json').write_text(
             json.dumps(res, ensure_ascii=False, indent=1))
         mdf.to_parquet(OUT_DIR / 'e23_monthly.parquet')
-        print(pd.DataFrame(res).T.drop(index=['_notes', '_limit_days'],
-                                     errors='ignore').to_string())
+        tbl = {k: v for k, v in res.items() if not k.startswith('_')}
+        print(pd.DataFrame(tbl).T.to_string())
         return 0
     ap.print_help()
     return 1
