@@ -86,7 +86,7 @@ GC001 现金计息、本金 15 万、同 universe、同日历。
 
 **运行环境**：新机（Ubuntu 8 核/31G，Python 3.11.15，pytest 1127 绿）。
 `data/` 由 Release `data-20260920` 恢复（MD5 校验通过）；
-`experiments/lab/market-breadth-a/breadth20_daily.parquet` 不在 Release 内，
+`experiments/lab/market-breadth-a/breadth20_daily.parquet` 不在 Release 内， <!-- gate-doc-ignore: 历史快照（运行期产物路径，本机已重建、不入库），⛔ 不改史 -->
 **由 leaderboard.jsonl `isst-e8b` 记录 `overrides.breadth_series` 逐值重建**
 （98 条 e1~e18 记录该字段字节一致；`_load_breadth_series` 回读与原字典
 逐键逐值相等；PROVENANCE.md 登记 sha256）——非重新计算，零口径漂移。

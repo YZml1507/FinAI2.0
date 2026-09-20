@@ -21,7 +21,7 @@ demote 流动性降级），leaderboard `isst-e8b` / 新机复测
 | 胜率 | 44.23% | 同上（实测回测） | <!-- gate-doc-ignore: 历史快照（锚点实测值引用，非新基线声明），⛔ 不改史 -->
 | 期末 NAV | 341,406.53 元（本金 15 万，总收益 +127.57%） | 同上（实测回测） | <!-- gate-doc-ignore: 历史快照（锚点实测值引用，非新基线声明），⛔ 不改史 -->
 | 回测区间 | 2015-01-05 ~ 2024-12-31 | run 日志 `开始回测 2015-01-05 ~ 2024-12-31` |
-| universe_hash | `ac50e9da4fdf2942`（data_version=`dividend-stocks-2015-2024`） | `experiments/lab/isst-e8b-fix688-v2/runs/*.json` |
+| universe_hash | `ac50e9da4fdf2942`（data_version=`dividend-stocks-2015-2024`） | `experiments/lab/isst-e8b-fix688-v2/runs/*.json` | <!-- gate-doc-ignore: 历史快照（运行期产物路径，不入库），⛔ 不改史 -->
 
 参数全集（`isst-e8b` run_params 标量项，series 字典从略）：
 
@@ -98,7 +98,7 @@ max_dividend_yield=None, low_vol_keep_pct=None, attack_instrument=""`
   `dbd1b1b`；容量矩阵四档与 e19 全部跑在修复后代码。
 - **breadth 文件重建**：新机无 `market-breadth-a` 目录，序列由
   leaderboard `isst-e8b` 记录 `overrides.breadth_series` 逐值重建
-  （98 条记录字节一致 + 回读断言相等；`experiments/lab/market-breadth-a/PROVENANCE.md`
+  （98 条记录字节一致 + 回读断言相等；`experiments/lab/market-breadth-a/PROVENANCE.md` <!-- gate-doc-ignore: 历史快照（运行期产物路径，不入库），⛔ 不改史 -->
   登记 sha256=`2a220e94…41c00`、2846 行、2015-01-05~2026-09-16）。
   非重新计算，零口径漂移（`E19_CROWDING_PREREG` §六）。
 

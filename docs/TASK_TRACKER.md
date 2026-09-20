@@ -9,7 +9,7 @@
   （MD5 `0017521be62787034114ab1f1b63c278` 校验通过，data/ 19 子目录
   1.1G 全量落盘）；research-finai 已 clone；`.env` 就位（gitignore
   覆盖）；Python 3.11.15 venv + requirements 安装通过。
-- **breadth 序列重建（零口径漂移）**：`experiments/lab/market-breadth-a/`
+- **breadth 序列重建（零口径漂移）**：`experiments/lab/market-breadth-a/` <!-- gate-doc-ignore: 历史快照（运行期产物路径，本机已重建、不入库），⛔ 不改史 -->
   不在 Release 内——由 `experiments/lab/leaderboard.jsonl` 的
   `isst-e8b` 记录 `overrides.breadth_series` 逐值重建
   （2846 行，2015-01-05~2026-09-16；98 条 e1~e18 记录该字段字节一致；
