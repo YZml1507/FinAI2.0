@@ -306,7 +306,7 @@ A 股分红除权机制：除权日股价 **除息下调**（`close_new = close_
 
 ## 六、测试用例设计（≥6 例）
 
-测试文件（实施时新建）：`tests/test_armor1_exdiv_filter.py`。遵循项目既有风格（`tests/test_dividend_strategy.py` 的 Bar 构造方式 + `pytest.raises` fail-closed 断言）。
+测试文件（实施时新建，**尚未创建**）：`tests/test_armor1_exdiv_filter.py`。遵循项目既有风格（`tests/test_dividend_strategy.py` 的 Bar 构造方式 + `pytest.raises` fail-closed 断言）。
 
 ### 6.1 用例 1：有除权日被过滤 ✅
 
@@ -415,7 +415,7 @@ def test_end_to_end_backtest_no_penalty_tax():
 | 3 | `run_dividend_backtest.py` 复用 `_load_exdiv_events` 构造日历并注入 | `scripts/run_dividend_backtest.py:93-119, 520-535` | 1 |
 | 4 | `run_experiment.py::_PARAM_CASTERS` 加 N 参数（可网格扫描校准） | `scripts/lab/run_experiment.py:50-65` | 1 |
 | 5 | S-4-PRE 门禁实现 + 登记 RUN_PRE_BLOCKING_IDS | `scripts/gates/gate_s_scientific.py` / `scripts/gates/runner.py` | 2, 3 |
-| 6 | 测试 6.1-6.6 + 回归修复 `test_dividend_strategy.py` | `tests/test_armor1_exdiv_filter.py`（新建） | 1-5 |
+| 6 | 测试 6.1-6.6 + 回归修复 `test_dividend_strategy.py` | `tests/test_armor1_exdiv_filter.py`（尚未创建） | 1-5 |
 | 7 | 全量回归（TASK_TRACKER §五 测试命令：`.venv/bin/pytest`） | - | 6 |
 | 8 | 真实 10 年回测对比（开/关装甲一），验证 5.2 测算 | - | 7 |
 

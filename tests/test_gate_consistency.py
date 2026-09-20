@@ -222,6 +222,37 @@ class TestDocPathReferenceGate:
         res = DocPathReferenceGate().evaluate({"doc_paths": [str(md)]})
         assert res.status == GateStatus.PASS
 
+    def test_gitignored_path_whitelisted(self, tmp_path: Path):
+        """.gitignore 命中路径（运行期采集/生成物，不入库）⇒ 不算幽灵引用。
+
+        `data/macro/crowding_roll3y_daily.parquet` 被 `data/**/*.parquet` 忽略，
+        真实仓 checkout 中不存在也不应判违规。
+        """
+        md = tmp_path / "ignored.md"
+        md.write_text(
+            "序列文件 `data/macro/crowding_roll3y_daily.parquet` 由数据 Release 提供\n",
+            encoding="utf-8")
+        res = DocPathReferenceGate().evaluate({"doc_paths": [str(md)]})
+        refs = {v["reference"] for v in res.metrics.get("violations", [])}
+        assert "data/macro/crowding_roll3y_daily.parquet" not in refs
+
+    def test_non_ignored_missing_path_is_violation(self, tmp_path: Path):
+        """非 .gitignore 命中且不存在 ⇒ 仍判违规（白名单不吞噬真幽灵）。"""
+        md = tmp_path / "phantom.md"
+        md.write_text("实现见 `data/does_not_exist.py`\n", encoding="utf-8")
+        res = DocPathReferenceGate().evaluate({"doc_paths": [str(md)]})
+        assert res.status == GateStatus.FAIL
+        refs = {v["reference"] for v in res.metrics["violations"]}
+        assert "data/does_not_exist.py" in refs
+
+    def test_tracked_file_in_ignored_dir(self, tmp_path: Path):
+        """被忽略目录内的已入库文件（`experiments/lab/leaderboard.jsonl`）存在 ⇒ 无违规。"""
+        md = tmp_path / "tracked.md"
+        md.write_text("账本见 `experiments/lab/leaderboard.jsonl`\n", encoding="utf-8")
+        res = DocPathReferenceGate().evaluate({"doc_paths": [str(md)]})
+        refs = {v["reference"] for v in res.metrics.get("violations", [])}
+        assert "experiments/lab/leaderboard.jsonl" not in refs
+
 
 # =====================================================================
 # 5. E-1：五必挂极限用例（真实执行，⛔ 不得无证据预设通过）
@@ -1189,11 +1220,12 @@ class TestGateDocIgnoreScope:
             "docs/E16_DVTAIL_PREREG.md": (1, None),           # e16 预登记的对照实验实测值快照
             "docs/E17_DOF_PREREG.md": (1, None),            # e17 预登记的对照实验实测值快照
             "docs/E18_WIDTH_PREREG.md": (1, None),          # e18 预登记的证据链实测值快照
+            "docs/E19_CROWDING_PREREG.md": (1, None),       # e19 预登记收单的对照实验实测值快照
             "docs/CAPACITY_MATRIX_20260920.md": (1, None),  # 容量矩阵交付文档的分层实测值快照
             "docs/DEEP_RESEARCH_DIVIDEND_20260919.md": (1, None),  # 外部调研引用的券商/学术实测值，非本项目基线
             "docs/DEEP_ANALYSIS_GAP_20260919.md": (1, None),  # 差距剖析文：外部调研值+历史实验快照值混合豁免
             "docs/E20_OOS_HOLDOUT_PREREG.md": (1, None),     # e20 预登记的 OOS 两臂实测值快照
-            "docs/delivery/FINAL_DELIVERY_20260920.md": (1, None),  # 交付结论书的基线/容量/OOS 实测值快照
+            "docs/delivery/FINAL_DELIVERY_20260920.md": (1, None),  # 定稿结论书：锚点/消融/容量/OOS 实测值快照汇总引用
         }
         by_file: dict[str, list] = {}
         for h in hits:
