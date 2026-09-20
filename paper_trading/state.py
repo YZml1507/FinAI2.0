@@ -32,7 +32,7 @@ from typing import Any
 from backtest.broker import BacktestBroker
 from backtest.constants import OrderSide, OrderStatus
 from backtest.ledger import Position
-from backtest.types import Order
+from backtest.types import Order, Trade
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +59,14 @@ class PaperTradingState:
 
     #: 活动委托快照（仅 SUBMITTED，终态不保存）
     pending_orders: list[dict[str, Any]] = field(default_factory=list)
+
+    #: 成交史（⛔ 红利税 FIFO 重放必需：``broker._trades`` 不落盘 ⇒
+    #:    重启后首个除权日「队列空 vs 持仓>0」撞 ``compute_dividend_tax``
+    #:    边界校验而崩）。字段只留计税所需五项 + 幂等键。
+    trade_history: list[dict[str, Any]] = field(default_factory=list)
+
+    #: 送转事件史（``broker._split_events``，红利税 SPLIT 摊批数据源）
+    split_events: list[dict[str, Any]] = field(default_factory=list)
 
     #: 净值
     nav: str = "0"
@@ -129,6 +137,23 @@ class PaperTradingState:
                     "created_date": order.created_date.isoformat(),
                 })
 
+        trade_history_list: list[dict[str, Any]] = [
+            {
+                "trade_id": t.trade_id,
+                "client_order_id": t.client_order_id,
+                "date": t.date.isoformat(),
+                "symbol": t.symbol,
+                "side": t.side.name,
+                "volume": int(t.volume),
+                "price": str(t.price),
+            }
+            for t in broker.trades
+        ]
+        split_events_list: list[dict[str, Any]] = [
+            {"date": d.isoformat(), "symbol": s, "factor": str(f)}
+            for d, s, f in broker._split_events
+        ]
+
         return cls(
             last_trading_date=last_date.isoformat(),
             cash=str(book.cash),
@@ -136,6 +161,8 @@ class PaperTradingState:
             positions=positions_dict,
             pending_orders=pending_orders_list,
             nav=str(book.total_nav),
+            trade_history=trade_history_list,
+            split_events=split_events_list,
         )
 
     def restore_to_broker(self, broker: BacktestBroker) -> None:
@@ -177,6 +204,25 @@ class PaperTradingState:
             )
             broker._pending[order.client_order_id] = order
             broker._all_orders[order.client_order_id] = order
+
+        # 恢复成交史 + 送转史（红利税 FIFO 重放数据源；⛔ 必须在除权事件
+        #    到来前补回，否则队列空撞边界校验 → 日任务崩）
+        for td in self.trade_history:
+            broker._trades.append(Trade(
+                trade_id=str(td.get("trade_id") or f"restored-{len(broker._trades)}"),
+                client_order_id=str(td.get("client_order_id") or ""),
+                symbol=str(td["symbol"]),
+                side=OrderSide[str(td["side"])],
+                volume=int(td["volume"]),
+                price=Decimal(str(td["price"])),
+                date=_date.fromisoformat(str(td["date"])),
+                fees={},
+                sellable_date=None,
+            ))
+        for sd in self.split_events:
+            broker._split_events.append(
+                (_date.fromisoformat(str(sd["date"])), str(sd["symbol"]), Decimal(str(sd["factor"])))
+            )
 
         logger.info(
             "状态已恢复: 现金 %s, 持仓 %d 只, 挂单 %d 笔",
