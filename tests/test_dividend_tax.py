@@ -512,6 +512,25 @@ class TestDividendTaxIntegration:
         # 1500 × 1.0 × 10% = 150.00 元
         assert tax == Decimal("150.00")
 
+    def test_split_odd_lot_rounds_half_up_like_bookview(self):
+        """奇数零股批次 × 非整数因子：须与 BookView.process_exdiv 同口径
+        ROUND_HALF_UP（33×1.5=49.5→50），int() 截断会让 FIFO 队列与
+        除权日持股差 1 股而 raise。"""
+        divs = [
+            DividendEvent(
+                ex_date=date(2023, 6, 15),
+                symbol="sz.002110",
+                dividend_per_share=Decimal("1.0"),
+                shares_held=50,          # 33 × 1.5 = 49.5 → half-up 50
+            )
+        ]
+        buys = [(date(2023, 1, 1), "sz.002110", 33)]
+        splits = [(date(2023, 5, 20), "sz.002110", Decimal("1.5"))]
+        # 持股 165 天（1月-1年 → 10%）：50 × 1.0 × 10% = 5.00；
+        # 关键断言是不 raise（队列股数与 shares_held 一致）
+        tax = compute_dividend_tax(divs, buys, [], split_events=splits)
+        assert tax == Decimal("5.00")
+
 
 
 class TestExDateSameDayFills:

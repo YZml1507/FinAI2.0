@@ -200,7 +200,12 @@ def compute_dividend_tax(
             factor = payload[0]
             if factor > _ZERO and factor != _ONE:
                 for lot in fifo_queue:
-                    lot.shares = int(Decimal(str(lot.shares)) * factor)
+                    # ⛔ 须与 BookView.process_exdiv 同口径（ROUND_HALF_UP），
+                    # int() 截断会让奇数零股批次差 1 股 → 下个除权日
+                    # total_in_queue != shares_held 校验炸出
+                    lot.shares = int(
+                        (Decimal(str(lot.shares)) * factor).quantize(
+                            Decimal("1"), rounding=ROUND_HALF_UP))
 
         elif event_type == "SELL":
             shares_to_sell = payload[0]
