@@ -323,13 +323,14 @@ def run_experiment(name: str, overrides: dict, data_path: Path) -> dict:
 
 def _compact_override(v: object) -> str:
     """序列化 override 值进 summary——大型序列映射（breadth_series /
-    crowding_series 等注入的数据面输入）折叠为 <series:N sha256=..>
-    摘要（原始序列的指纹已含在 data_hash，逐值展开只是噪音）。"""
+    crowding_series 等注入的数据面输入）折叠为 <compacted:len=N sha256=..>
+    摘要（原始序列的指纹已含在 data_hash，逐值展开只是噪音）。格式与
+    9954d51 瘦身改写的存量行保持一致。"""
     if isinstance(v, Mapping):
         digest = hashlib.sha256(
             repr(sorted(v.items(), key=lambda kv: str(kv[0]))).encode()
         ).hexdigest()[:12]
-        return f"<series:{len(v)} entries sha256={digest}>"
+        return f"<compacted:len={len(v)} sha256={digest}>"
     return str(v)
 
 

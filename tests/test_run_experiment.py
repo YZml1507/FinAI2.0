@@ -16,7 +16,7 @@ class TestCompactOverride:
     def test_large_series_folds_to_digest(self):
         series = {f"2020-01-{i:02d}": Decimal("0.5") for i in range(1, 29)}
         out = m._compact_override(series)
-        assert out.startswith("<series:28 entries sha256=")
+        assert out.startswith("<compacted:len=28 sha256=")
         assert "2020-01" not in out  # 不展开原始内容
 
     def test_digest_deterministic(self):
