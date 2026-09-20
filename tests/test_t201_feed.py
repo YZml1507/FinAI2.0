@@ -441,3 +441,35 @@ def test_multi_symbol_mixed_suspension_and_limits():
     assert bars[_SYM].limit_up is True         # 10% 档触板
     assert bars[other].limit_up is False       # 20% 档未触板
     assert bars[other].symbol == other
+
+
+# ----------------------------------------------------------------------
+# 单日快路径等价性（_day_index 与 _frame_for_range 同语义）
+# ----------------------------------------------------------------------
+
+def test_day_index_matches_range_path():
+    """get_bars 日索引路径 == 旧 mask+sort 路径逐 Bar 相等（含跨日与缺席日）。"""
+    feed = _feed([
+        _row(_D1, close=10.5, preclose=10.0),
+        _row(_D2, close=11.0, preclose=10.5),
+        _row(_D3, close=11.5, preclose=11.0, is_st="1"),
+    ])
+    for d in (_D1, _D2, _D3):
+        via_index = feed.get_bars([_SYM], d).get(_SYM)
+        sub = feed._frame_for_range(_SYM, d, d)
+        via_range = feed._row_to_bar(_SYM, sub.iloc[-1]) if sub is not None else None
+        assert via_index == via_range, d
+    assert feed.get_bars([_SYM], date(2024, 3, 6)) == {}   # 缺席日
+
+
+def test_day_index_duplicate_date_keeps_last():
+    """同日重复行取最后出现者（keep='last'，与落盘去重口径一致）。"""
+    feed = _feed([
+        _row(_D1, close=10.5, preclose=10.0),
+        _row(_D1, close=99.9, preclose=10.0),   # 同日重复（脏数据形态）
+    ])
+    bar = feed.get_bars([_SYM], _D1)[_SYM]
+    assert bar.close == D("99.9")
+    # 与旧路径一致
+    sub = feed._frame_for_range(_SYM, _D1, _D1)
+    assert feed._row_to_bar(_SYM, sub.iloc[-1]).close == D("99.9")
