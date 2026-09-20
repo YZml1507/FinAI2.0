@@ -922,6 +922,27 @@ class TestGateCountBaselineConsistency:
             for d in res.metrics["declaration_violations"]
         )
 
+    def test_gate_count_table_row_fails(self, tmp_path: Path):
+        """markdown 表格行 `| 门禁总数 | N |`（`|` 分隔）也属总数声明（qa_final_round #91）。"""
+        n = len(GateMasterAudit.get_standard_gates())
+        md = self._write_truth_doc(
+            tmp_path, "table_row.md", f"| 指标 | 当前值 |\n| 门禁总数 | {n + 2} |\n",
+        )
+        res = self._eval(md)
+        assert res.status == GateStatus.FAIL
+        assert any(
+            d["metric"] == "门禁数量" and d["doc_value"] == str(n + 2)
+            for d in res.metrics["declaration_violations"]
+        )
+
+    def test_gate_count_table_header_no_false_positive(self, tmp_path: Path):
+        """表头 `| 指标 | 门禁总数 |`（数字缺失）不得误报。"""
+        n = len(GateMasterAudit.get_standard_gates())
+        md = self._write_truth_doc(
+            tmp_path, "table_head.md", f"| 指标 | 门禁总数 |\n| 门禁总数 | {n} |\n",
+        )
+        assert self._eval(md).status == GateStatus.PASS
+
     def test_gate_count_no_false_positive(self, tmp_path: Path):
         """放宽后的误报防线：① 有关键词但无「N 道」；② 有「N 道」但无关键词 ⇒ 均不得报。"""
         md1 = self._write_truth_doc(tmp_path, "kw_only.md", "六维防御门禁已全面闭环。")
