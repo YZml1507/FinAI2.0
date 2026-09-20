@@ -70,7 +70,10 @@ def fetch_dividends() -> pd.DataFrame:
     df = df.rename(columns={"日期": "date", "累计分红": "cum"})
     df["date"] = pd.to_datetime(df["date"])
     df = df.sort_values("date").reset_index(drop=True)
-    df["cash_dividend"] = df["cum"].diff()
+    # diff() 首行=NaN 但该行 cum 值本身就是首笔分红——fillna(cum) 保住它，
+    # 否则若首事件落在窗口内会被静默丢失（当前数据首事件在 2009 窗口外，
+    # 未实际漏——修的是复用语义而非本批数据）
+    df["cash_dividend"] = df["cum"].diff().fillna(df["cum"])
     df = df.dropna(subset=["cash_dividend"])
     df = df[(df["date"] >= START) & (df["date"] <= END)]
     df["factor"] = 1.0
