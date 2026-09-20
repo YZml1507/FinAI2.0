@@ -45,7 +45,8 @@ __all__ = [
     "UniverseError", "IndexReplayUnverifiedError", "IndexNotReplayableError",
     "UniverseSnapshot", "IndexSnapshot",
     "UNVERIFIED_INDEX_APIS", "NO_REPLAY_INDICES",
-    "canon_date", "alive_universe", "load_stock_basic", "compute_alive_universe",
+    "canon_date", "alive_universe", "AliveUniverseIndex",
+    "load_stock_basic", "compute_alive_universe",
     "index_constituents",
 ]
 
