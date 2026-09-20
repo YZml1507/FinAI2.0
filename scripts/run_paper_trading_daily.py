@@ -55,7 +55,8 @@ logger = logging.getLogger("run_paper_trading_daily")
 
 
 def _get_git_commit(repo_dir: Path) -> str:
-    """获取当前仓库 Git Commit SHA，失败时返回 fallback。"""
+    """获取当前仓库 Git Commit SHA，失败返回空串（⛔ 不用假哈希兜底——
+    git 不可得 = 出处缺失，如实空值而非伪装出处）。"""
     try:
         res = subprocess.run(
             ["git", "rev-parse", "HEAD"],
@@ -66,7 +67,7 @@ def _get_git_commit(repo_dir: Path) -> str:
         )
         return res.stdout.strip()[:7]
     except Exception:
-        return "4878ffe"
+        return ""
 
 
 def _as_date(value: str | _date) -> _date:
@@ -190,8 +191,11 @@ def run_daily_pipeline(
             reconcile_ok = False
             reconcile_warnings.append(str(re_err))
         except Exception as exc:
-            logger.warning("对账抽样检查警告: %s", exc)
-            reconcile_ok = True  # 允许非致命回退
+            # ⛔ fail-closed：抽样检查自身崩溃（非 ReconciliationError）=
+            # 无对账证据，不得标 PASS——"无证据 ≠ 通过"
+            logger.error("对账抽样检查异常（按失败处理）: %s", exc)
+            reconcile_ok = False
+            reconcile_warnings.append(f"对账检查异常: {exc}")
     else:
         reconcile_ok = result.success
 
