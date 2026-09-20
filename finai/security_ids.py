@@ -51,7 +51,7 @@ which **6 collide with a real equity in ``stocks``**:
 index code     index is             the same six digits as an equity are
 =============  ===================  ==========================================
 ``000001.SH``  上证综指             ``000001.SZ`` 平安银行
-``000016.SH``  上证50               ``000016.SZ`` \*ST康佳A
+``000016.SH``  上证50               ``000016.SZ`` \\*ST康佳A
 ``000300.SH``  沪深300              (``stocks`` holds a polluted ``000300`` row)
 ``000852.SH``  中证1000             ``000852.SZ`` 石化机械
 ``000905.SH``  中证500              ``000905.SZ`` 厦门港务
