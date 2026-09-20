@@ -21,9 +21,11 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 import time
+from collections.abc import Mapping
 from dataclasses import replace
 from datetime import date as _date
 from decimal import Decimal
@@ -299,7 +301,7 @@ def run_experiment(name: str, overrides: dict, data_path: Path) -> dict:
         "experiment": name,
         "started": started,
         "elapsed_min": round(elapsed / 60, 1),
-        "overrides": {k: str(v) for k, v in overrides.items()},
+        "overrides": {k: _compact_override(v) for k, v in overrides.items()},
         "run_params": run_params,
         "run_id": result["run_id"],
         "lab_dir": str(lab_dir.relative_to(ROOT)),
@@ -317,6 +319,18 @@ def run_experiment(name: str, overrides: dict, data_path: Path) -> dict:
     )
     _append_leaderboard(summary)
     return summary
+
+
+def _compact_override(v: object) -> str:
+    """序列化 override 值进 summary——大型序列映射（breadth_series /
+    crowding_series 等注入的数据面输入）折叠为 <series:N sha256=..>
+    摘要（原始序列的指纹已含在 data_hash，逐值展开只是噪音）。"""
+    if isinstance(v, Mapping):
+        digest = hashlib.sha256(
+            repr(sorted(v.items(), key=lambda kv: str(kv[0]))).encode()
+        ).hexdigest()[:12]
+        return f"<series:{len(v)} entries sha256={digest}>"
+    return str(v)
 
 
 def _append_leaderboard(summary: dict) -> None:
