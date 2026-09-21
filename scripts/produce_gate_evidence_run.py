@@ -261,19 +261,22 @@ def _load_stress_stats() -> tuple[float, int, int, dict[str, str]]:
     return stress_return, rt, days, ids
 
 
-def _promote_baselines(scratch: Path) -> list[str]:
-    """把 scratch baseline 产物升格进权威 ``experiments/runs/``。
+def _promote_baselines(scratch: Path, run_ids: list[str]) -> list[str]:
+    """把本批 scratch baseline 产物升格进权威 ``experiments/runs/``。
 
-    复制 ``runs/*.json`` 并把 scratch ``runs/index.jsonl`` 行原样追加进权威
-    index（登记幂等：run_id 唯一约束由 registry 保证，追加只做索引补全）。
+    只升格 ``run_ids`` 指定的产物（scratch 目录可能残留上一批文件——
+    glob 全量会撞已升格产物导致中断漏升格）。index 行只追加本批 run_id 对应的。
     """
     import shutil
     auth_runs = ROOT / "experiments" / "runs"
     promoted: list[str] = []
     src_runs = scratch / "runs"
-    index_lines = (src_runs / "index.jsonl").read_text(
-        encoding="utf-8").splitlines()
-    for js in sorted(src_runs.glob("*.json")):
+    index_lines = [
+        line for line in
+        (src_runs / "index.jsonl").read_text(encoding="utf-8").splitlines()
+        if json.loads(line)["run_id"] in set(run_ids)]
+    for rid in run_ids:
+        js = src_runs / f"{rid}.json"
         dst = auth_runs / js.name
         if dst.exists():
             raise FileExistsError(f"升格冲突：{js.name} 已存在于权威 runs/")
@@ -373,17 +376,19 @@ def main() -> int:
             "stress_registry_root": str(SCRATCH_ROOT.relative_to(ROOT)),
         }
         baseline_scratch = SCRATCH_ROOT / "baseline"
+        produced_ids: list[str] = []
         for i in (1, 2):
             b = _run_traced(
                 f"baseline-{i}", overrides,
                 registry_root=baseline_scratch,
                 evidence_extra=extras)
+            produced_ids.append(b["run_id"])
             summary["runs"][f"baseline_{i}"] = {
                 "run_id": b["run_id"], "elapsed_min": round(b["elapsed_min"], 1),
                 "total_return": str(b["report"].total_return),
                 "cagr": str(b["report"].cagr),
                 "max_drawdown": str(b["report"].max_drawdown)}
-        _promote_baselines(baseline_scratch)
+        _promote_baselines(baseline_scratch, produced_ids)
 
     SUMMARY_PATH.write_text(
         json.dumps({k: ({kk: vv for kk, vv in v.items()} if isinstance(v, dict) else v)
