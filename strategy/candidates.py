@@ -245,6 +245,12 @@ class DividendConfig:
     crowding_threshold: Decimal = Decimal("0.85")     # 熔断触发分位（预登记冻结 0.85）
     crowding_cap: Decimal = Decimal("0.5")            # 触发时目标仓位乘数（减半，差额留现金计 GC001 息）
     pead_entry_mode: str = "rebalance"                # 'event'=公告日事件驱动建仓（需 reserve）；'rebalance'=调仓日并入候选源（软叠加，零闲置现金）
+    # e36 C1 合成信号上游叠加（默认 None=逐位复现锚点）：
+    # overlay_series: iso date → {symbol: z} 的预计算合成 z 表；
+    # overlay_mode: 'tilt'=权重乘 max(0.10,1+λ·clip(z,±2))；'filter'=剔除 z<0 候选
+    composite_overlay: Optional[Mapping[str, Mapping[str, Decimal]]] = None
+    overlay_mode: str = "tilt"                        # 'tilt' | 'filter'
+    overlay_lambda: Decimal = Decimal("0.30")         # e36 冻结 λ=0.30
     portfolio: PortfolioConfig = field(default_factory=PortfolioConfig)
 
     def __post_init__(self) -> None:
@@ -332,6 +338,11 @@ class DividendConfig:
                 raise ValueError(f"max_dividend_yield={self.max_dividend_yield} 须严格大于 "
                                  f"min_dividend_yield={self.min_dividend_yield}"
                                  f"（否则候选恒空——fail-closed）")
+        if self.overlay_mode not in ("tilt", "filter"):
+            raise ValueError(f"overlay_mode 须为 'tilt'/'filter'，实际={self.overlay_mode}")
+        if not isinstance(self.overlay_lambda, Decimal):
+            raise TypeError(f"overlay_lambda 须为 Decimal（⛔ 禁 float）: "
+                            f"{type(self.overlay_lambda).__name__}")
         if self.weight_mode not in ("market_cap", "equal", "dividend_yield"):
             raise ValueError(f"weight_mode 须为 'market_cap'/'equal'/'dividend_yield'"
                              f"（fail-closed）: {self.weight_mode!r}")
@@ -733,7 +744,7 @@ class DividendStrategy:
                 reserve = cfg.pead_reserve_pct
             plan, _plan_dropped = plan_positions(
                 targets, total_nav * (Decimal("1") - reserve), bars,
-                cfg.portfolio, weights=scores)
+                cfg.portfolio, weights=self._overlay_tilt(cfg, scores, day))
             # PEAD 在册持仓 sticky：reserve 池按槽位等权给目标市值（防被 diff 卖掉）
             if reserve > _ZERO_ and self._pead_holds:
                 each = total_nav * reserve / Decimal(cfg.pead_max_slots)
@@ -818,6 +829,18 @@ class DividendStrategy:
         # 切片自然缩短/清空 → 空仓（fail-closed 语义）
         if cfg.dv_skip_top > 0:
             candidates = candidates[cfg.dv_skip_top:]
+        # e36 filter 臂：剔除合成 z<0 候选（无 z 记缺省的票不受影响）；
+        # 过滤后候选 < min_positions 时按原序补回被删票到下限（防池坍缩）
+        if (cfg.composite_overlay is not None and cfg.overlay_mode == "filter"
+                and day is not None):
+            zmap = cfg.composite_overlay.get(day.isoformat()) or {}
+            kept = [c for c in candidates
+                    if zmap.get(c[0], Decimal("0")) >= _ZERO_]
+            if len(kept) < cfg.min_positions:
+                dropped = [c for c in candidates
+                           if zmap.get(c[0], Decimal("0")) < _ZERO_]
+                kept = kept + dropped[:cfg.min_positions - len(kept)]
+            candidates = kept
         top_candidates = candidates[:cfg.candidate_pool_size]
 
         # 加权（归一化）：e17 权重形态——'market_cap'=自由流通市值占比（默认）/
@@ -842,6 +865,24 @@ class DividendStrategy:
             ))
 
         return signals
+
+    def _overlay_tilt(self, cfg: DividendConfig, scores: dict,
+                      day: _date) -> dict:
+        """e36 tilt：对 plan_positions 的 weights 施加 z 乘数（不影响 select_targets 排序）。"""
+        if (cfg.composite_overlay is None or cfg.overlay_mode != "tilt"
+                or not scores):
+            return scores
+        zmap = cfg.composite_overlay.get(day.isoformat()) or {}
+        if not zmap:
+            return scores
+        out = dict(scores)
+        for s in out:
+            z = zmap.get(s)
+            if z is not None:
+                zc = min(max(z, Decimal("-2")), Decimal("2"))
+                out[s] = out[s] * max(Decimal("0.10"),
+                                      Decimal("1") + cfg.overlay_lambda * zc)
+        return out
 
     def _submit(self, broker: Any, intents: Sequence[OrderIntent], day: _date) -> None:
         """提交订单意图（复用 MomentumStrategy 的模式）。"""
