@@ -170,6 +170,11 @@
   0 坏码 0 重复，量与编制规则上限吻合。落盘 data/index_rebal/
   （不入库），采集脚本已推 research-finai scripts/collect_index_rebal.py。
   调样事件族评估（调入 40d 效应 RD 旧证据 +15%）排队为下一候选族。
+- **forecast 轴钥匙登记（同日）**：tushare 两通道实测定死——PROMAX
+  中转 key 2026-08-10 停用后仍 403、CITYDATA 代理 407（出口 IP 不
+  在白名单/凭据过期，遵 .env 红线未绕）。业绩预告轴改走 akshare EM
+  兜底（yjyg/yjkb 按报告期），公告日字段有无是 PIT 关键判定项，
+  子会话 6b72c669 执行中。
 - **e40 指数调样族收单（同日，冻结→跑完当日）**：index_rebal 54 期
   数据 → 六臂冻结 → 全窗筛选 37s：**R1/R2 调入于 ann→eff 专项窗判强**
   （+2.52%/+1.56%，簇 t=3.23/2.93，19 簇 19 期，R1 逐期 100% 正）；
