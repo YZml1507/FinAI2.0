@@ -41,7 +41,10 @@ from scripts.gates.must_fail_probe import run_must_fail_cases
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 _RUNS_DIR = _REPO_ROOT / "experiments" / "runs"
-_AUTHORITATIVE_RUN = _RUNS_DIR / "20260907-150402-t312-dividend-v1-noseed.json"
+_LEGACY_DIR = _REPO_ROOT / "experiments" / "legacy"
+# T317：4 份无指纹 legacy 产物已 git mv 至 experiments/legacy/（出权威登记面），
+# 该文件仍在仓内可作夹具，路径须指向 legacy/。
+_AUTHORITATIVE_RUN = _LEGACY_DIR / "20260907-150402-t312-dividend-v1-noseed.json"
 
 
 # =====================================================================
@@ -95,7 +98,7 @@ class TestMaxDrawdownGate:
         assert "0.4308" in res.message
 
     def test_inconclusive_on_zero_trade_artifact(self):
-        artifact = _RUNS_DIR / "20260903-135508-t312-dividend-v1-noseed.json"
+        artifact = _LEGACY_DIR / "20260903-135508-t312-dividend-v1-noseed.json"
         res = MaxDrawdownCeilingGate().evaluate({"artifact_path": str(artifact)})
         assert res.status == GateStatus.INCONCLUSIVE
         assert res.status != GateStatus.PASS
@@ -532,12 +535,14 @@ class TestNoSilentPassMeta:
     def test_no_gate_passes_on_empty_context_except_self_sourced(self):
         """空 context 下，除"证据直接来自仓库现状"的门禁外，一律不得 PASS。
 
-        ``G-3``  母库 370 行守卫；``G-DOC-1`` / ``G-REF-1`` 默认扫描全仓文档——
-        三者的 PASS **反映真实仓库合规状态**（文档已合规/作废 ⇒ 无违规 ⇒ PASS），
+        ``G-3``  母库 370 行守卫；``G-DOC-1`` / ``G-REF-1`` 默认扫描全仓文档；
+        ``G-REPRO-1``（T317 起）空 ctx 时默认扫描仓内 ``experiments/runs/``——
+        legacy 已迁出、baseline×2 同指纹同 metrics ⇒ PASS 反映**真实仓库合规**；
+        其对违规输入的 FAIL/INCONCLUSIVE 能力由 TestReproducibilityGate 各用例钉死。
         并非"恒过门禁"（其对违规输入的 FAIL 能力由 ``test_every_gate_has_at_least_one_failing_input``
         与 ``test_violating_contexts_are_specific`` 另行保证）。
         """
-        repo_self_sourced = {"G-3", "G-DOC-1", "G-REF-1"}
+        repo_self_sourced = {"G-3", "G-DOC-1", "G-REF-1", "G-REPRO-1"}
         offenders = [
             g.gate_id for g in GateMasterAudit.get_standard_gates()
             if g.gate_id not in repo_self_sourced and g.evaluate({}).status == GateStatus.PASS
@@ -787,13 +792,16 @@ class TestReproducibilityGate:
         assert res.status != GateStatus.PASS
         assert "LEGACY_UNVERIFIED" in res.message
 
-    def test_repo_legacy_artifacts_report_legacy_unverified(self):
-        """对真实仓库现状（4 份 legacy 产物，无 repro_fingerprint）⇒ LEGACY_UNVERIFIED。"""
+    def test_repo_verified_pair_reports_pass(self):
+        """对真实仓库现状（T317 后：runs/ 全带指纹且含 baseline×2 verified 对）⇒ PASS。
+
+        legacy 产物已迁出权威登记面（experiments/legacy/），不再参与复现一致性判定。
+        """
         from scripts.gates.gate_repro import ReproducibilityGate
 
         res = ReproducibilityGate().evaluate({})
-        assert res.status == GateStatus.INCONCLUSIVE
-        assert "LEGACY_UNVERIFIED" in res.message
+        assert res.status == GateStatus.PASS, res.message
+        assert "LEGACY_UNVERIFIED" not in res.message
 
 
 # =====================================================================

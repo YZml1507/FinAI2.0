@@ -66,7 +66,7 @@ BASE_GRID_STEP = 500
 NAV_BASE = D("150000")             # 基线本金（= 产物 initial_nav）
 N_EQUAL = 5                        # 默认 default_positions=target_count=5
 
-ARTIFACT_REL = "experiments/runs/20260907-150402-t312-dividend-v1-noseed.json"
+ARTIFACT_REL = "experiments/legacy/20260907-150402-t312-dividend-v1-noseed.json"  # T317 迁出权威面（无指纹），本脚本复核对象仍是该历史产物
 OUTPUT_REL = "artifacts/m6_attribution/pathA_shadow/shadow_recompute.json"
 REPRO_CMD = "cd D:/Projects/FinAI2.0 && py -3.11 scripts/m6_shadow_recompute.py"
 

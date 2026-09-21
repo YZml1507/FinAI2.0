@@ -494,7 +494,7 @@
       "min_positions": 3,
       "target_count": 5
     },
-    "artifact_path": "experiments/runs/20260907-150402-t312-dividend-v1-noseed.json",
+    "artifact_path": "experiments/legacy/20260907-150402-t312-dividend-v1-noseed.json",
     "production_functions": [
       "strategy/portfolio.py:49 PortfolioConfig",
       "strategy/portfolio.py:124 select_targets",
