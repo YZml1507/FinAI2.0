@@ -66,8 +66,9 @@
   akshare stock_zh_a_gdhs，~20s/期）；③ 行业分类换源定案：弃申万（swsresearch
   508），用 **baostock query_stock_industry(date) 证监会分类时点快照**（季末粒度，
   天然 PIT），采集器 `scripts/collect_industry_baostock.py` 在跑 2009Q4–2024Q4；
-  ④ 子会话×2 在跑：内部人明细（东财 RPT_EXECUTIVE_HOLD_DETAILS 全史，
-  session 351bdfc9）+ 全 A 资金流按股（efinance，session ac078f1b）。
+  ④ e27 收单（同日）：内部人明细 113,842 行落盘 → 预登记冻结（L=15td 校准，
+  过滤规则写死）→ 筛选 **6/6 判负**（最高 t=1.10，覆盖/换手双杀）→ 族如实
+  关闭。资金流子会话 ac078f1b 仍在跑。
   ⑤ 候选库三信号重启评估待 lhb/money_flow/insider 落盘后触发。
 - **e28 收单（同日）**：股东户数族冻结筛选 5/6「强」（S1 2.97/S2 3.08/S4 3.10/
   S5 3.80/S6 4.20，S3 负）——但多头端超额集中 S2/S5（~3.4-3.6%/年毛利，
