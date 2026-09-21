@@ -49,6 +49,13 @@ data/c3_pool/
 data/c3_universe/
 data/rates/
 data/margin_detail/
+data/lhb/
+data/block_trade/
+data/sentiment/
+data/industry_sw/
+data/insider_trade/
+data/gdhs/
+data/money_flow/
 data/signal_layers_manifest.json
 data/**/*.parquet
 .workbuddy/
