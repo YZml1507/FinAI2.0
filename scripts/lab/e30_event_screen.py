@@ -130,9 +130,10 @@ def main() -> int:
 
     t0 = time.time()
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    _note("panel (close/circ_mv)")
-    e27.build_panel(args.limit_days)
     suf = f"_lim{args.limit_days}" if args.limit_days else ""
+    if not (e27.OUT_DIR / f'panel_close{suf}.parquet').exists():
+        _note("panel build (close/circ_mv)")
+        e27.build_panel(args.limit_days)
     close_w = pd.read_parquet(e27.OUT_DIR / f'panel_close{suf}.parquet')
     cmv_w = pd.read_parquet(e27.OUT_DIR / f'panel_circ_mv{suf}.parquet')
     r = daily_returns(close_w)

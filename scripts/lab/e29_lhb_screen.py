@@ -195,9 +195,10 @@ def main() -> int:
 
     t0 = time.time()
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    _note("build panel (close/circ_mv via e27 loader)")
-    e27.build_panel(args.limit_days)
     suf = f"_lim{args.limit_days}" if args.limit_days else ""
+    if not (e27.OUT_DIR / f'panel_close{suf}.parquet').exists():
+        _note("build panel (close/circ_mv via e27 loader)")
+        e27.build_panel(args.limit_days)
     P = {'close': pd.read_parquet(e27.OUT_DIR / f'panel_close{suf}.parquet'),
          'circ_mv': pd.read_parquet(e27.OUT_DIR / f'panel_circ_mv{suf}.parquet')}
     close_w = P['close']
