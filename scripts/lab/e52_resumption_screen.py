@@ -1,0 +1,158 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""e52 停牌复牌事件族影子筛选（docs/E52_RESUMPTION_PREREG.md 冻结）。
+
+停牌=panel_close 连续 NaN 段（上市首交易日之前的不算）。
+复牌 T0=连续 NaN≥L 后首个非 NaN 交易日；同股事件间隔 ≥20td。
+h∈{1,5,10,20}，基线=同日截面均值，安慰剂门同源 e29。
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+import time
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
+
+from scripts.lab.e23_shadow_screen import MIN_LISTED_DAYS, daily_returns  # noqa: E402
+from scripts.lab import e27_insider_screen as e27  # noqa: E402
+from scripts.lab import e29_lhb_screen as e29  # noqa: E402
+
+OUT_DIR = ROOT / 'experiments' / 'lab' / 'e52'
+MIN_N = 300
+DEDUP_TD = 20
+
+
+def _note(m): print(f"[note] {m}", flush=True)
+
+
+def resumption_events(close_w: pd.DataFrame,
+                      lo: int, hi: int) -> pd.DataFrame:
+    """NaN 连续段∈[lo,hi] 后首个非 NaN 日=复牌 T0。"""
+    days = close_w.index
+    events = []
+    for sym in close_w.columns:
+        s = close_w[sym].values
+        nan = np.isnan(s)
+        fv = np.argmax(~nan)           # 首个非 NaN（上市日）
+        if not (~nan).any():
+            continue
+        run, prev_td = 0, 0
+        for i in range(fv, len(s)):
+            if nan[i]:
+                run += 1
+            else:
+                if lo <= run <= hi:
+                    events.append((days[i], sym))
+                run = 0
+    ev = pd.DataFrame(events, columns=['trade_date', 'ts_code'])
+    return ev
+
+
+def pool_hits(ev: pd.DataFrame) -> float:
+    from scripts.lab.e36_e37_overlay_ab import _universe_symbols, _ts2bs
+    uni_ts = set()
+    for s in _universe_symbols():
+        # bs→ts
+        uni_ts.add(s[3:] + ('.SH' if s.startswith('sh')
+                            else '.SZ' if s.startswith('sz') else '.BJ'))
+    if len(ev) == 0:
+        return 0.0
+    return float(ev['ts_code'].isin(uni_ts).mean())
+
+
+def dedup_td(ev: pd.DataFrame) -> pd.DataFrame:
+    ev = ev.sort_values(['ts_code', 'trade_date'])
+    keep, last = [], {}
+    for i, t in enumerate(ev.itertuples()):
+        p = last.get(t.ts_code)
+        if p is not None and (t.trade_date - p).days <= DEDUP_TD:
+            continue
+        keep.append(i)
+        last[t.ts_code] = t.trade_date
+    return ev.iloc[keep]
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--run', action='store_true')
+    args = ap.parse_args()
+    if not args.run:
+        print("⛔ --run required (prereg frozen 2026-09-21)")
+        return 2
+    t0 = time.time()
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+
+    close_w = pd.read_parquet(e27.OUT_DIR / 'panel_close.parquet')
+    r = daily_returns(close_w)
+    valid = (~close_w.isna()).cumsum().ge(MIN_LISTED_DAYS)
+    days_idx = r.index
+    _note(f"panel {close_w.shape}")
+
+    ev_all = resumption_events(close_w, 5, 10 ** 9)
+    _note(f"resumption ≥5td events={len(ev_all)}")
+
+    fwd = e29.fwd_panels(r)
+    base = e29.baseline_mean(fwd, valid)
+    plc = e29.placebo_gate(r, valid, days_idx, fwd, base)
+    _note(f"placebo: {plc}")
+    res = {'meta': {'n_resumption_5p': len(ev_all)}, 'placebo': plc}
+    if not plc['pass']:
+        (OUT_DIR / 'e52_results.json').write_text(json.dumps(
+            res | {'aborted': True}, ensure_ascii=False, indent=1))
+        return 3
+
+    # R4 需要复牌首日跌幅：T0 日收益 < -5%
+    r_t0 = r.copy()
+    def _day1_drop(ev):
+        idx = {d: i for i, d in enumerate(days_idx)}
+        sub = []
+        for e in ev.itertuples():
+            i = idx.get(e.trade_date)
+            if i is None or e.ts_code not in r_t0.columns:
+                continue
+            v = r_t0.iloc[i][e.ts_code]
+            if pd.notna(v) and v <= -0.05:
+                sub.append((e.trade_date, e.ts_code))
+        return pd.DataFrame(sub, columns=['trade_date', 'ts_code'])
+
+    ev_20p = resumption_events(close_w, 20, 10 ** 9)
+    arms = {
+        'R1_susp60p':  resumption_events(close_w, 60, 10 ** 9),
+        'R2_susp20_59': resumption_events(close_w, 20, 59),
+        'R3_susp5_19': resumption_events(close_w, 5, 19),
+        'R4_day1_dn5': _day1_drop(ev_20p),
+    }
+    for nm, ev in arms.items():
+        ev = dedup_td(ev)
+        hit = pool_hits(ev)
+        car = e29.car_table(ev, r, valid, days_idx, fwd, base)
+        st = e29.arm_stats(car, nm)
+        st['pool_hit_rate'] = hit
+        st['verdict'] = e29.verdict(st) if st['n_events'] >= MIN_N \
+            else f'INCONCLUSIVE(n<{MIN_N})'
+        # 池内命中率前置门（e50 元教训）：负向判强 + 落池率<8% → 宽域待载体
+        h20 = st.get('h20', {})
+        if st['verdict'] == '强' and (h20.get('car_mean') or 0) < 0 \
+                and hit < 0.08:
+            st['verdict'] = '强(宽域待载体-落池率<8%)'
+        res[nm] = st
+        _note(f"{nm}: n={st['n_events']} pool_hit={hit:.1%} "
+              f"h20={h20.get('car_mean')} t={h20.get('t_cluster')} "
+              f"v={st['verdict']}")
+
+    res['elapsed_min'] = (time.time() - t0) / 60
+    (OUT_DIR / 'e52_results.json').write_text(json.dumps(
+        res, ensure_ascii=False, indent=1, default=str))
+    _note(f"done {res['elapsed_min']:.1f}min")
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())
