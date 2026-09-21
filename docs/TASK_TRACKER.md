@@ -118,6 +118,17 @@
   +0.23%/月 vs H2 +0.18%/月 ≈ +0.6pp/年）入候选库作 H2 精炼替代；
   I5 对照复现 e23-H2 t=3.06 逐位一致（面板口径交叉验证）；I1/I2/I4
   判负（A股行业层动量/反转不存在）。行业使能数据另用途：中性化工具。
+- **e36/e37 冠军构型增强实验管线就位（同日，草案待冻结）**：
+  `docs/E36_E8B_C1_OVERLAY_PREREG.md`（tilt/filter 双臂，ΔCAGR≥+0.5pp 且
+  ΔMDD≤+1pp 双门）与 `docs/E37_VETO_LAYER_PREREG.md`（V1+V2 否决层，
+  ΔCAGR≥+0.3pp 双门）草案入库；candidates.py 增 `composite_overlay`/
+  `overlay_mode`/`overlay_lambda`/`event_veto_series` 配置位（默认 None，
+  锚点路径逐位不变，1229 单测绿）；`scripts/lab/e36_c1_scores.py` 日度
+  C1-z 预计算 + `e37_veto_series.py` 否决序列生成（V1=3495 股/V2=4923 股
+  覆盖）+ `e36_e37_overlay_ab.py` 四臂跑批器就绪；冻结前置=预计算完 +
+  基线臂 metrics 复现锚点。
+- **并行子会话**：E 路线产品化 a387d9c0（spike 后续实现）、分钟线执行层
+  侦察 574be7a8、下一波 alpha 轴调研 484e8183（研究仓）。
 - **e33 候选库四族合成收单（同日）**：margin 2431 日零失败落盘 → e31 M5
   腿全过 0.5 冗余线（最大 M5×H2 ρ=0.18）→ 冻结 → **C1 等权合成 t=4.46
   判「强」——项目史上最强影子信号（年一致性 1.00、消融全仍强、多头端
