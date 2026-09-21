@@ -1,0 +1,42 @@
+<frozen runpy>:128: RuntimeWarning: 'scripts.gates.audit_external' found in sys.modules after import of package 'scripts.gates', but prior to execution of 'scripts.gates.audit_external'; this may result in unpredictable behaviour
+================================================================================
+外部回测门禁审计（市场规则档: 玩具市场 | lot_size=None max_buy_price=None required_fee_totals=['total_commission']）
+门集合: 22 门（已排除本仓特有 ['E-1', 'E-2', 'G-2', 'G-3', 'G-DOC-1', 'G-REF-1', 'S-2']）
+================================================================================
+                FinAI2.0 六维质量防伪门禁体系 (D-L-E-A-S-G) 审计报告
+================================================================================
+ID     | 分类                 | 状态      | 级别       | 门禁名称
+--------------------------------------------------------------------------------
+D-1    | D-Gate             | INCONCLUSIVE  | BLOCKER  | 原始日线跳变率检验
+       -> [INCONCLUSIVE 详情] [UNKNOWN] 原始日线样本不足 2 条，无法判定跳变率（无证据 ≠ 通过）
+D-2    | D-Gate             | INCONCLUSIVE  | BLOCKER  | 流通市值与成交额偏离度检验
+       -> [INCONCLUSIVE 详情] 流通市值列表为空，无法判定市值分布真实性（无证据 ≠ 通过）
+D-3    | D-Gate             | INCONCLUSIVE  | BLOCKER  | Point-in-Time 动态股息率检验
+       -> [INCONCLUSIVE 详情] 股息率样本 0 天 < 60，不足以判定 PIT 动态性（无证据 ≠ 通过）
+D-4    | D-Gate             | INCONCLUSIVE  | BLOCKER  | 停牌日成交量为零检验
+       -> [INCONCLUSIVE 详情] 无日线数据，无法判定停牌日成交量是否为零（无证据 ≠ 通过）
+D-5    | D-Gate             | PASS          | CRITICAL | 高价股与整手约束检验
+L-1    | L-Gate             | PASS          | BLOCKER  | 特性真实扣费与账本存活检验
+L-2    | L-Gate             | PASS          | CRITICAL | 权重与分配资金保真度检验
+L-3    | L-Gate             | INCONCLUSIVE  | CRITICAL | 关键风控与调用链路审计
+       -> [INCONCLUSIVE 详情] 未提供必调链路清单（required_calls），无法审计调用链（无证据 ≠ 通过）
+E-3    | E-Gate             | PASS          | BLOCKER  | 滑点推移价格涨跌停限幅检验
+A-1    | A-Gate             | PASS          | BLOCKER  | 七科目费用逐笔分厘平衡检验
+A-2    | A-Gate             | PASS          | BLOCKER  | 每日资产现金流守恒检验
+A-3    | A-Gate             | PASS          | CRITICAL | 10 万元往返黄金算例检验
+A-4    | A-Gate             | PASS          | BLOCKER  | 历史分段费率时序穿透检验
+S-1    | S-Gate             | PASS          | BLOCKER  | 年化换手率硬顶检验
+S-3    | S-Gate             | INCONCLUSIVE  | CRITICAL | 散户流动性与滑点抗压测试检验
+       -> [INCONCLUSIVE 详情] 缺少基准收益率或滑点压力情景收益率，无法判定抗压性（无证据 ≠ 通过）
+S-4    | S-Gate             | INCONCLUSIVE  | CRITICAL | 红利税避税锁定期检验
+       -> [INCONCLUSIVE 详情] 回测区间无分红入账（总分红为 0），无法检验红利税避税锁定期（无证据 ≠ 通过）
+S-5    | S-Gate             | PASS          | BLOCKER  | 收益归因证据链与关税作弊自查检验
+G-1    | G-Gate             | PASS          | BLOCKER  | 交付出处三件套完整性检验
+G-4    | G-Gate             | PASS          | BLOCKER  | 产物防篡改签名与密码学保真门禁
+G-MDD-1 | G-Gate             | PASS          | BLOCKER  | 最大回撤上限门禁
+G-STRESS-1 | G-Gate             | PASS          | CRITICAL | 压力测试有效性门禁
+G-REPRO-1 | G-Gate             | PASS          | BLOCKER  | 复现一致性门禁
+================================================================================
+总览: 共 22 项门禁 | PASS: 15 | FAIL: 0 | SKIP: 0 | INCONCLUSIVE: 7
+[未全绿] 存在未检验项：SKIP 0 项（不适用）、INCONCLUSIVE 7 项（证据不足）；未检验项不得视为通过，请补齐证据后再行推进！
+================================================================================
