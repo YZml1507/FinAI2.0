@@ -79,9 +79,12 @@ def load_jgmmtj() -> pd.DataFrame:
                               '机构净买额占总成交额比': 'jg_ratio',
                               '流通市值': 'cmv_yi'})
         d['trade_date'] = pd.to_datetime(d['trade_date'].astype(str))
-        d['ts_code'] = d['code_raw'].astype(str).str.extract(r'(\d{6})')[0] + '.' + \
-            np.where(d['code_raw'].astype(str).str.startswith('6'), 'SH',
-                     np.where(d['code_raw'].astype(str).str.startswith('4'), 'BJ', 'SZ'))
+        cr = d['code_raw'].astype(str).str.extract(r'(\d{6})')[0]
+        d = d[cr.notna()].copy()
+        cr = cr.dropna()
+        exch = np.where(cr.str.startswith('6'), 'SH',
+                        np.where(cr.str[0].isin(['4', '8', '9']), 'BJ', 'SZ'))
+        d['ts_code'] = cr + '.' + exch
         frames.append(d[['trade_date', 'ts_code', 'jg_net', 'jg_buyers',
                          'jg_sellers', 'jg_ratio', 'cmv_yi']])
     df = pd.concat(frames, ignore_index=True)
@@ -92,9 +95,14 @@ def load_jgmmtj() -> pd.DataFrame:
     return df
 
 
-def windowed_excess(r: pd.DataFrame, valid: pd.DataFrame,
+def daily_median_logret(r: pd.DataFrame, valid: pd.DataFrame) -> pd.Series:
+    """逐日全 A 有效股中位日收益的 log1p 序列（对照基线，预算一次）。"""
+    return np.log1p(r.where(valid).median(axis=1).fillna(0.0))
+
+
+def windowed_excess(r: pd.DataFrame, med_log: pd.Series,
                     T1: pd.Timestamp, code: str, h: int) -> float:
-    """r_stock(T1→T1+h) − median_valid(T1→T1+h)。个股缺窗→NaN。"""
+    """CAR(h) = Π(1+r_stock)−1 − Π(1+r_med)−1 over (T1, T1+h]。个股缺窗→NaN。"""
     idx = r.index
     i = idx.get_loc(T1)
     if i + h >= len(idx):
@@ -103,15 +111,16 @@ def windowed_excess(r: pd.DataFrame, valid: pd.DataFrame,
     if code not in wnd.columns or wnd[code].isna().all():
         return np.nan
     stock = np.expm1(np.log1p(wnd[code].fillna(0.0)).sum()) - 1.0
-    med = np.expm1(np.log1p(
-        wnd.where(valid.iloc[i + 1:i + h + 1]).median(axis=1)).sum()) - 1.0
+    med = np.expm1(med_log.iloc[i + 1:i + h + 1].sum()) - 1.0
     return stock - med
 
 
 def car_table(events: pd.DataFrame, r: pd.DataFrame, valid: pd.DataFrame,
-              days_idx: pd.DatetimeIndex) -> pd.DataFrame:
+              days_idx: pd.DatetimeIndex,
+              med_log: pd.Series | None = None) -> pd.DataFrame:
     """逐事件 CAR(h)。events 需含 trade_date/ts_code。无后续窗的事件剔除。"""
-    day_pos = {d: i for i, d in enumerate(days_idx)}
+    if med_log is None:
+        med_log = daily_median_logret(r, valid)
     nxt = {d: days_idx[i + 1] for i, d in enumerate(days_idx[:-1])}
     rows = []
     for ev in events.itertuples():
@@ -122,7 +131,7 @@ def car_table(events: pd.DataFrame, r: pd.DataFrame, valid: pd.DataFrame,
         rec = {'T0': T0, 'T1': T1, 'ts_code': ev.ts_code}
         ok = False
         for h in HORIZONS:
-            v = windowed_excess(r, valid, T1, ev.ts_code, h)
+            v = windowed_excess(r, med_log, T1, ev.ts_code, h)
             rec[f'car{h}'] = v
             if not np.isnan(v):
                 ok = True
