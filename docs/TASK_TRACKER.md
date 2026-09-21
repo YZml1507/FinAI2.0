@@ -60,10 +60,15 @@
   采集 lhb → block_trade → sentiment 三轴 2015-2024 全窗（逐日 parquet +
   manifest，幂等断点，~90-120min）。money_flow 轴为按股×历史粒度，接口已就绪
   （collect_money_flow 含熔断节流），数据量大另派。
-- **待办**：① e27 预登记草案（内部人增减持族，巨潮/雪球接口已实测通）；
-  ② e28 股东人数采集器；③ 行业分类历史版采集（swsresearch 本机 508，需换源：
-  巨潮 stock_industry_category_cninfo 或东财 board 现快照 + 变动表重建）；
-  ④ 候选库三信号按重启条件逐条评估（M5 条件② 随 lhb/资金流落盘解锁）。
+- **待办推进**（同日第二批）：① e27 预登记草案已入库 `docs/E27_INSIDER_FACTOR_PREREG.md`
+  （commit 7957748，未冻结——PIT 锚 CHANGE_DATE+L，L 待巨潮样本校准）；
+  ② e28 股东人数采集器 `scripts/collect_gdhs.py` 在跑（2013–2024 季末快照，
+  akshare stock_zh_a_gdhs，~20s/期）；③ 行业分类换源定案：弃申万（swsresearch
+  508），用 **baostock query_stock_industry(date) 证监会分类时点快照**（季末粒度，
+  天然 PIT），采集器 `scripts/collect_industry_baostock.py` 在跑 2009Q4–2024Q4；
+  ④ 子会话×2 在跑：内部人明细（东财 RPT_EXECUTIVE_HOLD_DETAILS 全史，
+  session 351bdfc9）+ 全 A 资金流按股（efinance，session ac078f1b）。
+  ⑤ 候选库三信号重启评估待 lhb/money_flow/insider 落盘后触发。
 
 ## 上一接续（2026-09-21 e26 收单窗口）：两融因子族筛选——M5 判「强」触发范畴评估
 - **e26 收单（2026-09-21）**：两融杠杆资金族 6 假设冻结筛选完毕——
