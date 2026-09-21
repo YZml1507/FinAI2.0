@@ -60,6 +60,7 @@ data/industry/
 data/lhb_jgmmtj/
 data/e30_repurchase/
 data/e30_restricted/
+data/minute_probe/
 data/signal_layers_manifest.json
 data/**/*.parquet
 .workbuddy/
