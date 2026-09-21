@@ -118,6 +118,9 @@ class TestConfigValidation:
         for m in ("hard", "linear"):
             cfg = DividendConfig(breadth_weight_mode=m)
             assert cfg.breadth_weight_mode == m
+        cfg = DividendConfig(breadth_weight_mode="linear_neutral",
+                             breadth_neutral_attack=Decimal("0.32"))
+        assert cfg.breadth_weight_mode == "linear_neutral"
 
     def test_default_is_hard(self):
         assert DividendConfig().breadth_weight_mode == "hard"
@@ -131,3 +134,63 @@ class TestHardModeEquivalence:
             b = Decimal(b)
             expect = Decimal("1") if b >= Decimal("0.35") else Decimal("0")
             assert DividendStrategy._breadth_cap(cfg, b) == expect, b
+
+
+class TestLinearNeutralMode:
+    """e44 暴露配平斜坡：ramp 区 [defense, neutral_attack]→1，a' 由
+    runner 训练窗标定注入；策略只做裁剪斜坡。"""
+
+    def _na_cfg(self, na="0.32", mid_cap="0"):
+        return DividendConfig(
+            use_breadth_timing=False, use_ma200_timing=False,
+            breadth_series={"2015-01-05": Decimal("0.30")},
+            breadth_attack_threshold=Decimal("0.35"),
+            breadth_defense_threshold=Decimal("0.25"),
+            breadth_mid_cap=Decimal(mid_cap),
+            breadth_weight_mode="linear_neutral",
+            breadth_neutral_attack=Decimal(na),
+        )
+
+    def test_requires_neutral_attack(self):
+        with __import__("pytest").raises(ValueError,
+                                       match="breadth_neutral_attack"):
+            DividendConfig(breadth_weight_mode="linear_neutral")
+
+    def test_neutral_attack_bounds(self):
+        import pytest
+        # na 须 >defense；越过 attack 合法（标定解常落在 attack 上方，
+        # 宽斜坡=更低期望暴露）
+        for na in ("0.25", "0.20", "0.24"):
+            with pytest.raises(ValueError):
+                self._na_cfg(na)
+        self._na_cfg(na="0.35")   # na==attack 合法
+        self._na_cfg(na="0.46")   # na>attack 合法
+
+    def test_ramp_values(self):
+        cfg = self._na_cfg(na="0.30")
+        cap = DividendStrategy._breadth_cap
+        # ≥attack → 1；≥na <attack → 1；斜坡内线性 0→1；<defense → 0
+        assert cap(cfg, Decimal("0.50")) == Decimal("1")
+        assert cap(cfg, Decimal("0.35")) == Decimal("1")
+        assert cap(cfg, Decimal("0.30")) == Decimal("1")
+        assert cap(cfg, Decimal("0.275")) == Decimal("0.5")
+        assert cap(cfg, Decimal("0.25")) == Decimal("0")
+        assert cap(cfg, Decimal("0.20")) == Decimal("0")
+
+    def test_exposure_identity_vs_hard(self):
+        """配平语义抽验：构造宽度分布使 E[neutral(0.30)] == E[hard(0.35)]。
+
+        分布：b∈{0.20,0.275,0.30,0.40} 各一日（简化）——
+        hard cap(mid_cap=0): 0,0,0,1 → E=0.25
+        neutral na=0.30:      0,0.5,1,1 → E=0.625 —— 演示暴露差；
+        真实 a' 由 calibration 脚本在训练窗二分求解，策略不感知。
+        """
+        cfg = self._na_cfg(na="0.30")
+        cap = DividendStrategy._breadth_cap
+        hard_cfg = _cfg()
+        bs = [Decimal("0.20"), Decimal("0.275"), Decimal("0.30"),
+              Decimal("0.40")]
+        e_hard = sum(cap(hard_cfg, b) for b in bs) / len(bs)
+        e_neut = sum(cap(cfg, b) for b in bs) / len(bs)
+        assert e_hard == Decimal("0.25")
+        assert e_neut == Decimal("0.625")

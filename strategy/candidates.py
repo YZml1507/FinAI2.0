@@ -233,7 +233,8 @@ class DividendConfig:
     pead_reserve_pct: Decimal = Decimal("0.40")       # event 模式：进攻档为 PEAD 预留资金比例（2 槽×~20%净值≈常规单票量级，低于单票下限会永远买不进）
     cash_yield_annual: Decimal = Decimal("0")         # 空仓现金年化收益（e6 防御资产近似：货基/逆回购 ~0.02；0=不计息）
     breadth_demote_liquidate: bool = False            # e7 降档即出清：宽度由 attack 跌入 <attack 当日向 mid_cap 收敛（⛔ 默认关——须开关隔离，否则无条件生效污染消融实验）
-    breadth_weight_mode: str = "hard"                 # C1 连续权重映射（R9/R10 §B3.1）：'hard'=现行阶跃（默认，基线可比）；'linear'=[defense,attack) 内 mid_cap→1.0 线性裁剪（ice 保留硬阈值）
+    breadth_weight_mode: str = "hard"                 # C1 连续权重映射（R9/R10 §B3.1）：'hard'=现行阶跃（默认，基线可比）；'linear'=[defense,attack) 内 mid_cap→1.0 线性裁剪（ice 保留硬阈值）；'linear_neutral'=暴露配平斜坡：斜坡区为 [defense, breadth_neutral_attack]，端点 a' 由训练窗宽度分布校准使期望暴露与 hard 恒等（e13a 暴露归因修复向）
+    breadth_neutral_attack: Optional[Decimal] = None  # 'linear_neutral' 模式的斜坡顶端 a'；runner 层按训练窗标定注入，策略内不搜索（新增自由度 0——a' 是宽度历史的确定性函数）
     attack_instrument: str = ""                       # e15 指数 placebo：非空时 attack 档满仓该单票（如 'sh.510880'），选股层整体旁路（⛔ 默认空——须显式开启，否则无条件生效污染消融实验）
     low_vol_keep_pct: Optional[Decimal] = None        # D2 低波翼：非 None 时 dv 合格候选先按 trailing-250d 波动率升序保留前 pct（0,1]，再做股息率排序/top5/市值加权（⛔ 默认 None=不启用）
     dv_skip_top: int = 0                              # e16 剔尾：dv 降序排序后先跳过前 N 名（实证 top15 尾部逆向选择带），再取候选池（⛔ 默认 0=不跳过）
@@ -317,9 +318,16 @@ class DividendConfig:
         if self.breadth_defense_threshold >= self.breadth_attack_threshold:
             raise ValueError(f"breadth_defense_threshold={self.breadth_defense_threshold} "
                              f"须严格小于 breadth_attack_threshold={self.breadth_attack_threshold}")
-        if self.breadth_weight_mode not in ("hard", "linear"):
-            raise ValueError(f"breadth_weight_mode 须为 'hard'/'linear'（fail-closed）: "
+        if self.breadth_weight_mode not in ("hard", "linear", "linear_neutral"):
+            raise ValueError(f"breadth_weight_mode 须为 'hard'/'linear'/'linear_neutral'（fail-closed）: "
                              f"{self.breadth_weight_mode!r}")
+        if self.breadth_weight_mode == "linear_neutral":
+            if self.breadth_neutral_attack is None:
+                raise ValueError("linear_neutral 须提供 breadth_neutral_attack（标定 a'，fail-closed）")
+            if not (self.breadth_neutral_attack > self.breadth_defense_threshold):
+                raise ValueError(f"breadth_neutral_attack={self.breadth_neutral_attack} "
+                                 f"须严格大于 defense={self.breadth_defense_threshold}（fail-closed）；"
+                                 f"注意标定可使 a' 越过 attack——ramp 区越宽期望暴露越低")
         if self.attack_instrument and not self.attack_instrument.startswith(("sh.", "sz.")):
             raise ValueError(f"attack_instrument 须为 'sh./sz.' 前缀代码或空（fail-closed）: "
                              f"{self.attack_instrument!r}")
@@ -498,8 +506,21 @@ class DividendStrategy:
         'linear'：b>=attack 满仓；b<defense 零仓（ice 保留硬阈值）；
           [defense, attack) 内由 mid_cap 线性升至 1.0——把台阶改造成斜坡，
           端点复用既有参数（新增自由度 0），针对 G-2「台阶+棱边」病根。
+        'linear_neutral'：同 linear，但斜坡顶端用 breadth_neutral_attack
+          （标定 a'）替代 attack——a' 按训练窗宽度分布解出使期望暴露与
+          hard 阶跃恒等，隔离「形态」与「暴露」两效应（e13a 分解结论）。
         """
         one = Decimal("1")
+        if cfg.breadth_weight_mode == "linear_neutral":
+            na = cfg.breadth_neutral_attack
+            assert na is not None
+            if b >= na:
+                return one
+            if b < cfg.breadth_defense_threshold:
+                return _ZERO_
+            frac = (b - cfg.breadth_defense_threshold) / (
+                na - cfg.breadth_defense_threshold)
+            return cfg.breadth_mid_cap + (one - cfg.breadth_mid_cap) * frac
         if b >= cfg.breadth_attack_threshold:
             return one
         if cfg.breadth_weight_mode == "hard":
