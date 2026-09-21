@@ -16,7 +16,7 @@
   `ROOT=/home/ubuntu/FinAI2.0` → `__file__` 相对定位。
 
 ## 当前接续（2026-09-21 T317 窗口）：Scheduled Full Gate Audit 每日失败修复——证据链落地+四跑批进行中
-- **任务交接**：`docs/GATE_AUDIT_REPAIR_HANDOFF.md`（12 步实施序列）。基线：
+- **任务交接**：`docs/GATE_AUDIT_REPAIR_HANDOFF.md`（12 步实施序列）。审计起点门态：
   29 门 = 13 PASS / 1 FAIL（G-REF-1 幻影引用）/ 1 SKIP / 14 INCONCLUSIVE = 15 阻断。
 - **已落地（commit 71c23fd / a933012 / 2614fb2）**：
   ① `backtest/dividend_tax.py` 拆 `compute_dividend_tax_detail`（total+by_rate）；

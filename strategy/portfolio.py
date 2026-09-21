@@ -246,7 +246,14 @@ def diff_to_orders(
         held = current.get(symbol, 0)
         delta = target_shares - held
         if delta > 0:
-            intents.append(OrderIntent(symbol, OrderSide.BUY, delta))
+            # 送转/拆股可使现持仓脱离整手（如 700→840）⇒ delta 非整手。
+            # 买入委托上交所要求 100 股整数倍（D-5），不足一手部分放弃
+            # （差额留现金，下一调仓日再对齐——⛔ 不得上取整放大敞口）。
+            buy = delta // cfg.lot_size * cfg.lot_size
+            if buy > 0:
+                intents.append(OrderIntent(symbol, OrderSide.BUY, buy))
+            else:
+                dropped.append((symbol, f"增量不足一手（{delta} 股）放弃买入"))
         elif delta < 0:
             intents.append(OrderIntent(symbol, OrderSide.SELL, -delta))
     return RebalanceReport(intents=tuple(intents), dropped=tuple(dropped))
