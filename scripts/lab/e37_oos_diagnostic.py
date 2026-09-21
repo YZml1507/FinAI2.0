@@ -17,6 +17,7 @@ import argparse
 import json
 import sys
 import time
+from datetime import date as _date
 from decimal import Decimal
 from pathlib import Path
 
@@ -33,6 +34,7 @@ VETO_2025 = ROOT / "data" / "e37_veto" / "veto_daily_2025plus.parquet"
 OUT_DIR = ROOT / "experiments" / "lab" / "e37_oos"
 
 OOS_START = "2025-01-01"
+OOS_END = "2026-09-16"   # dividend_stocks 日线数据末日
 
 # isst-e8b-fix688-v2 冻结构型（与 e36_e37_overlay_ab.py::CHAMPION 逐字一致）
 CHAMPION = {
@@ -78,7 +80,8 @@ def load_veto_full() -> dict[str, tuple]:
 
 def run_arm(arm: str) -> dict:
     ov = dict(CHAMPION)
-    ov["backtest_start"] = OOS_START
+    ov["backtest_start"] = _date.fromisoformat(OOS_START)
+    ov["backtest_end"] = _date.fromisoformat(OOS_END)
     if arm == 'oos_veto':
         ov['event_veto_series'] = load_veto_full()
     elif arm != 'oos_baseline':
