@@ -57,6 +57,9 @@ data/insider_trade/
 data/gdhs/
 data/money_flow/
 data/industry/
+data/lhb_jgmmtj/
+data/e30_repurchase/
+data/e30_restricted/
 data/signal_layers_manifest.json
 data/**/*.parquet
 .workbuddy/
