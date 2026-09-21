@@ -109,7 +109,8 @@ def main() -> int:
               f"合成以三族(S5/F6/I3)跑，meta 标注")
 
     ctx31 = {'gdhs_vis': gdhs_vis, 'pit': pit, 'h2': ret21, 'm5': m5,
-             'margin_dates': margin_dates,
+             'margin_dates': margin_dates, 'snaps': snaps, 'ret21': ret21,
+             'cols': r.columns,
              'six2ts': {t.split('.')[0]: t for t in r.columns}}
 
     active_fams = [f for f in FAMILIES if m5_in or f != 'M5']
@@ -120,17 +121,7 @@ def main() -> int:
     for T in Ts:
         base_ok = listed_ok.loc[T] & close_w.loc[T].notna()
         fwd_row, nan_row = fwd.loc[T], nanfrac.loc[T]
-        sigs = e31.build_signals(T, ctx31)          # S2/S5/F6/H2/(M5)
-        # I3 行业内残差反转（越大越好）：−(r21 − 行业均值)
-        imap = industry_map_at(snaps, T)
-        if imap is not None:
-            ind = imap.reindex(r.columns)
-            tmp = pd.DataFrame({'v': ret21.loc[T], 'ind': ind})
-            grp = tmp.dropna().groupby('ind')['v'].mean()
-            sigs['I3'] = -(ret21.loc[T] - ind.map(grp))
-        else:
-            sigs['I3'] = None
-
+        sigs = e31.build_signals(T, ctx31)   # S2/S5/F6/H2/M5 + I3(内建)
         zs = {}
         for f in active_fams:
             s = sigs.get(f)
