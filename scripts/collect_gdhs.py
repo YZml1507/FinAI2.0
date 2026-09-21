@@ -39,8 +39,11 @@ def main() -> int:
     args = ap.parse_args()
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
+    today = time.strftime('%Y%m%d')
     periods = [f"{y}{p}" for y in range(args.start_year, args.end_year + 1)
                for p in PERIODS]
+    # 期末日未到的期不存在数据——跳过而非计 fail
+    periods = [p for p in periods if p <= today]
     todo = [p for p in periods
             if not ((OUT_DIR / f'{p}.parquet').exists()
                     and (OUT_DIR / f'{p}.parquet').stat().st_size > 1000)]

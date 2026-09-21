@@ -37,9 +37,30 @@ def _note(m: str) -> None:
     print(f"[note] {m}", flush=True)
 
 
+def _extended_trade_days(after: pd.Timestamp) -> list:
+    """panel 尾部之后的真实交易日 = sh.000300 指数分区日期 ∪ data/lhb 已采文件日。
+    两者都是盘上实际行情证据，不引入外部日历假设。"""
+    days: set[pd.Timestamp] = set()
+    idx_dir = ROOT / 'data/dividend_stocks/sh.000300'
+    for f in sorted(idx_dir.glob('*.parquet')):
+        days.update(pd.to_datetime(pd.read_parquet(f, columns=['date'])['date']))
+    lhb_dir = ROOT / 'data/lhb'
+    if lhb_dir.exists():
+        for f in sorted(lhb_dir.glob('*.parquet')):
+            if f.stem.startswith('_'):
+                continue
+            days.add(pd.to_datetime(f.stem, format='%Y%m%d'))
+    return [d for d in sorted(days) if d > after]
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument('--run', action='store_true')
+    ap.add_argument('--extend-calendar', action='store_true',
+                    help='交易日索引延伸到 panel 之后（sh.000300 分区 ∪ data/lhb 文件名）')
+    ap.add_argument('--min-date', default=None,
+                    help='只输出 ≥ 该日的行（YYYY-MM-DD），索引仍含此前 warmup 日')
+    ap.add_argument('--out', default=None, help='输出路径覆盖（默认 veto_daily.parquet）')
     args = ap.parse_args()
     if not args.run:
         print("dry-run"); return 0
@@ -48,8 +69,14 @@ def main() -> int:
     close_w = pd.read_parquet(e27.OUT_DIR / 'panel_close.parquet')
     r = e23.daily_returns(close_w)
     idx = r.index                                   # 2431 交易日
+    if args.extend_calendar:
+        extra = _extended_trade_days(idx[-1])
+        if extra:
+            idx = idx.append(pd.DatetimeIndex(extra))
+        _note(f"交易日索引延伸 {len(r.index)}→{len(idx)}，尾日 {idx[-1].date()}")
     six2ts = {t.split('.')[0]: t for t in r.columns}
     day_ns = idx.values                             # datetime64 数组
+    min_d = pd.Timestamp(args.min_date) if args.min_date else None
 
     # ---- V1：每股「最新公告 qoq>0.30」的逐日状态（向量化 asof） ----
     long = e28.load_gdhs_records().sort_values('ann_date')
@@ -95,6 +122,8 @@ def main() -> int:
     inv1 = list(codes_v1.keys())
     inv2 = list(codes_v2.keys())
     for i, T in enumerate(idx):
+        if min_d is not None and T < min_d:
+            continue
         veto = set()
         if M1.shape[0]:
             veto.update(inv1[j] for j in np.nonzero(M1[:, i])[0])
@@ -104,10 +133,11 @@ def main() -> int:
             rows.append((T.date().isoformat(), sorted(veto)))
 
     df = pd.DataFrame(rows, columns=['date', 'symbols'])
-    OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    df.to_parquet(OUT_PATH, index=False)
+    out_path = Path(args.out) if args.out else OUT_PATH
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    df.to_parquet(out_path, index=False)
     _note(f"done {len(df)} 日有否决，V1={len(v1_active)} 股 "
-          f"V2={len(v2_active)} 股 -> {OUT_PATH} ({time.time()-t0:.0f}s)")
+          f"V2={len(v2_active)} 股 -> {out_path} ({time.time()-t0:.0f}s)")
     return 0
 
 

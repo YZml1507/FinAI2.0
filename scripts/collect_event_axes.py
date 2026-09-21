@@ -58,14 +58,22 @@ def main() -> int:
     ap.add_argument('--limit', type=int, default=0)
     ap.add_argument('--sleep', type=float, default=SLEEP)
     ap.add_argument('--dry-run', action='store_true')
+    ap.add_argument('--dates-file', default=None,
+                    help='交易日清单文件（逐行 YYYYMMDD）；提供后取代 DV_DIR 文件名日历'
+                         '（用于 DV_DIR 覆盖范围之外的区间，如 2025+）')
     args = ap.parse_args()
 
     out_dir = _root / 'data' / args.axis
     out_dir.mkdir(parents=True, exist_ok=True)
     manifest_path = out_dir / '_manifest.json'
 
-    dates = [p.stem for p in sorted(DV_DIR.glob('*.parquet'))
-             if args.start <= p.stem <= args.end]
+    if args.dates_file:
+        dates = sorted({ln.strip()
+                        for ln in Path(args.dates_file).read_text().splitlines()
+                        if ln.strip() and args.start <= ln.strip() <= args.end})
+    else:
+        dates = [p.stem for p in sorted(DV_DIR.glob('*.parquet'))
+                 if args.start <= p.stem <= args.end]
     todo = [d for d in dates
             if not ((out_dir / f'{d}.parquet').exists()
                     and (out_dir / f'{d}.parquet').stat().st_size > 100)]
