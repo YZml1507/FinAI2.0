@@ -26,6 +26,7 @@ from pathlib import Path
 from typing import Any
 
 from .base import GateResult, GateStatus
+from .market_rules import MarketRules
 
 #: 可"静态/推送期"取证的门禁：FAIL 或 INCONCLUSIVE 都应阻断。
 #: ⚠ M3 门禁改造（任务 1 三层分层）：``G-MDD-1`` **移出**本集合——推送代码不产生回撤，
@@ -283,6 +284,11 @@ def build_repo_context(repo_root: Path | str | None = None) -> tuple[dict[str, A
     if run_file.exists():
         ctx["source_code"] = run_file.read_text(encoding="utf-8")
         ctx["required_calls"] = ["BacktestBroker", "MatchEngine", "compute_metrics"]
+
+    # E 路线通用化（任务 3）：向参数化门（D-5/S-5）注入默认 A 股 MarketRules。
+    # 默认值即现 A 股口径（整手 100/高价线 300/印花税+佣金必非零），判定行为逐位不变；
+    # 外部市场证据走 scripts/gates/adapter.py + audit_external.py，与本路径互不干扰。
+    ctx["market_rules"] = MarketRules()
 
     # 取证来源合并进 source：``gate_master_audit --ci`` 与 ``pre_push`` 都会打印它。
     source = f"{source}；数据取证: {data_source}"

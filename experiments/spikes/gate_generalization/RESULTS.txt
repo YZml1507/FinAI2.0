@@ -1,0 +1,32 @@
+外部审计实证（adapter → audit_external，22 门 = ✅7 + 🔧15；🏠7 门显式排除）
+ctx 键数: 25；market_rules: TOY_MKT (lot=1, cap=None, fee_subjects=(('total_commission', '佣金'),), t+1=False)
+排除门集: E-1, E-2, S-2, G-2, G-3, G-DOC-1, G-REF-1
+
+gate       层           severity   status        blocking  message
+-----------------------------------------------------------------
+D-1        🔧           BLOCKER    INCONCLUSIVE  True      [UNKNOWN] 原始日线样本不足 2 条，无法判定跳变率（无证据 ≠ 通过）
+D-2        🔧           BLOCKER    INCONCLUSIVE  True      流通市值列表为空，无法判定市值分布真实性（无证据 ≠ 通过）
+D-3        🔧           BLOCKER    INCONCLUSIVE  True      股息率样本 0 天 < 60，不足以判定 PIT 动态性（无证据 ≠ 通过）
+D-4        🔧           BLOCKER    INCONCLUSIVE  True      无日线数据，无法判定停牌日成交量是否为零（无证据 ≠ 通过）
+D-5        🔧           CRITICAL   PASS          False     高价股与整手约束检验通过 (共检查 3 笔买入委托)
+L-1        🔧           BLOCKER    PASS          False     所有声明特性均在账本产生真实流水 (活跃特性: ['COMMISSION'])
+L-2        🔧           CRITICAL   PASS          False     权重分配保真度检验通过 (Spearman=1.000 >= 0.90)
+L-3        🔧           CRITICAL   INCONCLUSIVE  True      未提供必调链路清单（required_calls），无法审计调用链（无证据 ≠ 通过）
+E-3        🔧           BLOCKER    PASS          False     滑点推移价格涨跌停限幅检验通过 (共检验 5 笔成交)
+A-1        ✅           BLOCKER    PASS          False     七科目费用逐笔分厘平衡检验通过 (共校验 5 笔成交，差额严格为 0.00)
+A-2        ✅           BLOCKER    PASS          False     每日资产现金流守恒检验通过 (共对账 5 个交易日，未解释差额 0.00)
+A-3        🔧           CRITICAL   PASS          False     10 万元往返黄金算例检验通过（实际费用 50.00 元，最近基准 50.00 元〔调用方显式指定基准（expected_fee）〕，绝对误差 0.00 元 ≤ 0.05 元）
+A-4        🔧           BLOCKER    PASS          False     历史分段费率时序穿透检验通过 (历史印花税率无穿越)
+S-1        🔧           BLOCKER    PASS          False     换手率硬顶检验通过 (年化单边换手率 15.0% <= 400%)
+S-3        🔧           CRITICAL   INCONCLUSIVE  True      缺少基准收益率或滑点压力情景收益率，无法判定抗压性（无证据 ≠ 通过）
+S-4        🔧           CRITICAL   INCONCLUSIVE  True      回测区间无分红入账（总分红为 0），无法检验红利税避税锁定期（无证据 ≠ 通过）
+S-5        🔧           BLOCKER    PASS          False     收益归因证据链与费率真实性检验通过
+G-1        ✅           BLOCKER    PASS          False     交付出处三件套完整性检验通过
+G-4        ✅           BLOCKER    PASS          False     签名与出处三件套检验全部通过 (Signature: ad71a1faeb211132...)
+G-MDD-1    ✅           BLOCKER    PASS          False     3 份产物最大回撤均 <= 35% 上限
+G-STRESS-1 ✅           CRITICAL   PASS          False     压测区间有效：2 笔成交、250 交易日（>= 200 日且 round_trips > 0），允许进入 MDD/胜率判定
+G-REPRO-1  ✅           BLOCKER    PASS          False     2 份产物均带内容寻址出处，1 组同源产物的 metrics 逐字段一致，复现一致性成立
+-----------------------------------------------------------------
+layer ✅: {'PASS': 7}
+layer 🔧: {'INCONCLUSIVE': 7, 'PASS': 8}
+summary: {'INCONCLUSIVE': 7, 'PASS': 15} / total=22

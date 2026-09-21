@@ -12,6 +12,7 @@ from __future__ import annotations
 from typing import Any
 
 from .base import BaseGate, GateCategory, GateResult, GateSeverity, GateStatus
+from .market_rules import MarketRules, resolve_market_rules
 
 
 class RawPriceJumpGate(BaseGate):
@@ -583,11 +584,17 @@ class HighPriceLotGate(BaseGate):
     category = GateCategory.D_GATE
     severity = GateSeverity.CRITICAL
     evidence = "17 号报告 §3.3 + 上交所交易规则 3.4.2 条: 买入必须为 100 股一手整数倍，高价股 1 手占小资金比例过高"
-    threshold_desc = "开仓标的单价 <= 300.0 元，买入委托股数严格为 100 的整数倍"
+    threshold_desc = "开仓标的单价 <= 300.0 元，买入委托股数严格为 100 的整数倍（A 股默认口径；可由 MarketRules 覆盖）"
+
+    def __init__(self, market_rules: MarketRules | None = None) -> None:
+        # 市场规则参数化（E 路线通用化）：None ⇒ 评估时从 ctx['market_rules'] 读，
+        # 再缺省回退 A 股默认（resolve_market_rules）——本仓行为逐位不变。
+        self.market_rules = market_rules
 
     def evaluate(self, context: Any = None) -> GateResult:
         """context 包含:
         - orders: list[Order] 或 list[dict]，含 price, volume, side
+        - market_rules: MarketRules（可选；缺省 A 股口径）
         """
         if not context:
             return GateResult(
@@ -615,6 +622,10 @@ class HighPriceLotGate(BaseGate):
                 evidence=self.evidence,
             )
 
+        rules = resolve_market_rules(context, self.market_rules)
+        lot = rules.board_lot_size          # None/<=1 ⇒ 该市场无整手约束
+        price_cap = rules.high_price_limit  # None ⇒ 该市场无高价股线
+
         violations = []
         buy_orders = 0
         for o in orders:
@@ -624,10 +635,10 @@ class HighPriceLotGate(BaseGate):
 
             if "BUY" in side:
                 buy_orders += 1
-                if price > 300.0:
-                    violations.append(f"买入高价股单价 {price} > 300 元")
-                if vol % 100 != 0:
-                    violations.append(f"买入股数 {vol} 非 100 股整手")
+                if price_cap is not None and price > price_cap:
+                    violations.append(f"买入高价股单价 {price} > {price_cap:g} 元")
+                if lot is not None and lot > 1 and vol % lot != 0:
+                    violations.append(f"买入股数 {vol} 非 {lot} 股整手")
 
         if violations:
             return GateResult(

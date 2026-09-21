@@ -15,6 +15,16 @@
   （git ls-files 全树，命中即 FAIL，重插入实测会红）。另修两处旧机路径硬编码
   `ROOT=/home/ubuntu/FinAI2.0` → `__file__` 相对定位。
 
+- **E 路线第三步门禁通用化产品化（2026-09-21）**：`scripts/gates/` 新增
+  `market_rules.py`（MarketRules 参数对象，默认=现 A 股口径）+ `adapter.py`
+  （ExternalEvidenceAdapter 协议 + build_external_context 装配）+
+  `audit_external.py`（外部审计入口：✅7+🔧15=22 门，🏠7 本仓门显式排除）；
+  D-5 整手/高价线、S-5 必非零科目从字面量改为读 MarketRules；context_builder
+  注入默认规则（`--scheduled` 输出仅 ctx 键 58→59 一行差，29 门判定逐位不变）；
+  玩具实证升级走 audit_external：22 门 = 15 PASS / 0 FAIL / 7 INCONCLUSIVE，
+  spike 期被 A 股字面量拦 FAIL 的 D-5/S-5 对玩具市场如实转 PASS；
+  `TEST_BASELINE_PASSED` 1229→1255 已同步，pytest 1255 绿。
+
 ## 当前接续（2026-09-21 T317 窗口）：Scheduled Full Gate Audit 修复——✅ 阻断清零已推送
 - **终态（HEAD 9082208，已 push）**：`--scheduled` 本地实测 **29 门 = 28 PASS /
   0 FAIL / 1 SKIP / 0 INCONCLUSIVE**，`[CI][PASS] 无阻断项`（起点：13 PASS /
