@@ -31,6 +31,7 @@ SCREEN_END = pd.Timestamp('2024-12-31')
 
 SEV = {'问询函': 1, '年报问询函': 1, '关注函': 2,
        '警示函': 3, '监管函': 3, '监管措施': 3, '其他': 0}
+# 官方表细类名归并（subtype→sev 兜底）：含'警示/监管措施/监管函'→3、'关注'→2、'问询/审核问询'→1
 
 
 def _bare2ts(c: str) -> str:
@@ -47,7 +48,7 @@ def _note(m): print(f"[note] {m}", flush=True)
 
 def load_letters() -> pd.DataFrame:
     frames = []
-    for f in sorted(L_DIR.rglob('*.parquet')):
+    for f in sorted(L_DIR.glob('*.parquet')):  # 仅顶层（原件+官方表；proxy 回复推断件另作诊断不入判定臂）
         if f.stem.startswith('_'):
             continue
         d = pd.read_parquet(f)
@@ -70,7 +71,14 @@ def load_letters() -> pd.DataFrame:
     df = df.dropna(subset=['ann_date'])
     if 'ltype' not in df.columns:
         df['ltype'] = df.get('lfine', '其他')
-    df['sev'] = df['ltype'].map(SEV).fillna(0)
+    df['sev'] = df['ltype'].map(SEV)
+    if 'lfine' in df.columns or 'letter_subtype' in df.columns:
+        sub = df.get('letter_subtype', df.get('lfine', pd.Series('', index=df.index))).astype(str)
+        fix = df['sev'].isna() | (df['sev'] == 0)
+        df.loc[fix & sub.str.contains('警示|监管措施|监管函', na=False), 'sev'] = 3
+        df.loc[fix & sub.str.contains('关注', na=False), 'sev'] = 2
+        df.loc[fix & sub.str.contains('问询|审核', na=False), 'sev'] = 1
+    df['sev'] = df['sev'].fillna(0)
     df['ts_code'] = df['code'].map(_bare2ts)
     # 同股同日多函 → 取最重类
     df = (df.sort_values('sev', ascending=False)
