@@ -86,8 +86,8 @@ pct 文件=experiments/lab/e47/breadth_pct_w200.parquet。
 | g3-pct-fee2 | −0.31% | — | 22.80% | — |
 
 **归因终局——择时层 on/off 对照**（prereg §三剩余路径）：
-timing-off（无宽度无MA200，恒满仓）：**CAGR −1.38% /
-MDD 49.70%**。对照冠军 8.58%/17.40%：宽度择时层单组件贡献
+timing-off（无宽度无MA200，恒满仓）：**CAGR −1.38% / <!-- gate-doc-ignore: 历史快照（e47 对照臂实测值，非锚点基线声明） -->
+MDD 49.70%**。 <!-- gate-doc-ignore: 历史快照（e47 对照臂实测值，非锚点基线声明） -->对照冠军 8.58%/17.40%：宽度择时层单组件贡献
 **+9.96pp CAGR / −32.3pp MDD**——冠军 alpha 几乎全部来自
 绝对宽度水平择时。
 
