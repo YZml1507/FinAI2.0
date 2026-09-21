@@ -95,45 +95,57 @@ def load_jgmmtj() -> pd.DataFrame:
     return df
 
 
-def daily_median_logret(r: pd.DataFrame, valid: pd.DataFrame) -> pd.Series:
-    """逐日全 A 有效股中位日收益的 log1p 序列（对照基线，预算一次）。"""
-    return np.log1p(r.where(valid).median(axis=1).fillna(0.0))
+def fwd_panels(r: pd.DataFrame) -> dict:
+    """fwd_h[i] = Π(1+r)−1 over (i+1, i+1+h]（事件日 i → 入场 i+1 → 窗 i+1+h）。
+    返回 {h: DataFrame(date×code)}。"""
+    cs = np.log1p(r.fillna(0.0)).cumsum()
+    out = {}
+    for h in HORIZONS:
+        fwd_log = cs.shift(-(h + 1)) - cs.shift(-1)
+        out[h] = np.expm1(fwd_log)
+    return out
 
 
-def windowed_excess(r: pd.DataFrame, med_log: pd.Series,
-                    T1: pd.Timestamp, code: str, h: int) -> float:
-    """CAR(h) = Π(1+r_stock)−1 − Π(1+r_med)−1 over (T1, T1+h]。个股缺窗→NaN。"""
-    idx = r.index
-    i = idx.get_loc(T1)
-    if i + h >= len(idx):
-        return np.nan
-    wnd = r.iloc[i + 1:i + h + 1]
-    if code not in wnd.columns or wnd[code].isna().all():
-        return np.nan
-    stock = np.expm1(np.log1p(wnd[code].fillna(0.0)).sum()) - 1.0
-    med = np.expm1(med_log.iloc[i + 1:i + h + 1].sum()) - 1.0
-    return stock - med
+def baseline_mean(fwd: dict, valid: pd.DataFrame) -> dict:
+    """base[d,h] = 截面均值 of fwd_h[d] over stocks valid at T1=d+1。
+    等权全 A 窗口收益基准——随机股票安慰剂 E[CAR]=0（冻结口径更正说明见
+    e30 收单：原『日中位复利』基线安慰剂 +4.45%@h20 证伪）。"""
+    base = {}
+    vshift = valid.shift(-1)          # 事件日 d → 入场日 d+1 的宇宙
+    for h in HORIZONS:
+        base[h] = fwd[h].where(vshift).mean(axis=1)
+    return base
 
 
 def car_table(events: pd.DataFrame, r: pd.DataFrame, valid: pd.DataFrame,
               days_idx: pd.DatetimeIndex,
-              med_log: pd.Series | None = None) -> pd.DataFrame:
+              fwd: dict | None = None, base: dict | None = None) -> pd.DataFrame:
     """逐事件 CAR(h)。events 需含 trade_date/ts_code。无后续窗的事件剔除。"""
-    if med_log is None:
-        med_log = daily_median_logret(r, valid)
-    nxt = {d: days_idx[i + 1] for i, d in enumerate(days_idx[:-1])}
+    if fwd is None:
+        fwd = fwd_panels(r)
+    if base is None:
+        base = baseline_mean(fwd, valid)
+    idx = r.index
+    iloc = {d: i for i, d in enumerate(days_idx)}
+    n = len(idx)
     rows = []
     for ev in events.itertuples():
-        T0 = ev.trade_date
-        T1 = nxt.get(T0)
-        if T1 is None:
+        i = iloc.get(ev.trade_date)
+        if i is None or i + 1 >= n:
             continue
-        rec = {'T0': T0, 'T1': T1, 'ts_code': ev.ts_code}
+        rec = {'T0': ev.trade_date, 'T1': days_idx[min(i + 1, n - 1)],
+               'ts_code': ev.ts_code}
         ok = False
         for h in HORIZONS:
-            v = windowed_excess(r, med_log, T1, ev.ts_code, h)
-            rec[f'car{h}'] = v
-            if not np.isnan(v):
+            fh = fwd[h]
+            if ev.ts_code not in fh.columns:
+                rec[f'car{h}'] = np.nan
+                continue
+            v = fh.iloc[i][ev.ts_code] if i < n else np.nan
+            b = base[h].iloc[i]
+            car = (v - b) if (pd.notna(v) and pd.notna(b)) else np.nan
+            rec[f'car{h}'] = car
+            if not np.isnan(car):
                 ok = True
         if ok:
             rows.append(rec)
@@ -184,6 +196,35 @@ def verdict(arm: dict) -> str:
     return '负'
 
 
+def placebo_gate(r, valid, days_idx, fwd, base, n=4000, seed=42) -> dict:
+    """冻结前置门：随机（日,有效股）对照 CAR——|t|≥2 → 基线有偏，拒跑。"""
+    rng = np.random.default_rng(seed)
+    codes = np.array(r.columns)
+    days = days_idx[:-HORIZONS[-1] - 5]
+    res = {h: [] for h in HORIZONS}
+    picked = 0
+    while picked < n:
+        i = int(rng.integers(0, len(days) - 1))
+        d = days[i]
+        vc = codes[valid.loc[d].values]
+        if len(vc) == 0:
+            continue
+        c = vc[int(rng.integers(0, len(vc)))]
+        for h in HORIZONS:
+            fh = fwd[h]
+            v = fh.loc[d, c] if c in fh.columns else np.nan
+            b = base[h].loc[d]
+            res[h].append(v - b if pd.notna(v) and pd.notna(b) else np.nan)
+        picked += 1
+    out = {}
+    for h in HORIZONS:
+        s = pd.Series([x for x in res[h] if not np.isnan(x)])
+        t = float(s.mean() / (s.std(ddof=1) / np.sqrt(len(s)))) if len(s) > 1 else np.nan
+        out[f'h{h}'] = {'n': int(len(s)), 'mean': float(s.mean()), 't': t}
+    out['pass'] = all(abs(out[f'h{h}']['t']) < 2.0 for h in HORIZONS)
+    return out
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument('--run', action='store_true', help='冻结后才允许运行')
@@ -221,6 +262,17 @@ def main() -> int:
 
     days_idx = r.index
     cmv_w = P['circ_mv']
+    fwd = fwd_panels(r)
+    base = baseline_mean(fwd, valid)
+    plc = placebo_gate(r, valid, days_idx, fwd, base)
+    _note(f"placebo gate: {plc}")
+    if not plc['pass']:
+        _note("⛔ 安慰剂检验失败——基线有偏，拒绝产出假设判定")
+        (OUT_DIR / 'e29_results.json').write_text(json.dumps(
+            {'placebo': plc, 'aborted': 'placebo_gate_failed'},
+            ensure_ascii=False, indent=1))
+        return 3
+    results_placebo = plc
 
     # ---------- arms ----------
     arms: dict[str, pd.DataFrame] = {}
@@ -250,10 +302,11 @@ def main() -> int:
     arms['L3_desk'] = lhb[(lhb['jg_net'].fillna(0) <= 0) & (lhb['net_buy'] > 0)]
 
     results: dict = {'meta': {'panel_days': len(days_idx), 'horizons': HORIZONS,
-                              'min_events': MIN_EVENTS, 'strong_t': STRONG_T}}
+                              'min_events': MIN_EVENTS, 'strong_t': STRONG_T},
+                     'placebo': results_placebo}
 
     for name, ev in arms.items():
-        car = car_table(ev[['trade_date', 'ts_code']], r, valid, days_idx)
+        car = car_table(ev[['trade_date', 'ts_code']], r, valid, days_idx, fwd, base)
         st = arm_stats(car, name)
         st['verdict'] = verdict(st)
         results[name] = st
@@ -278,7 +331,7 @@ def main() -> int:
         l2_stats = {}
         for g in ('lo', 'mid', 'hi'):
             sub = l2[l2['terc'] == g]
-            car = car_table(sub[['trade_date', 'ts_code']], r, valid, days_idx)
+            car = car_table(sub[['trade_date', 'ts_code']], r, valid, days_idx, fwd, base)
             l2_stats[g] = arm_stats(car, f'L2_{g}')
             l2_stats[g]['verdict'] = verdict(l2_stats[g])
         means = [l2_stats[g].get('h20', {}).get('car_mean', np.nan) for g in ('lo', 'mid', 'hi')]

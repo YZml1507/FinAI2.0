@@ -94,7 +94,7 @@ def load_restricted() -> pd.DataFrame:
 
 
 def tercile_arms(df: pd.DataFrame, intensity: pd.Series,
-                 r, valid, days_idx) -> dict:
+                 r, valid, days_idx, fwd, base) -> dict:
     out = {}
     df = df.assign(intensity=intensity).dropna(subset=['intensity'])
     if len(df) < 3:
@@ -108,7 +108,7 @@ def tercile_arms(df: pd.DataFrame, intensity: pd.Series,
     for g in ('lo', 'mid', 'hi'):
         car = car_table(df[df['terc'] == g][['T0', 'ts_code']]
                         .rename(columns={'T0': 'trade_date'}),
-                        r, valid, days_idx)
+                        r, valid, days_idx, fwd, base)
         stats[g] = arm_stats(car, f'terc_{g}')
     means = [stats[g].get('h20', {}).get('car_mean', np.nan) for g in ('lo', 'mid', 'hi')]
     mono = all(not np.isnan(m) for m in means)
@@ -140,6 +140,9 @@ def main() -> int:
     valid = (~close_w.isna()).cumsum().ge(MIN_LISTED_DAYS)
     days_idx = r.index
     _note(f"panel {close_w.shape}")
+    from scripts.lab.e29_lhb_screen import fwd_panels, baseline_mean
+    fwd = fwd_panels(r)
+    base = baseline_mean(fwd, valid)
 
     rep = load_repurchase()
     unl = load_restricted()
@@ -153,7 +156,7 @@ def main() -> int:
 
     def run_arm(df, name, expect):
         car = car_table(df[['T0', 'ts_code']].rename(columns={'T0': 'trade_date'}),
-                        r, valid, days_idx)
+                        r, valid, days_idx, fwd, base)
         st = arm_stats(car, name)
         st['verdict'] = verdict_signed(st, expect)
         results[name] = st
@@ -171,7 +174,7 @@ def main() -> int:
         s = cmv_by.get(ev.T0)
         c = np.nan if s is None else s.get(ev.ts_code, np.nan)
         inten.append(ev.jexx / (c * 1e4) if c and c > 0 else np.nan)
-    res2 = tercile_arms(rep, pd.Series(inten, index=rep.index), r, valid, days_idx)
+    res2 = tercile_arms(rep, pd.Series(inten, index=rep.index), r, valid, days_idx, fwd, base)
     top = res2.get('terciles', {}).get('hi', {})
     res2['verdict'] = ('强' if res2.get('monotone_up') and
                        verdict_signed(top, +1) == '强'
@@ -188,7 +191,7 @@ def main() -> int:
     # R4 解禁全事件
     run_arm(unl, 'R4_unlock_all', -1)
     # R5 解禁规模分层（TOTAL_RATIO 三分位）
-    res5 = tercile_arms(unl, unl['total_ratio'], r, valid, days_idx)
+    res5 = tercile_arms(unl, unl['total_ratio'], r, valid, days_idx, fwd, base)
     top5 = res5.get('terciles', {}).get('hi', {})
     res5['verdict'] = ('强' if res5.get('monotone_dn') and
                        verdict_signed(top5, -1) == '强'
@@ -201,7 +204,7 @@ def main() -> int:
     for tp in UNLOCK_TYPES:
         sub = unl[unl['share_type'] == tp]
         car = car_table(sub[['T0', 'ts_code']].rename(columns={'T0': 'trade_date'}),
-                        r, valid, days_idx)
+                        r, valid, days_idx, fwd, base)
         st = arm_stats(car, f'R6_{tp}')
         st['verdict'] = verdict_signed(st, -1)
         r6[tp] = st
