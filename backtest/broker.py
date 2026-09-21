@@ -450,7 +450,10 @@ class BacktestBroker:
         股数而 shares_held 已扣）。同日 SPLIT 同理须排除（登记日口径为
         除权前股数）。
         """
-        from backtest.dividend_tax import DividendEvent as DivTaxEvent, compute_dividend_tax
+        from backtest.dividend_tax import (
+            DividendEvent as DivTaxEvent,
+            compute_dividend_tax_detail,
+        )
 
         buys: list[tuple] = []
         sells: list[tuple] = []
@@ -481,7 +484,8 @@ class BacktestBroker:
             dividend_per_share=event.cash_dividend,
             shares_held=entitled,
         )
-        tax = compute_dividend_tax([div_ev], buys, sells, split_events=splits)
+        tax, tax_by_bracket = compute_dividend_tax_detail(
+            [div_ev], buys, sells, split_events=splits)
         if tax > _ZERO:
             self.book.cash -= tax
             self.book.recompute_nav()
@@ -497,6 +501,8 @@ class BacktestBroker:
                         "shares_held": old_volume,
                         "cash_dividend": str(event.cash_dividend),
                         "tax": str(tax),
+                        # 分档税额明细（S-4 证据键）：{"0.20": str, "0.10": str, "0.05": str}
+                        "tax_by_bracket": {r: str(v) for r, v in tax_by_bracket.items()},
                     },
                 )
             )

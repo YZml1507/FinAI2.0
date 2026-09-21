@@ -216,6 +216,14 @@ def build_repo_context(repo_root: Path | str | None = None) -> tuple[dict[str, A
         _, path, record = pool[-1]
         metrics = record.get("metrics", {}) or {}
         ctx["run_record"] = record
+        # T317 证据回填：产物签名域外的 evidence 块（orders/trades/流水/
+        # 逐日现金流/税档/权重保真/择时口径/执行链插桩）并入 ctx 顶层，
+        # 供各门 evaluate() 直接消费。先于下方指标键合并 ⇒ 派生键
+        # （annualized_turnover/total_return/total_stamp_tax 等）始终赢，
+        # 证据键只做增益不抢出处。
+        ev = record.get("evidence")
+        if isinstance(ev, dict):
+            ctx.update(ev)
         if metrics.get("annual_turnover") is not None:
             ctx["annualized_turnover"] = float(metrics["annual_turnover"])
         ctx["total_return"] = metrics.get("total_return")

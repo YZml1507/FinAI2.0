@@ -161,6 +161,7 @@ class ExperimentRegistry:
         status: str = "FINISHED",
         error: str | None = None,
         gate_statuses: dict[str, Any] | None = None,
+        evidence: Mapping[str, Any] | None = None,
     ) -> str:
         """登记一次实验。返回 ``run_id``。
 
@@ -172,6 +173,10 @@ class ExperimentRegistry:
             status: ``FINISHED`` / ``FAILED`` / ``KILLED``。
             error: 非 FINISHED 时的原因（FINISHED 时必须为 None）。
             gate_statuses: 本次回测各门禁 status 快照（报告用，⛔ 不入 metrics/params/hash）。
+            evidence: 运行证据块（``reporting.evidence.build_run_evidence`` 产出）。
+                挂签名域**之外**：``compute_run_signature`` 只绑
+                run_id/code_version/data_version/params_hash/status/metrics，
+                证据增改不动签名校验（审计数据，非出处要素）。
 
         Raises:
             RegistryError: 同 ``run_id`` 已登记（幂等拒重）/ 状态非法 /
@@ -248,6 +253,11 @@ class ExperimentRegistry:
         #    ``verify_run_signature`` 的 JSON 重载口径一致（Decimal→str 已归一）。
         from scripts.gates.tamper_guard import compute_run_signature
         record_payload["anti_tamper_signature"] = compute_run_signature(record_payload)
+        if evidence is not None:
+            # 证据块在签名**之后**合并：签名域不含 evidence（审计数据允许
+            # 事后补充解释，但出处五要素+指标被签名锁死，篡改无处藏身）。
+            from reporting.evidence import to_json_safe
+            record_payload["evidence"] = to_json_safe(dict(evidence))
         payload = json.dumps(
             record_payload,
             ensure_ascii=False, indent=2, sort_keys=True,

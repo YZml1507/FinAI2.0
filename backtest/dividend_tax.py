@@ -52,6 +52,7 @@ __all__ = [
     "TaxBracket",
     "TAX_BRACKETS",
     "compute_dividend_tax",
+    "compute_dividend_tax_detail",
 ]
 
 _ZERO = Decimal("0")
@@ -136,6 +137,27 @@ def compute_dividend_tax(
     Returns:
         红利税总额（Decimal，精确到分）
     """
+    total, _by_rate = compute_dividend_tax_detail(
+        dividends, buy_trades, sell_trades, split_events=split_events)
+    return total
+
+
+def compute_dividend_tax_detail(
+    dividends: list[DividendEvent],
+    buy_trades: list[tuple[_date, str, int]],  # (trade_date, symbol, shares)
+    sell_trades: list[tuple[_date, str, int]],  # (trade_date, symbol, shares)
+    split_events: list[tuple[_date, str, Decimal]] | None = None,  # (date, symbol, factor)
+) -> tuple[Decimal, dict[str, Decimal]]:
+    """FIFO 配对计算红利税总额 + **分档明细**（S-4 证据链）。
+
+    与 :func:`compute_dividend_tax` 同一算法同一口径；额外返回
+    ``by_rate`` = ``{税率字符串: 该档税额合计}``（如 ``"0.20"`` → 持股 <30 天
+    惩罚档税额），供 broker 写入 ``DIVIDEND_TAX`` 流水 meta 供门禁对账。
+
+    Returns:
+        ``(total_tax, by_rate)``；``by_rate`` 键 = 命中档的 ``str(tax_rate)``，
+        仅含发生计税的档位（无命中 ⇒ 空 dict）。
+    """
     # ① 边界校验：dividends 升序
     if dividends:
         for i in range(1, len(dividends)):
@@ -184,6 +206,7 @@ def compute_dividend_tax(
     events.sort(key=lambda x: (x[0], order_priority.get(x[1], 99)))
 
     total_tax = _ZERO
+    by_rate: dict[str, Decimal] = {}
 
     # ⑥ 逐事件处理
     for event_date, event_type, symbol, payload in events:
@@ -251,5 +274,7 @@ def compute_dividend_tax(
                 lot_tax_raw = lot.shares * dividend_per_share * tax_rate
                 lot_tax = lot_tax_raw.quantize(MONEY_QUANT, rounding=ROUND_HALF_UP)
                 total_tax += lot_tax
+                rate_key = str(tax_rate)
+                by_rate[rate_key] = by_rate.get(rate_key, _ZERO) + lot_tax
 
-    return total_tax
+    return total_tax, by_rate

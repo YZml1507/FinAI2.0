@@ -459,6 +459,10 @@ class DividendStrategy:
         self._breadth_ice_streak = 0                     # 连续处于冰点线下天数
         self._breadth_ice = False                        # True = 已确认冰点、全额避险中
         self._breadth_today: Decimal | None = None       # 当日宽度值（Decimal 纪律）
+        # L-2 证据链（只读捕获，不改变任何决策）：每次产仓计划非空的调仓
+        # 记录 {date, target_weights(计划市值)}；装配侧取最近一次做权重保真对账。
+        self._evidence_rebalances: list[dict[str, Any]] = []
+        self._evidence_last_rebalance: dict[str, Any] | None = None
         # D2 低波翼：逐票日收益滚动缓冲（close/preclose−1，250 日窗）——
         # 策略内自算波动率，PIT 正确、零外部数据依赖
         self._ret_buffer: dict[str, deque] = {}
@@ -736,6 +740,14 @@ class DividendStrategy:
                 for s in self._pead_holds:
                     if bars.get(s) is not None:
                         plan[s] = each
+
+        # L-2 证据链（只读）：非空计划才记（清仓计划 target_weights={} 不构成
+        # 权重保真样本——等权分支会把它误判成"无分配证据"）。
+        if plan:
+            rec = {"date": day.isoformat(),
+                   "target_weights": {s: str(v) for s, v in plan.items()}}
+            self._evidence_rebalances.append(rec)
+            self._evidence_last_rebalance = rec
 
         # ⑦ 出意图
         held_symbols = list(book.positions.keys()) if hasattr(book, "positions") else []

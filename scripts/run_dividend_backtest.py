@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
+from collections.abc import Mapping
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date as _date, datetime as _datetime, timezone as _timezone
 from decimal import Decimal
@@ -549,6 +550,10 @@ def run_dividend_backtest_2015_2024(
     registry_root: Path | None = None,
     universe_provider: Any = None,
     gate_strict: bool = False,
+    strategy_overrides: Mapping[str, Any] | None = None,
+    price_model: Any = None,
+    evidence_extra: Mapping[str, Any] | None = None,
+    executed_calls: set | None = None,
 ) -> dict:
     """红利策略 2015-2024 全周期回测（离线：数据全预载，不打网）。
 
@@ -557,6 +562,15 @@ def run_dividend_backtest_2015_2024(
             report-only**：各门禁 status 记入产物 ``gate_statuses``，**不因测出差结果而停机**
             （测量仪器不得因测出坏结果而停摆）。置 ``True`` 则恢复 fail-closed 阻断
             （数据完整性场景/测试用）。
+        strategy_overrides: 可选 ``DividendConfig`` 字段覆盖（``dataclasses.replace``
+            应用，T317 证据跑批/实验用——压测窗、宽度阈值等不动权威脚本默认）。
+        price_model: 可选成交价模型闭包（``(order, bar) -> Decimal``，
+            ``fees.make_price_model`` 形状）；``None`` ⇒ 默认模型。压测跑批注入
+            滑点放大变体用。
+        evidence_extra: 可选证据附加键（压测窗统计 ``round_trips``/``trading_days``、
+            ``stress_return`` 等），并入 ``record_run(evidence=...)`` 的证据块。
+        executed_calls: 可选调用插桩集合（调用方在跑批侧对关键函数包一层计数器
+            并传入），写入证据 ``executed_calls``（L-3 活性证明）。
     """
     start = start_date or START
     end = end_date or END
@@ -585,6 +599,10 @@ def run_dividend_backtest_2015_2024(
         warmup_bars=210,                        # 冷启动期
         portfolio=portfolio_config,
     )
+    if strategy_overrides:
+        # T317：跑批/实验显式覆盖（锚点配置复刻、压测窗等）。
+        # 先于指数缺失 fail-safe 应用——指数缺失时 MA200 关闭仍是最终裁决。
+        strategy_config = replace(strategy_config, **dict(strategy_overrides))
 
     # ② 指数行情（择时 + 日历基准）；缺失 ⇒ 择时 fail-safe 关闭（策略仍可跑）
     index_frame = _load_index_frame(data_path)
@@ -731,7 +749,9 @@ def run_dividend_backtest_2015_2024(
                     cash_yield_annual=getattr(strategy_config,
                                               "cash_yield_annual", Decimal("0")),
                     cash_yield_series=cash_yield_series)
-    matcher = MatchEngine(fee_model=make_fee_model(), price_model=make_price_model())
+    matcher = MatchEngine(
+        fee_model=make_fee_model(),
+        price_model=price_model if price_model is not None else make_price_model())
     broker = BacktestBroker(
         matcher=matcher, ledger=ledger, feed=feed, enable_dividend_tax=True,
         # e15：基金分红不适用股息红利差别化个税（股票口径税）——攻击资产豁免
@@ -817,13 +837,60 @@ def run_dividend_backtest_2015_2024(
         calendar_hash=hash_sequence(cal_days, label="cal"),    # ★ 实际交易日历
         universe_hash=hash_sequence(universe_codes, label="universe"),  # ★ 候选池时点快照
     )
-    from dataclasses import asdict as _asdict
+    # ⑨.1 T317 运行证据链装配（签名域之外）：orders/trades/流水/逐日现金流/
+    # 税档/权重保真/ADV + 择时口径键 —— 喂给 --scheduled 审计的 14 门
+    # RUN_EVIDENCE（此前从未序列化 ⇒ 一律 INCONCLUSIVE 阻断 CI）。
+    from reporting.evidence import build_run_evidence
+
+    ev_extras: dict[str, Any] = dict(evidence_extra or {})
+    ev_params = _asdict(strategy_config)
+    ev_extras.setdefault("active_features", ["DIVIDEND_TAX"])
+    ev_extras["fee_summary"] = {
+        (item.value if hasattr(item, "value") else str(item)): str(v)
+        for item, v in (getattr(report, "fees_total", {}) or {}).items()
+    }
+    if executed_calls is not None:
+        ev_extras["executed_calls"] = sorted(str(c) for c in executed_calls)
+    ev_extras["baseline_return"] = float(report.total_return)
+    ev_extras["run_calendar_bounds"] = (
+        [cal_days[0].isoformat(), cal_days[-1].isoformat()] if cal_days else [])
+    ev_extras["daily_positions_ratio"] = _compute_daily_positions_ratio(
+        result, cal_days)
+    if ev_params.get("use_breadth_timing"):
+        ev_extras["use_breadth_timing"] = True
+        _thr = ev_params.get("breadth_defense_threshold")
+        if _thr is not None:
+            ev_extras["breadth_defense_threshold"] = str(_thr)
+        _bser = ev_params.get("breadth_series")
+        if _bser:
+            ev_extras["breadth_series"] = _bser
+            _thr_f = float(_thr) if _thr is not None else 0.20
+            _b_below = sorted(d for d, b in _bser.items() if float(b) < _thr_f)
+            ev_extras["timing_grace_dates"] = _compute_timing_grace_dates(
+                _b_below, cal_days)
+    else:
+        _below_ma = _compute_index_below_ma200(index_frame, cal_days)
+        ev_extras["index_below_ma200_dates"] = _below_ma
+        ev_extras["timing_grace_dates"] = _compute_timing_grace_dates(
+            _below_ma, cal_days)
+
+    _rebalances = getattr(strategy, "_evidence_rebalances", None) or (
+        [strategy._evidence_last_rebalance]
+        if getattr(strategy, "_evidence_last_rebalance", None) else None)
+    evidence = build_run_evidence(
+        result,
+        tables=tables,
+        rebalance_history=_rebalances,
+        extras=ev_extras,
+    )
+
     run_id = registry.record_run(
         params=_asdict(strategy_config),
         report=report,
         seed=None,
         status="FINISHED",
         gate_statuses=gate_statuses or None,
+        evidence=evidence,
     )
 
     # ⑩ 摘要
