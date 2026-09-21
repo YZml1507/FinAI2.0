@@ -49,6 +49,8 @@ def build_signals(T: pd.Timestamp, ctx: dict) -> dict[str, pd.Series]:
     # S2/S5：gdhs 可见特征（低好→取负）
     snap = ctx['gdhs_vis'].get(T)
     if snap is not None and len(snap):
+        snap = snap.copy()
+        snap.index = snap.index.map(lambda c6: ctx['six2ts'].get(c6, c6))
         out['S2'] = snap['consec_down'].astype(float)   # e28: 高好(连降2档最强)
         out['S5'] = -snap['holders_z4'].astype(float)   # e28: 低好
     # F6：roe_std8（低好→取负）
@@ -110,7 +112,8 @@ def main() -> int:
         _note(f"margin_detail 仅 {n_margin} 日 <{MARGIN_MIN_DAYS}，M5 臂跳过")
 
     ctx = {'gdhs_vis': gdhs_vis, 'pit': pit, 'h2': h2, 'm5': m5,
-           'margin_dates': margin_dates}
+           'margin_dates': margin_dates,
+           'six2ts': {t.split('.')[0]: t for t in r.columns}}
 
     # 逐月相关矩阵 + top-quintile 重合
     pairs = [(a, b) for i, a in enumerate(CANDS) for b in CANDS[i + 1:]]
