@@ -30,13 +30,14 @@ from scripts.lab import e25_factor_screen as e25  # noqa: E402
 from scripts.lab import e26_margin_screen as e26  # noqa: E402
 from scripts.lab import e27_insider_screen as e27  # noqa: E402
 from scripts.lab import e28_gdhs_screen as e28  # noqa: E402
+from scripts.lab import e34_industry_screen as e34  # noqa: E402
 
 OUT_DIR = ROOT / 'experiments' / 'lab' / 'e31'
 MARGIN_DIR = ROOT / 'data' / 'margin_detail'
 MARGIN_MIN_DAYS = 2300  # 全窗 ~2431 日；低于此 M5 跳过
 
 # (name, 越大越好归一化 flip)
-CANDS = ['S2', 'S5', 'M5', 'F6', 'H2']
+CANDS = ['S2', 'S5', 'M5', 'F6', 'H2', 'I3']
 
 
 def _note(m: str) -> None:
@@ -65,6 +66,13 @@ def build_signals(T: pd.Timestamp, ctx: dict) -> dict[str, pd.Series]:
         j = int(md.searchsorted(T, side='left')) - 1
         if j >= 0:
             out['M5'] = -ctx['m5'].loc[md[j]]
+    # I3：行业内残差反转（低好→取负；e34 口径）
+    imap = e34.industry_map_at(ctx['snaps'], T)
+    if imap is not None:
+        ind = imap.reindex(ctx['cols'])
+        tmp = pd.DataFrame({'v': ctx['ret21'].loc[T], 'ind': ind})
+        grp = tmp.dropna().groupby('ind')['v'].mean()
+        out['I3'] = -(ctx['ret21'].loc[T] - ind.map(grp))
     return out
 
 
@@ -98,6 +106,11 @@ def main() -> int:
     # H2 反转
     h2 = np.log1p(r.fillna(0.0)).rolling(e23.SKIP).sum()
 
+    # I3 构件：行业快照 + 21 日窗收益
+    snaps = e34.load_industry_snapshots()
+    cs21 = np.log1p(r.fillna(0.0)).cumsum()
+    ret21 = np.expm1(cs21 - cs21.shift(e34.IND_REV_WIN))
+
     # M5 margin（次日披露口径）
     m5 = None
     margin_dates = None
@@ -112,7 +125,8 @@ def main() -> int:
         _note(f"margin_detail 仅 {n_margin} 日 <{MARGIN_MIN_DAYS}，M5 臂跳过")
 
     ctx = {'gdhs_vis': gdhs_vis, 'pit': pit, 'h2': h2, 'm5': m5,
-           'margin_dates': margin_dates,
+           'margin_dates': margin_dates, 'snaps': snaps, 'ret21': ret21,
+           'cols': r.columns,
            'six2ts': {t.split('.')[0]: t for t in r.columns}}
 
     # 逐月相关矩阵 + top-quintile 重合
