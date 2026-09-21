@@ -48,6 +48,7 @@ data/dividend_events_alla/
 data/c3_pool/
 data/c3_universe/
 data/rates/
+data/margin_detail/
 data/signal_layers_manifest.json
 data/**/*.parquet
 .workbuddy/
