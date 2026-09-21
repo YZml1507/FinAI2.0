@@ -4,6 +4,7 @@ from the breadth_series recorded in experiments/lab/leaderboard.jsonl
 (isst-e8b record). No recomputation — exact anchor input reconstruction."""
 import hashlib
 import json
+import os
 import re
 import sys
 from decimal import Decimal
@@ -12,7 +13,9 @@ from pathlib import Path
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[2]
-LB = ROOT / "experiments" / "lab" / "leaderboard.jsonl"
+LB = Path(
+    os.environ.get("BREADTH_LB", ROOT / "experiments" / "lab" / "leaderboard.jsonl")
+)
 OUT_DIR = ROOT / "experiments" / "lab" / "market-breadth-a"
 OUT = OUT_DIR / "breadth20_daily.parquet"
 
@@ -25,6 +28,14 @@ if anchor is None:
     sys.exit("isst-e8b record with breadth_series not found")
 
 pairs = re.findall(r"'(\d{4}-\d{2}-\d{2})': Decimal\('([^']+)'\)", anchor)
+if "<compacted:" in anchor or not pairs:
+    sys.exit(
+        "isst-e8b breadth_series is compacted/empty in the committed "
+        "leaderboard — point BREADTH_LB at a literal-series copy: `git show "
+        "9954d51^:experiments/lab/leaderboard.jsonl > /tmp/lb_literal.jsonl "
+        "&& BREADTH_LB=/tmp/lb_literal.jsonl python -m "
+        "scripts.lab.rebuild_breadth_from_leaderboard`"
+    )
 assert len(pairs) == anchor.count("Decimal("), (
     f"parsed {len(pairs)} != Decimal count {anchor.count('Decimal(')}"
 )
