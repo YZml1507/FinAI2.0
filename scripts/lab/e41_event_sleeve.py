@@ -34,9 +34,10 @@ GC001 = ROOT / 'data' / 'rates' / 'gc001_daily.parquet'
 def _note(m): print(f"[note] {m}", flush=True)
 
 
-def sleeve_events(idx_code: str, r, close_w, days_idx):
+def sleeve_events(idx_code: str | tuple, r, close_w, days_idx):
     ev = e40.load_events()
-    adds = ev[(ev.index_code == idx_code) & (ev.action == 'add')]
+    codes = (idx_code,) if isinstance(idx_code, str) else idx_code
+    adds = ev[(ev.index_code.isin(list(codes))) & (ev.action == 'add')]
     iloc = {d: i for i, d in enumerate(days_idx)}
     daysv = days_idx.values
     per = []
@@ -131,9 +132,9 @@ def main() -> int:
               f"t={s.get('t_cluster')} pos={s.get('pos_frac')} "
               f"post19={s.get('post2019_mean')}")
 
-    # S3 合并
-    merged = (res['S1_add_500']['events'] + res['S2_add_300']['events'])
-    res['S3_merged'] = {'stats': stats(merged)}
+    # S3 合并：同日 300+500 名单并为单篮子（同 T0 簇，不重复计期次）
+    s3 = sleeve_events(('000300', '000905'), r, close_w, days_idx)
+    res['S3_merged'] = {'events': s3, 'stats': stats(s3)}
     s = res['S3_merged']['stats']
     _note(f"S3: n={s.get('n_events')} net={s.get('mean_net')} "
           f"t={s.get('t_cluster')}")
