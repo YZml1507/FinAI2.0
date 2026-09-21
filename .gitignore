@@ -69,6 +69,7 @@ data/index_rebal/
 data/letters/
 data/analyst/
 data/delisted_forecast/
+data/esop_events/
 data/e30_repurchase/
 data/e30_restricted/
 data/minute_probe/
