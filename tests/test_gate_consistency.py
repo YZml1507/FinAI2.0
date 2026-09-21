@@ -1248,6 +1248,7 @@ class TestGateDocIgnoreScope:
             "docs/E20_OOS_HOLDOUT_PREREG.md": (1, None),     # e20 预登记的 OOS 两臂实测值快照
             "docs/E23_SHADOW_SCREEN_PREREG.md": (2, None),   # e23 预登记动机表：外部调研与本仓实测引用
             "docs/E25_QUALITY_FACTOR_PLAN.md": (1, None),    # e25 方案动机表：e8b 权威 run 实测值快照
+            "docs/E25_FACTOR_SCREEN_PREREG.md": (1, None),   # e25 冻结稿动机表：e8b 权威 run 实测值快照（承方案文档同一行）
             "docs/delivery/FINAL_DELIVERY_20260920.md": (1, None),  # 定稿结论书：锚点/消融/容量/OOS 实测值快照汇总引用
         }
         by_file: dict[str, list] = {}
