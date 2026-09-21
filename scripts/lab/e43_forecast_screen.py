@@ -39,6 +39,7 @@ DEDUP_DAYS = 20
 POOL_MIN_N = 150
 ALLA_MIN_N = 300
 
+# 冻结稿臂定义原样——减亏/续盈不扩臂，如实落入未分类桶
 POS_TYPES = ('预增', '扭亏', '略增')
 NEG_TYPES = ('预减', '首亏', '续亏', '略减', '增亏')
 NEU_TYPES = ('不确定', '其他')
@@ -63,28 +64,20 @@ def load_em() -> pd.DataFrame | None:
     if not EM_DIR.exists():
         return None
     frames = []
-    for f in sorted(EM_DIR.glob('yjyg_*.parquet')):
+    for f in sorted(EM_DIR.glob('yjyg/*.parquet')):
         d = pd.read_parquet(f)
         d.columns = [str(c).strip() for c in d.columns]
         frames.append(d)
     if not frames:
         return None
-    df = pd.concat(frames, ignore_index=True)
-    # 列名适配（容忍东财列名差异）
-    ren = {}
-    for c in df.columns:
-        if '公告日期' in c or c == 'ann_date':
-            ren[c] = 'ann_date'
-        elif c in ('股票代码', '代码', 'secCode', 'SECURITY_CODE'):
-            ren[c] = 'code'
-        elif '预告类型' in c or c == 'type' or '业绩变动' in c and '幅度' not in c:
-            ren[c] = 'ftype'
-        elif '报告期' in c or c == 'end_date':
-            ren[c] = 'end_date'
-        elif '幅度' in c and ('下' in c or 'min' in c.lower()):
-            ren[c] = 'p_min'
-        elif '幅度' in c and ('上' in c or 'max' in c.lower()):
-            ren[c] = 'p_max'
+    recs = []
+    for f, d in zip(sorted(EM_DIR.glob('yjyg/*.parquet')), frames):
+        d = d.copy()
+        d['end_date'] = f.stem.replace('yjyg_', '')   # 期次从文件名
+        recs.append(d)
+    df = pd.concat(recs, ignore_index=True)
+    ren = {'公告日期': 'ann_date', '股票代码': 'code',
+           '预告类型': 'ftype', '业绩变动幅度': 'p_min'}
     df = df.rename(columns=ren)
     req = {'ann_date', 'code', 'ftype'}
     if not req.issubset(df.columns):
@@ -93,8 +86,10 @@ def load_em() -> pd.DataFrame | None:
     df['ann_date'] = pd.to_datetime(df['ann_date'], errors='coerce')
     df = df.dropna(subset=['ann_date'])
     df['ts_code'] = df['code'].map(_bare2ts)
-    if 'end_date' in df.columns:
-        df['end_date'] = pd.to_datetime(df['end_date'], errors='coerce')
+    df['end_date'] = pd.to_datetime(df['end_date'], errors='coerce')
+    # 同股同公告日多指标行（归母/扣非/EPS 拆行）→ 聚合取首行
+    df = (df.sort_values('ann_date')
+            .drop_duplicates(['ts_code', 'ann_date'], keep='first'))
     return df
 
 
