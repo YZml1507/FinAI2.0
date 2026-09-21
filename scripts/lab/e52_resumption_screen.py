@@ -34,7 +34,8 @@ def _note(m): print(f"[note] {m}", flush=True)
 
 def resumption_events(close_w: pd.DataFrame,
                       lo: int, hi: int) -> pd.DataFrame:
-    """NaN 连续段∈[lo,hi] 后首个非 NaN 日=复牌 T0。"""
+    """NaN 连续段∈[lo,hi] 后首个非 NaN 日=复牌 T0。
+    附 gap_ret=T0 收盘/停牌前末收 −1（复牌跳空幅度，R4 分层用）。"""
     days = close_w.index
     events = []
     for sym in close_w.columns:
@@ -43,15 +44,18 @@ def resumption_events(close_w: pd.DataFrame,
         fv = np.argmax(~nan)           # 首个非 NaN（上市日）
         if not (~nan).any():
             continue
-        run, prev_td = 0, 0
+        run, prev_close = 0, np.nan
         for i in range(fv, len(s)):
             if nan[i]:
                 run += 1
             else:
                 if lo <= run <= hi:
-                    events.append((days[i], sym))
+                    gap = (s[i] / prev_close - 1) \
+                        if pd.notna(prev_close) and prev_close > 0 else np.nan
+                    events.append((days[i], sym, gap))
+                prev_close = s[i]
                 run = 0
-    ev = pd.DataFrame(events, columns=['trade_date', 'ts_code'])
+    ev = pd.DataFrame(events, columns=['trade_date', 'ts_code', 'gap_ret'])
     return ev
 
 
@@ -108,40 +112,46 @@ def main() -> int:
             res | {'aborted': True}, ensure_ascii=False, indent=1))
         return 3
 
-    # R4 需要复牌首日跌幅：T0 日收益 < -5%
-    r_t0 = r.copy()
-    def _day1_drop(ev):
-        idx = {d: i for i, d in enumerate(days_idx)}
-        sub = []
-        for e in ev.itertuples():
-            i = idx.get(e.trade_date)
-            if i is None or e.ts_code not in r_t0.columns:
-                continue
-            v = r_t0.iloc[i][e.ts_code]
-            if pd.notna(v) and v <= -0.05:
-                sub.append((e.trade_date, e.ts_code))
-        return pd.DataFrame(sub, columns=['trade_date', 'ts_code'])
-
+    # R4 复牌跳空（对停牌前末收）≤−5%——停期含除权事件会污染 gap，
+    # 属已知噪声如实披露；停牌期间日日收益本身不可定义。
     ev_20p = resumption_events(close_w, 20, 10 ** 9)
+    r4 = ev_20p[pd.to_numeric(ev_20p['gap_ret'], errors='coerce') <= -0.05]
+    _note(f"R4 gap≤-5% events={len(r4)} (gap 中位 "
+          f"{ev_20p['gap_ret'].median():.2%})")
     arms = {
         'R1_susp60p':  resumption_events(close_w, 60, 10 ** 9),
         'R2_susp20_59': resumption_events(close_w, 20, 59),
         'R3_susp5_19': resumption_events(close_w, 5, 19),
-        'R4_day1_dn5': _day1_drop(ev_20p),
+        'R4_gap_dn5': r4,
     }
     for nm, ev in arms.items():
         ev = dedup_td(ev)
         hit = pool_hits(ev)
+        if len(ev) == 0:
+            res[nm] = {'arm': nm, 'n_events': 0, 'pool_hit_rate': 0.0,
+                       'verdict': 'INCONCLUSIVE(n=0)'}
+            _note(f"{nm}: n=0")
+            continue
         car = e29.car_table(ev, r, valid, days_idx, fwd, base)
         st = e29.arm_stats(car, nm)
         st['pool_hit_rate'] = hit
-        st['verdict'] = e29.verdict(st) if st['n_events'] >= MIN_N \
-            else f'INCONCLUSIVE(n<{MIN_N})'
-        # 池内命中率前置门（e50 元教训）：负向判强 + 落池率<8% → 宽域待载体
+        # 负向判定（e48 同构）：t≤−2.6 + h20<0 + 负年一致性≥0.6
         h20 = st.get('h20', {})
-        if st['verdict'] == '强' and (h20.get('car_mean') or 0) < 0 \
-                and hit < 0.08:
-            st['verdict'] = '强(宽域待载体-落池率<8%)'
+        t20 = h20.get('t_cluster', np.nan)
+        neg_cons = 1 - (h20.get('year_cons', np.nan) or 0)
+        st['neg_year_cons'] = neg_cons
+        if st['n_events'] < MIN_N:
+            st['verdict'] = f'INCONCLUSIVE(n<{MIN_N})'
+        elif not np.isnan(t20) and t20 <= -2.6 and \
+                (h20.get('car_mean') or 0) < 0 and neg_cons >= 0.6:
+            st['verdict'] = '强(负→veto候选)'
+            # 池内命中率前置门（e50 元教训）
+            if hit < 0.08:
+                st['verdict'] = '强(宽域待载体-落池率<8%)'
+        elif pd.notna(t20) and abs(t20) >= 2.0:
+            st['verdict'] = '弱'
+        else:
+            st['verdict'] = '负'
         res[nm] = st
         _note(f"{nm}: n={st['n_events']} pool_hit={hit:.1%} "
               f"h20={h20.get('car_mean')} t={h20.get('t_cluster')} "
