@@ -376,7 +376,7 @@ def orders_adv_ratio(
     # 每标的升序 (date, open, amount)
     series: dict[str, list[tuple[str, Decimal, Decimal]]] = {}
     for sym, df in frames.items():
-        if not {"date", "open", "amount"} <= set(df.columns):
+        if df is None or not {"date", "open", "amount"} <= set(df.columns):
             continue
         rows = sorted(
             (str(d)[:10],
