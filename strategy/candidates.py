@@ -251,6 +251,10 @@ class DividendConfig:
     composite_overlay: Optional[Mapping[str, Mapping[str, Decimal]]] = None
     overlay_mode: str = "tilt"                        # 'tilt' | 'filter'
     overlay_lambda: Decimal = Decimal("0.30")         # e36 冻结 λ=0.30
+    # e37 事件否决层（默认 None=逐位复现锚点）：iso date → frozenset(当日禁买股)
+    # 由 e35 实证 veto 族（V1 户数激增 / V2 重复上榜 / V3 下跌榜 / V4 机构大宗卖）
+    # 的子集离线生成；命中即不入候选，语义同 landmine/veto 但数据源独立。
+    event_veto_series: Optional[Mapping[str, frozenset]] = None
     portfolio: PortfolioConfig = field(default_factory=PortfolioConfig)
 
     def __post_init__(self) -> None:
@@ -338,6 +342,9 @@ class DividendConfig:
                 raise ValueError(f"max_dividend_yield={self.max_dividend_yield} 须严格大于 "
                                  f"min_dividend_yield={self.min_dividend_yield}"
                                  f"（否则候选恒空——fail-closed）")
+        if self.event_veto_series is not None and not isinstance(
+                self.event_veto_series, Mapping):
+            raise TypeError("event_veto_series 须为 Mapping{iso_date: frozenset}")
         if self.overlay_mode not in ("tilt", "filter"):
             raise ValueError(f"overlay_mode 须为 'tilt'/'filter'，实际={self.overlay_mode}")
         if not isinstance(self.overlay_lambda, Decimal):
@@ -810,6 +817,11 @@ class DividendStrategy:
                 # ② 排雷冷却窗禁买（事件窗口语义：pub≤day≤cooldown_until）
                 if (cfg.use_landmine_overlay and self._layers is not None
                         and self._layers.landmine_block(symbol, day)):
+                    continue
+                # ③ e37 事件否决层（V1/V2 veto 命中即禁买，与组合层 diff 无涉）
+                if (cfg.event_veto_series is not None and day is not None
+                        and symbol in cfg.event_veto_series.get(
+                            day.isoformat(), frozenset())):
                     continue
                 candidates.append((symbol, bar.dividend_yield, bar.market_cap))
 
