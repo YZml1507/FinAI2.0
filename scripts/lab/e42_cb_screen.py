@@ -54,26 +54,46 @@ def load_meta() -> pd.DataFrame:
 
 
 def build_panels() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    """close 矩阵 + 转股溢价率 + 纯债溢价率（日期×券）。"""
+    """close 矩阵 + 转股溢价率 + 纯债溢价率（日期×券，列=带市场前缀 symbol）。"""
     closes, prem_c, prem_p = {}, {}, {}
     for f in sorted((CB_DIR / 'cb_daily').glob('*.parquet')):
         sym = f.stem
         d = pd.read_parquet(f, columns=['date', 'close'])
         d['date'] = pd.to_datetime(d['date'])
         closes[sym] = d.set_index('date')['close']
+    close_w = pd.DataFrame(closes).sort_index()
+
+    # cb_premium 文件名是裸码（113011），需映射回 symbol；
+    # 沪深同号券（126002）按 premium 日期与各市场日线重叠数定归属。
+    meta = load_meta()
+    code2syms: dict[str, list[str]] = {}
+    for s, c in zip(meta['symbol'], meta['code'].astype(str)):
+        code2syms.setdefault(c, []).append(s)
+
+    def resolve(bare: str, pidx: pd.DatetimeIndex) -> str | None:
+        cands = [s for s in code2syms.get(bare, []) if s in close_w.columns]
+        if not cands:
+            return None
+        if len(cands) == 1:
+            return cands[0]
+        best, best_n = None, -1
+        pset = set(pidx)
+        for s in cands:
+            n = len(pset & set(close_w[s].dropna().index))
+            if n > best_n:
+                best, best_n = s, n
+        return best
+
     for f in sorted((CB_DIR / 'cb_premium').glob('*.parquet')):
-        sym = f.stem
         d = pd.read_parquet(f)
         d['date'] = pd.to_datetime(d['日期'])
+        sym = resolve(f.stem, pd.DatetimeIndex(d['date']))
+        if sym is None:
+            continue
         prem_c[sym] = d.set_index('date')['转股溢价率']
         prem_p[sym] = d.set_index('date')['纯债溢价率']
-    close_w = pd.DataFrame(closes).sort_index()
     pc_w = pd.DataFrame(prem_c).reindex(close_w.index)
     pp_w = pd.DataFrame(prem_p).reindex(close_w.index)
-    # 券代码统一成 6 位数字（cb_daily 用 sh113011 / sz123xxx）
-    close_w.columns = [c[2:] for c in close_w.columns]
-    pc_w.columns = [c[2:] for c in pc_w.columns]
-    pp_w.columns = [c[2:] for c in pp_w.columns]
     return close_w, pc_w, pp_w
 
 
@@ -100,7 +120,7 @@ def main() -> int:
     # 上市天数累积 + 摘牌剔除
     listed_days = (~close_w.isna()).cumsum()
     list_ok = listed_days.ge(MIN_LIST_TD)
-    delist_map = {str(s)[2:]: d for s, d in
+    delist_map = {str(s): d for s, d in
                   zip(meta['symbol'], meta['delist_d'])}
     delist_ok = pd.DataFrame(True, index=idx, columns=close_w.columns)
     for c in close_w.columns:
