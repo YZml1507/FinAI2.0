@@ -107,7 +107,17 @@
   top5 Jaccard 仅 0.245）**；S/F6/H2 三族两两 ρ≈0 正交；M5 腿待
   margin_detail 重采（~560/2431 在跑）落盘后补。独立信号族数=4。
 - **block_trade 大宗交易链启动（同日）**：`collect_event_axes.py --axis
-  block_trade` 2431 日在采（lhb 链完结后序贯）。
+  block_trade` 2431 日在采（lhb 链完结后序贯）；e32 预登记草案入库
+  `docs/E32_BLOCKTRADE_PREREG.md`（B1–B5：溢价折价/机构席位/规模强度/
+  多笔/对照，事件研究框架同源 e29/e30）。
+- **e33 合成族预登记草案入库（同日）**：`docs/E33_CANDIDATE_SYNTH_PREREG.md`
+  ——候选库四族（S5/M5/F6/H2，S2 撞冗余线按一族计）等权 z 五分位 + 交集臂
+  + 消融 + 对照；冻结前置=margin_detail 落盘后 e31 M5 腿 ρ<0.5 确认。
+- **sentiment 涨停池轴判不可行（同日实测收单）**：akshare `stock_zt_pool_em`
+  端点全日期 0 行（含 2024 近期，上游接口已死非覆盖问题）；`zbgc` 仅限近
+  30 交易日；THS `limit_up_pool` 历史日期实测 0 行；tushare `limit_list_d`
+  仓内 PROMAX_TUSHARE_KEY 实测「token 不对」（商家配额未放开，.env 已注）。
+  ⇒ 涨停池历史免费源全灭，轴关闭登记；前瞻段可日频滚动攒（仅监控用）。
 
 ## 上一接续（2026-09-21 e26 收单窗口）：两融因子族筛选——M5 判「强」触发范畴评估
 - **e26 收单（2026-09-21）**：两融杠杆资金族 6 假设冻结筛选完毕——
