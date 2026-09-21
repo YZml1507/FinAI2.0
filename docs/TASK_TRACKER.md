@@ -168,7 +168,7 @@
   源端无)/中证红利 8期(2015-12~2022-12，2023 起源端不再发布红利名单
   ——三期缺口逐公告核实属源端发布缺口非解析失败)；54 parquet 4341 行
   0 坏码 0 重复，量与编制规则上限吻合。落盘 data/index_rebal/
-  （不入库），采集脚本已推 research-finai scripts/collect_index_rebal.py。
+  （不入库），采集脚本已推研究仓（research-finai 仓内 collect_index_rebal.py）。
   调样事件族评估（调入 40d 效应 RD 旧证据 +15%）排队为下一候选族。
 - **forecast 轴钥匙登记（同日）**：tushare 两通道实测定死——PROMAX
   中转 key 2026-08-10 停用后仍 403、CITYDATA 代理 407（出口 IP 不
