@@ -68,7 +68,7 @@ def load_block_trade() -> pd.DataFrame:
         return float(np.average(x, weights=w)) if w.sum() > 0 else float(x.mean())
     ev = g.agg(amount=('amount', 'sum'),
                amount_mv_ratio=('amount_mv_ratio', 'sum'),
-               prem=_wavg('premium_discount_pct'),
+               prem=('premium_discount_pct', _wavg),
                buyer_inst=('buyer_inst', 'any'),
                seller_inst=('seller_inst', 'any'),
                n_deals=('amount', 'size')).reset_index()
