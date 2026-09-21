@@ -162,12 +162,13 @@ def main() -> int:
                     qsets.append(set(z[ok].nlargest(max(1, n // 5)).index))
             if len(qsets) == len(zs) and qsets:
                 inter = set.intersection(*qsets)
-                if len(inter) >= 1:
-                    ok_all = base_ok & fwd_row.notna()
-                    ex = float(fwd_row[list(inter) & ok_all[ok_all].index]
-                               .mean() - fwd_row[ok_all].mean()) \
-                        if len(inter) and ok_all.sum() else np.nan
-                    c2 = dict(n=len(inter), spread=np.nan, excess=ex,
+                ok_all = base_ok & fwd_row.notna()
+                inter_ok = [c for c in inter if ok_all.get(c, False)]
+                if len(inter_ok) >= 1 and int(ok_all.sum()) > 0:
+                    ex = float(fwd_row[inter_ok].mean()
+                               - fwd_row[ok_all].mean())
+                    # C2 可检验统计量=交集篮子 vs 全 A 超额（写入 spread 供 t）
+                    c2 = dict(n=len(inter), spread=ex, excess=ex,
                               nan_ratio=np.nan, _top=inter)
                 else:
                     c2 = dict(n=0, spread=np.nan, excess=np.nan,
@@ -184,6 +185,25 @@ def main() -> int:
             single_rows.append(dict(hyp=f'C4_{f}', T=str(T.date()), **srow))
 
     res = stats(monthly_rows)
+    # C2 的 G4 语义≠覆盖率：篮子宽度 ≥30 股的月占比 ≤30% 低样本门槛
+    # （stats() 的 300 股地板对交集篮不适用——篮本来就小）
+    c2_rows = [r for r in monthly_rows if r['hyp'] == 'C2']
+    if 'C2' in res and c2_rows:
+        df2 = pd.DataFrame(c2_rows)
+        defined = df2[df2['n'] >= 1]
+        low_frac = float((defined['n'] < 30).mean()) if len(defined) else np.nan
+        v = res['C2']
+        v['g4_basket_low_frac'] = low_frac
+        v['G4'] = bool(not np.isnan(low_frac) and low_frac <= 0.30)
+        t = v.get('t')
+        if v.get('M', 0) < 60:
+            v['grade'] = 'INCONCLUSIVE'
+        elif not np.isnan(t) and t >= 2.6 and v['G2'] and v['G3'] and v['G4']:
+            v['grade'] = '强'
+        elif not np.isnan(t) and t >= 2.0 and v['G2'] and v['G3'] and v['G4']:
+            v['grade'] = '弱'
+        else:
+            v['grade'] = '负'
     res_loo = stats(loo_rows)
     res_single = stats(single_rows)
     out = {'meta': {'months': len(Ts), 'm5_in_synth': m5_in,
