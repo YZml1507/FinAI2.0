@@ -15,10 +15,13 @@
   （git ls-files 全树，命中即 FAIL，重插入实测会红）。另修两处旧机路径硬编码
   `ROOT=/home/ubuntu/FinAI2.0` → `__file__` 相对定位。
 
-## 当前接续（2026-09-21 T317 窗口）：Scheduled Full Gate Audit 每日失败修复——证据链落地+四跑批进行中
-- **任务交接**：`docs/GATE_AUDIT_REPAIR_HANDOFF.md`（12 步实施序列）。审计起点门态：
-  29 门 = 13 PASS / 1 FAIL（G-REF-1 幻影引用）/ 1 SKIP / 14 INCONCLUSIVE = 15 阻断。
-- **已落地（commit 71c23fd / a933012 / 2614fb2）**：
+## 当前接续（2026-09-21 T317 窗口）：Scheduled Full Gate Audit 修复——✅ 阻断清零已推送
+- **终态（HEAD 9082208，已 push）**：`--scheduled` 本地实测 **29 门 = 28 PASS /
+  0 FAIL / 1 SKIP / 0 INCONCLUSIVE**，`[CI][PASS] 无阻断项`（起点：13 PASS /
+  1 FAIL / 14 INCONCLUSIVE = 15 阻断）。残留仅 D-4 SKIP（结构性不适用：停牌日
+  成交量检验依赖停牌日样本窗，数据口径下无停牌日 bar 可抽——如实登记，
+  未放松任何门禁阈值）。
+- **已落地（commit 71c23fd / a933012 / 2614fb2 / 6f4bac4 / 33b1515 / 7b25d07 / 9082208）**：
   ① `backtest/dividend_tax.py` 拆 `compute_dividend_tax_detail`（total+by_rate）；
   ② `broker.py` DIVIDEND_TAX 流水 meta 写 `tax_by_bracket`；
   ③ `strategy/candidates.py` 调仓日 `_evidence_rebalances/_evidence_last_rebalance`（只读捕获）；
@@ -34,10 +37,18 @@
   ⑨ 4 份无指纹 legacy 产物（20260903×2/20260906/20260907）`git mv` → `experiments/legacy/`
     + `DISPOSITION.md`（index.jsonl 索引行保留=台账不可篡改），消解 G-REPRO-1 FAIL + G-REF-1；
   ⑩ `tests/test_run_evidence.py` 19 例新测；`TEST_BASELINE_PASSED` 1210→1229 已同步，pytest 1229 绿。
-- **在跑**：四跑批 ~90min（后台，日志 /tmp/produce_gate_evidence.log）。收口：全量
-  `--scheduled` 验证阻断清零 → commit+push。判定备忘：压测窗取 2015-01~2016-12
-  （交接件「2015 全年」被 warmup_bars=210 吃光只剩 ~34 可交易日无往返，扩到 2016
-  覆盖股灾尾+熔断，~487 日 ≥200 门槛）。
+- **关键事件登记（诚实记录）**：① 双跑升格对曾遇指纹分裂——commit 落点在
+  baseline-1/2 之间 ⇒ code_hash 不同 ⇒ verified 对不成立。已按「双跑间禁 commit」
+  纪律重跑，`20260921-093905`/`093948` 同指纹 `3e265f20…` verified 对成立。
+  ② D-5 一度真 FAIL：送转扩仓后 delta 非整手产生非整手 BUY（611 股），已修
+  `portfolio.diff_to_orders`（BUY 增量整手对齐，不足一手放弃），是门禁抓到的
+  真缺陷不是假阳性。③ 压测窗 2015-01~2016-12（交接件「2015 全年」被
+  warmup_bars=210 吃光只剩 ~34 日，扩 2016 覆盖股灾尾+熔断，~487 日 ≥200 门槛）。
+- **新权威锚**：`experiments/runs/20260921-093948-t312-dividend-v1-noseed.json`
+  （=G-DOC-1 真值源）+ `093905` 为 verified 对；旧锚 20260915-235155 留档。
+- **下一接续**（本任务已收口）：研究面按 playbook 持续开放——候选库 M5 /
+  E25-F6 / E23-H2 重启评估（`docs/E26_CATEGORY_ASSESSMENT.md` 三条重启条件），
+  E 路线「工程 IP 打包」未启动。
 
 ## 上一接续（2026-09-21 e26 收单窗口）：两融因子族筛选——M5 判「强」触发范畴评估
 - **e26 收单（2026-09-21）**：两融杠杆资金族 6 假设冻结筛选完毕——
