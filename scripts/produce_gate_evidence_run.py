@@ -184,7 +184,8 @@ def anchor_overrides(anchor_path: Path = ANCHOR_PATH) -> dict[str, Any]:
         if k == "portfolio":
             ov["portfolio"] = _typed_portfolio(v)
         elif k in _SERIES_KEYS:
-            ov[k] = {str(d)[:10]: Decimal(str(x)) for d, x in v.items()}
+            ov[k] = ({str(d)[:10]: Decimal(str(x)) for d, x in v.items()}
+                     if v is not None else None)
         elif k in _DECIMAL_KEYS:
             ov[k] = Decimal(str(v)) if v is not None else None
         elif k in _INT_KEYS:
