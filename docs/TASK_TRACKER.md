@@ -15,7 +15,31 @@
   （git ls-files 全树，命中即 FAIL，重插入实测会红）。另修两处旧机路径硬编码
   `ROOT=/home/ubuntu/FinAI2.0` → `__file__` 相对定位。
 
-## 当前接续（2026-09-21 e26 收单窗口）：两融因子族筛选——M5 判「强」触发范畴评估
+## 当前接续（2026-09-21 T317 窗口）：Scheduled Full Gate Audit 每日失败修复——证据链落地+四跑批进行中
+- **任务交接**：`docs/GATE_AUDIT_REPAIR_HANDOFF.md`（12 步实施序列）。基线：
+  29 门 = 13 PASS / 1 FAIL（G-REF-1 幻影引用）/ 1 SKIP / 14 INCONCLUSIVE = 15 阻断。
+- **已落地（commit 71c23fd / a933012 / 2614fb2）**：
+  ① `backtest/dividend_tax.py` 拆 `compute_dividend_tax_detail`（total+by_rate）；
+  ② `broker.py` DIVIDEND_TAX 流水 meta 写 `tax_by_bracket`；
+  ③ `strategy/candidates.py` 调仓日 `_evidence_rebalances/_evidence_last_rebalance`（只读捕获）；
+  ④ 新 `reporting/evidence.py`（~590 行）：订单/成交板价重算/流水/SETTLE 锚定逐日现金流/
+    A-3 黄金往返费/ADV20 比/权重保真/税档聚合，全 JSON-safe（拒 float 同 registry 口径）；
+  ⑤ `registry.record_run(evidence=)`——签名**之后**合并（签名域不变，防篡改兼容已钉单测）；
+  ⑥ `run_dividend_backtest` 装配证据 + `strategy_overrides/price_model/evidence_extra/executed_calls` 入参；
+  ⑦ `context_builder` `ctx.update(record.evidence)` 回填；
+  ⑧ `scripts/produce_gate_evidence_run.py` 四跑编排（滑点+50% 全窗 → 2015-2016 压测窗 →
+    baseline×2 升格 authoritative；锚点 20260915-235155 参数逐项还原含内嵌 breadth_series
+    ——lab 重建 parquet 与锚点序列在 1015/2431 日有 ≤1e-4 微差，复刻必须用锚点自带；
+    baseline×2 先跑 lab scratch 再升格，保同 clean code_hash ⇒ 同指纹 verified 组）；
+  ⑨ 4 份无指纹 legacy 产物（20260903×2/20260906/20260907）`git mv` → `experiments/legacy/`
+    + `DISPOSITION.md`（index.jsonl 索引行保留=台账不可篡改），消解 G-REPRO-1 FAIL + G-REF-1；
+  ⑩ `tests/test_run_evidence.py` 19 例新测；`TEST_BASELINE_PASSED` 1210→1229 已同步，pytest 1229 绿。
+- **在跑**：四跑批 ~90min（后台，日志 /tmp/produce_gate_evidence.log）。收口：全量
+  `--scheduled` 验证阻断清零 → commit+push。判定备忘：压测窗取 2015-01~2016-12
+  （交接件「2015 全年」被 warmup_bars=210 吃光只剩 ~34 可交易日无往返，扩到 2016
+  覆盖股灾尾+熔断，~487 日 ≥200 门槛）。
+
+## 上一接续（2026-09-21 e26 收单窗口）：两融因子族筛选——M5 判「强」触发范畴评估
 - **e26 收单（2026-09-21）**：两融杠杆资金族 6 假设冻结筛选完毕——
   **「强」1（M5 融券余量 20d 环比 t=2.72，项目史上首个冻结全闸通过
   的影子信号）/「负」5**，合成臂不触发。按冻结决策树走范畴变更评估
