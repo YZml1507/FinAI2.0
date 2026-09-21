@@ -1,0 +1,33 @@
+gate       severity   status        blocking  message
+-----------------------------------------------------
+D-1        BLOCKER    INCONCLUSIVE            [UNKNOWN] 原始日线样本不足 2 条，无法判定跳变率（无证据 ≠ 通过）
+D-2        BLOCKER    INCONCLUSIVE            流通市值列表为空，无法判定市值分布真实性（无证据 ≠ 通过）
+D-3        BLOCKER    INCONCLUSIVE            股息率样本 0 天 < 60，不足以判定 PIT 动态性（无证据 ≠ 通过）
+D-4        BLOCKER    INCONCLUSIVE            无日线数据，无法判定停牌日成交量是否为零（无证据 ≠ 通过）
+D-5        CRITICAL   FAIL                    检出 1 笔违背高价股/整手约束的委托
+L-1        BLOCKER    PASS                    所有声明特性均在账本产生真实流水 (活跃特性: ['COMMISSION'])
+L-2        CRITICAL   PASS                    权重分配保真度检验通过 (Spearman=1.000 >= 0.90)
+L-3        CRITICAL   INCONCLUSIVE            未提供必调链路清单（required_calls），无法审计调用链（无证据 ≠ 通过）
+E-1        BLOCKER    INCONCLUSIVE            缺少 5 必挂极限用例的逐用例结果（must_fail_results），无法判定撮合引擎保真性（无证据 ≠ 通过）
+E-2        CRITICAL   INCONCLUSIVE            缺少送转拆股 FIFO 证据（fifo_errors / final_positions 均为空），无法判定份额一致性（无证据 ≠ 通过）
+E-3        BLOCKER    PASS                    滑点推移价格涨跌停限幅检验通过 (共检验 5 笔成交)
+A-1        BLOCKER    PASS                    七科目费用逐笔分厘平衡检验通过 (共校验 5 笔成交，差额严格为 0.00)
+A-2        BLOCKER    PASS                    每日资产现金流守恒检验通过 (共对账 5 个交易日，未解释差额 0.00)
+A-3        CRITICAL   PASS                    10 万元往返黄金算例检验通过（实际费用 50.00 元，最近基准 50.00 元〔调用方显式指定基准（expected_fee）〕，绝对误差 0.00 元 ≤ 0.05 元）
+A-4        BLOCKER    PASS                    历史分段费率时序穿透检验通过 (历史印花税率无穿越)
+S-1        BLOCKER    PASS                    换手率硬顶检验通过 (年化单边换手率 15.0% <= 400%)
+S-2        BLOCKER    INCONCLUSIVE            缺少破 MA200 日期证据（index_below_ma200_dates），无法判定择时空仓生存（无证据 ≠ 通过）
+S-3        CRITICAL   INCONCLUSIVE            缺少基准收益率或滑点压力情景收益率，无法判定抗压性（无证据 ≠ 通过）
+S-4        CRITICAL   INCONCLUSIVE            回测区间无分红入账（总分红为 0），无法检验红利税避税锁定期（无证据 ≠ 通过）
+S-5        BLOCKER    FAIL                    在存在 5 笔成交的情况下，印花税(0)或佣金(25)为零，判定为关税作弊！
+G-1        BLOCKER    PASS                    交付出处三件套完整性检验通过
+G-2        CRITICAL   INCONCLUSIVE            未提供任务勾选状态（is_checked）或 tasks 文档，无法判定勾选是否具备门禁签名（证据不足 ≠ 通过）
+G-3        BLOCKER    PASS                    母库只读区 FINDING- 守卫行数严格吻合 370 行铁律 (实际: 370 行)
+G-4        BLOCKER    PASS                    签名与出处三件套检验全部通过 (Signature: b93f41891bd68a38...)
+G-MDD-1    BLOCKER    PASS                    3 份产物最大回撤均 <= 35% 上限
+G-DOC-1    CRITICAL   PASS                    已扫描 95 份文档，关键指标与权威产物 20260921-093948-t312-dividend-v1-noseed.json 全部一致（void_docs: 5（gate-doc-void 豁免，必须可见）；his
+G-STRESS-1 CRITICAL   PASS                    压测区间有效：2 笔成交、250 交易日（>= 200 日且 round_trips > 0），允许进入 MDD/胜率判定
+G-REF-1    CRITICAL   PASS                    已扫描 95 份文档，引用路径全部存在（白名单豁免 159 处；否定语境豁免 45 处；void_docs: 5（gate-doc-void 豁免，必须可见）；ignored_lines: 247（行内 gate-doc
+G-REPRO-1  BLOCKER    PASS                    2 份产物均带内容寻址出处，1 组同源产物的 metrics 逐字段一致，复现一致性成立
+-----------------------------------------------------
+summary: {'FAIL': 2, 'INCONCLUSIVE': 11, 'PASS': 16} / total=29
