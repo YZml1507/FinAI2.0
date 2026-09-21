@@ -146,6 +146,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument('--arm', required=True)
     args = ap.parse_args()
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
     if not VETO_EXT.exists():
         build_veto_ext()
     from scripts.lab.e36_e37_overlay_ab import _universe_symbols
