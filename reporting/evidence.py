@@ -452,10 +452,23 @@ def allocation_evidence(
             return None
         return per[max(cands)][3]
 
-    for rec in reversed(list(rebalances)):
+    # 两趟选择：先找「目标持仓数 ≥3」的末次有成交调仓（L-2 秩相关需 ≥3 共同
+    # 标的），找不到再退「任意有成交调仓」（如实降级——证据形状不迁就门禁）。
+    recs = list(rebalances)
+    for min_targets in (3, 1):
+        out = _pick_rebalance(recs, min_targets, trading_dates, trades,
+                              result, idx, _close_asof)
+        if out is not None:
+            return out
+    return empty
+
+
+def _pick_rebalance(recs, min_targets, trading_dates, trades, result, idx,
+                    _close_asof):
+    for rec in reversed(recs):
         reb_iso = str(rec.get("date", ""))[:10]
         tw = {str(k): str(v) for k, v in (rec.get("target_weights") or {}).items()}
-        if not tw:
+        if len(tw) < min_targets:
             continue
         try:
             reb_day = _date.fromisoformat(reb_iso)
@@ -497,7 +510,7 @@ def allocation_evidence(
             "target_weights": tw,
             "actual_values": av,
         }
-    return empty
+    return None
 
 
 def dividend_tax_evidence(entries: Sequence[Any]) -> dict[str, Any]:

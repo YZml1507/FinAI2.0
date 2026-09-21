@@ -241,6 +241,26 @@ def _run_traced(
     }
 
 
+def _load_stress_stats() -> tuple[float, int, int, dict[str, str]]:
+    """从既有 scratch 压测产物读回 stress_return / 压测窗统计（补跑 baseline 时用）。"""
+    slip_dir = SCRATCH_ROOT / "slip50" / "runs"
+    s15_dir = SCRATCH_ROOT / "stress2015" / "runs"
+    slip_js = sorted(slip_dir.glob("*.json"))
+    s15_js = sorted(s15_dir.glob("*.json"))
+    if not slip_js or not s15_js:
+        raise FileNotFoundError(
+            f"--baseline-only 需要既有压测产物: {slip_dir} / {s15_dir}")
+    slip = json.loads(slip_js[-1].read_text(encoding="utf-8"))
+    s15 = json.loads(s15_js[-1].read_text(encoding="utf-8"))
+    stress_return = float(slip["metrics"]["total_return"])
+    rt = int(s15["metrics"]["round_trips"])
+    days = int(s15["metrics"]["trading_days"])
+    ids = {"slip50": slip["run_id"], "stress2015": s15["run_id"]}
+    print(f"[produce] 读回压测统计: slip={ids['slip50']} "
+          f"stress_return={stress_return:.6f} 2015窗={ids['stress2015']} rt={rt} days={days}")
+    return stress_return, rt, days, ids
+
+
 def _promote_baselines(scratch: Path) -> list[str]:
     """把 scratch baseline 产物升格进权威 ``experiments/runs/``。
 
@@ -323,6 +343,14 @@ def main() -> int:
     #   在同一份干净树上完成（scratch 在 experiments/lab/ 下已 gitignore），
     #   再统一复制 artifact + 追加 index 行——产物内容与落盘目录无关。
     if not args.slip_only and not args.stress_only:
+        # --baseline-only 补跑路径：压测统计从既有 scratch 产物读回（不补跑）。
+        if stress_return is None or s15_rt is None or s15_days is None:
+            stress_return, s15_rt, s15_days, s15_ids = _load_stress_stats()
+            summary["runs"].setdefault("slip50", {"run_id": s15_ids.get("slip50"),
+                                                  "stress_return": stress_return})
+            summary["runs"].setdefault("stress2015", {
+                "run_id": s15_ids.get("stress2015"), "round_trips": s15_rt,
+                "trading_days": s15_days})
         extras: dict[str, Any] = {
             "_evidence_notes": (
                 "顶层 round_trips/trading_days 承载压测窗统计（G-STRESS-1 契约）；"
