@@ -49,10 +49,17 @@ def _universe_symbols() -> set[str]:
             if p.is_dir() and not p.name.startswith(('.', 'exdiv'))}
 
 
+def _ts2bs(sym: str) -> str:
+    """ts 格式 600000.SH → 引擎 baostock 格式 sh.600000。"""
+    c, ex = sym.split('.')
+    return f"{ex.lower()}.{c}"
+
+
 def load_overlay() -> dict[str, dict[str, Decimal]]:
     """c1 长表 → {iso_date: {symbol: Decimal(z)}}（限定池内股票）。"""
     uni = _universe_symbols()
     df = pd.read_parquet(C1_PATH)
+    df['symbol'] = df['symbol'].map(_ts2bs)
     df = df[df['symbol'].isin(uni)]
     ov: dict[str, dict[str, Decimal]] = {}
     for d, g in df.groupby('date'):
@@ -66,7 +73,7 @@ def load_overlay() -> dict[str, dict[str, Decimal]]:
 def load_veto() -> dict[str, tuple]:
     df = pd.read_parquet(VETO_PATH)
     uni = _universe_symbols()
-    return {str(d): tuple(s for s in syms if s in uni)
+    return {str(d): tuple(_ts2bs(s) for s in syms if _ts2bs(s) in uni)
             for d, syms in zip(df['date'], df['symbols'])}
 
 
