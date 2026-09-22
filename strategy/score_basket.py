@@ -23,6 +23,7 @@
 from __future__ import annotations
 
 import bisect
+from collections import deque
 from dataclasses import dataclass
 from datetime import date as _date
 from decimal import Decimal
@@ -76,12 +77,22 @@ class ScoreBasketConfig:
     max_score_age_days: int = 45        # 最新分数期距调仓日的最大自然日
     skip_limit: bool = True             # 涨跌停不参与评分（建仓侧）
     warmup_bars: int = 5                # 入场前 bar 暖机（防冷启动误调）
+    # MA200 择时（与 DividendConfig 同语义同源参数——S-2 空仓避险门禁判据）
+    use_ma200_timing: bool = True       # MA200 择时开关
+    index_symbol: str = "sh.000300"     # 沪深 300 基准
+    timing_breach_buffer: Decimal = Decimal("0.01")     # 破位缓冲带
+    timing_breach_confirm_days: int = 2                 # 连续 N 日有效破位才确认清仓
+    timing_rebuild_confirm_days: int = 1                # 站回当日即解除（不对称）
 
     def __post_init__(self) -> None:
         if self.rebalance_days < 1:
             raise ValueError("rebalance_days 须 ≥ 1")
         if self.max_score_age_days < 1:
             raise ValueError("max_score_age_days 须 ≥ 1")
+        if not isinstance(self.timing_breach_buffer, Decimal):
+            raise TypeError("timing_breach_buffer 须为 Decimal（⛔ 禁 float）")
+        if not (Decimal("0") <= self.timing_breach_buffer <= Decimal("0.10")):
+            raise ValueError("timing_breach_buffer 须在 [0, 0.10]")
 
 
 class ScoreBasketStrategy:
@@ -115,6 +126,11 @@ class ScoreBasketStrategy:
         self._covered = sorted(covered)
         self._bar_count = 0
         self._pending_ids: dict[str, int] = {}
+        # MA200 择时状态机（与 DividendStrategy 同语义：缓冲带 + 双向确认期）
+        self._ma200_buffer: deque[Decimal] = deque(maxlen=200)
+        self._breach_streak = 0
+        self._timing_avoid = False
+        self._rebuild_streak = 0
 
     # ------------------------------------------------------------------
     # 引擎契约
@@ -129,9 +145,52 @@ class ScoreBasketStrategy:
         else:
             # 分数覆盖域——停牌/未上市由 feed 缺席 + 评分侧 bars.get 双保险
             self.watchlist = self._covered
+        if cfg.use_ma200_timing and cfg.index_symbol not in self.watchlist:
+            self.watchlist.append(cfg.index_symbol)
 
+        # ① 冷启动：只攒 MA200 数据，不交易
+        index_bar = bars.get(cfg.index_symbol) if cfg.use_ma200_timing else None
+        if cfg.use_ma200_timing and index_bar is not None:
+            self._ma200_buffer.append(index_bar.close)
         if self._bar_count < cfg.warmup_bars:
             return
+
+        # ② MA200 择时（同 DividendStrategy 语义）
+        if cfg.use_ma200_timing:
+            if index_bar is None:
+                raise ValueError(f"指数 {cfg.index_symbol} 数据缺失（MA200 择时必需）")
+            if len(self._ma200_buffer) < 200:
+                return                           # MA200 未凑够 → 冷启动延长
+            ma200 = sum(self._ma200_buffer) / len(self._ma200_buffer)
+            breach_line = ma200 * (Decimal("1") - cfg.timing_breach_buffer)
+
+            if self._timing_avoid:
+                if index_bar.close >= ma200:
+                    self._rebuild_streak += 1
+                    if self._rebuild_streak >= cfg.timing_rebuild_confirm_days:
+                        self._timing_avoid = False
+                        self._rebuild_streak = 0
+                        self._breach_streak = 0
+                else:
+                    self._rebuild_streak = 0
+                return                           # 解除当日也不建仓，等下一节拍
+
+            if index_bar.close < breach_line:
+                self._breach_streak += 1
+                if self._breach_streak >= cfg.timing_breach_confirm_days:
+                    self._timing_avoid = True
+                    self._breach_streak = 0
+                    self._rebuild_streak = 0
+                    held = list(book.positions.keys()) if hasattr(book, "positions") else []
+                    current = {s: int(book.positions[s].volume) for s in held}
+                    report = diff_to_orders(current, {}, bars, cfg.portfolio)
+                    self._submit(broker, report.intents, day)
+                    return
+                return                           # 确认期内不清仓不调仓
+            elif index_bar.close >= ma200:
+                self._breach_streak = 0
+            # else：缓冲带内维持现状
+
         if (self._bar_count - cfg.warmup_bars) % cfg.rebalance_days != 0:
             return
 

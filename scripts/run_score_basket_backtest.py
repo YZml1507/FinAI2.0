@@ -6,9 +6,11 @@
 BacktestBroker + 前后置门禁 + registry 出处三件套。差异：
 
 * 数据源：``data/daily_bars``（全 A，baostock RAW）而非 ``data/dividend_stocks``；
-* 策略：``ScoreBasketStrategy``（外部分数表驱动，默认月调 top-N）；
-* 无除权 sidecar——RAW 价在除权日有真实跳空，P&L 口径偏**保守**（少记股息
-  收益），已在 data_version/manifest 声明。
+* 除权：``data/daily_bars/exdiv/{sym}.parquet`` sidecar（由
+  ``dividend_events_alla`` 构建，与 dividend_stocks 同变换）——RAW 价除权
+  日跳空由事件结算对冲（FR-BT-4）；
+* 策略：``ScoreBasketStrategy``（外部分数表驱动，默认月调 top-N +
+  MA200 择时空仓避险）。
 
 用法::
 
@@ -162,6 +164,26 @@ def main() -> int:
         raise FileNotFoundError(f"{args.data_path} 下没有可用 symbol 分区")
     logger.info(f"  {len(tables)} 只标的分区加载完成")
 
+    # 指数并入 feed（MA200 择时数据源）——preloaded 优先于目录查询，
+    # index_path 与 data_path 可为不同根
+    if INDEX_SYMBOL not in tables:
+        idx_bar = index_frame.copy()
+        tables[INDEX_SYMBOL] = idx_bar
+        logger.info(f"指数 {INDEX_SYMBOL} 并入 feed（{len(idx_bar)} 行）")
+
+    # 除权事件（dividend_events_alla 已构建的 sidecar → ExdivEvent）
+    from scripts.run_dividend_backtest import (
+        _group_exdiv_by_date, _load_exdiv_events)
+    exdiv_events = _load_exdiv_events(args.data_path)
+    exdiv_by_date = _group_exdiv_by_date(exdiv_events)
+    logger.info(f"除权事件: {len(exdiv_events)} 只标的有记录，"
+                f"{len(exdiv_by_date)} 个交易日有事件")
+    exdiv_sidecars = {}
+    for sym in tables:
+        sp = args.data_path / "exdiv" / f"{sym}.parquet"
+        if sp.exists():
+            exdiv_sidecars[sym] = pd.read_parquet(sp)
+
     score_table = _load_score_table(args.scores)
     covered = {s for m in score_table.values() for s in m}
     missing = covered - set(tables)
@@ -172,7 +194,7 @@ def main() -> int:
         root=args.data_path,
         trade_calendar=lambda s, e: [d for d in cal_days if s <= d <= e],
         preloaded=tables,
-        exdiv_events={},
+        exdiv_events=exdiv_sidecars,
     )
 
     strategy = ScoreBasketStrategy(
@@ -186,6 +208,7 @@ def main() -> int:
     broker = BacktestBroker(matcher=matcher, ledger=ledger, feed=feed,
                             enable_dividend_tax=True)
     engine = BacktestEngine(broker=broker, feed=feed)
+    engine.exdiv_provider = lambda day: exdiv_by_date.get(day)
 
     gate_statuses: dict[str, Any] = {}
     if not args.no_gates:
@@ -194,7 +217,7 @@ def main() -> int:
         pre_results = run_pre_run_gates(
             context={"active_features": ["DIVIDEND_TAX"]},
             tables=tables,
-            exdiv_events={},
+            exdiv_events=exdiv_events,
             strategy_config=strategy_config,
             strict=args.gate_strict,
         )
@@ -234,7 +257,7 @@ def main() -> int:
     registry = ExperimentRegistry(
         root=args.registry_root or (_root / "experiments"),
         code_version="e65-score-basket-v1",
-        data_version="daily-bars-alla-2014-2024+raw-noexdiv",
+        data_version="daily-bars-alla-2014-2024+raw+exdiv",
         code_hash=None,
         data_hash=data_hash,
         calendar_hash=hash_sequence(cal_days, label="cal"),
@@ -266,11 +289,11 @@ def main() -> int:
     print(f"e65 分数宽篮回测 {start} ~ {end}  top{target}/月调{args.rebalance_days}d")
     print("=" * 60)
     print(f"初始资金:     {args.capital:>14,.2f} 元")
-    print(f"终值净值:     {result.nav_series[-1].nav:>14,.2f} 元")
+    print(f"终值净值:     {result.final_nav:>14,.2f} 元")
     print(f"总收益:       {float(report.total_return) * 100:>13.2f} %")
     print(f"CAGR:         {float(report.cagr) * 100:>13.2f} %")
     print(f"最大回撤:     {float(report.max_drawdown) * 100:>13.2f} %")
-    print(f"年化换手:     {float(report.turnover_annual):>13.1f} %")
+    print(f"年化换手:     {float(report.annual_turnover or 0):>13.1f} %")
     print(f"费用合计:     {sum(Decimal(str(v)) for v in (getattr(report, 'fees_total', {}) or {}).values()):>14,.2f} 元")
     print(f"run_id: {run_id}")
     return 0

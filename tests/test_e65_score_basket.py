@@ -58,12 +58,14 @@ def _frame(symbol: str, pct: D) -> pd.DataFrame:
                         columns=_COLS)
 
 
-def _cfg(target: int = 2, reb: int = 5, age: int = 45) -> ScoreBasketConfig:
+def _cfg(target: int = 2, reb: int = 5, age: int = 45,
+         timing: bool = False) -> ScoreBasketConfig:
     return ScoreBasketConfig(
         portfolio=PortfolioConfig(
             target_count=target, min_positions=1, max_positions=target + 2,
             hard_limit=target + 4, min_position_value=D("1000")),
-        rebalance_days=reb, max_score_age_days=age, warmup_bars=2)
+        rebalance_days=reb, max_score_age_days=age, warmup_bars=2,
+        use_ma200_timing=timing)
 
 
 def _run(strategy, cash="200000") -> tuple:
@@ -130,3 +132,51 @@ class TestScoreBasket:
         buys = {t.symbol for t in broker.trades if str(t.side).endswith("BUY")}
         assert _SY_B in buys, "第二期头名应被买入"
         assert _SY_A in sells, "跌出头名的旧持仓应被卖出"
+
+
+class TestMa200Timing:
+    _IDX = "sh.000300"
+    _DAYS2 = [_D0 + timedelta(days=i) for i in range(230)]
+
+    def _idx_frame(self) -> pd.DataFrame:
+        """前 210 日横盘 10.0（MA200 收敛），后 20 日每日 −3% 连跌破位。"""
+        rows = []
+        close = D("10")
+        for i, d in enumerate(self._DAYS2):
+            if i >= 210:
+                close = close * D("0.97")
+            rows.append({
+                "date": d, "open": float(close), "high": float(close),
+                "low": float(close), "close": float(close),
+                "preclose": float(close / D("0.97")) if i >= 210 else 10.0,
+                "volume": 1e9, "amount": 1e12, "turn": 1.0, "pctChg": 0.0,
+                "tradestatus": "1", "isST": "0", "code": self._IDX,
+                "adjust_mode": "RAW", "source": "baostock",
+            })
+        return pd.DataFrame(rows, columns=_COLS)
+
+    def _sym_frame(self, symbol: str) -> pd.DataFrame:
+        return pd.DataFrame(
+            [dict(_row(self._DAYS2[0], symbol, D("10"), D("0")), date=d)
+             for d in self._DAYS2], columns=_COLS)
+
+    def test_breach_liquidates(self) -> None:
+        """指数连跌确认破位 → 确认清仓（S-2 空仓避险口径）。"""
+        score_table = {
+            self._DAYS2[0] + timedelta(days=20 * k): {_SY_A: 0.9, _SY_C: 0.8}
+            for k in range(12)
+        }
+        st = ScoreBasketStrategy(_cfg(target=2, timing=True), score_table)
+        frames = {s: self._sym_frame(s) for s in (_SY_A, _SY_B, _SY_C)}
+        frames[self._IDX] = self._idx_frame()
+        feed = ParquetDailyFeed(
+            preloaded=frames,
+            trade_calendar=lambda s, e: [d for d in self._DAYS2 if s <= d <= e])
+        ledger = Ledger(D("1000000"), date=self._DAYS2[0])
+        broker = BacktestBroker(MatchEngine(fee_model=make_fee_model()), ledger, feed)
+        result = BacktestEngine(broker, feed).run(
+            st, self._DAYS2[0], self._DAYS2[-1])
+        sells = [t for t in broker.trades if str(t.side).endswith("SELL")]
+        assert sells, "破位确认后应有清仓成交"
+        assert all(t.date >= date(2024, 7, 25) for t in sells), "清仓应发生在破位段"
+        assert all(t.side and t.symbol != self._IDX for t in sells)
