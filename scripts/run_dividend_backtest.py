@@ -234,11 +234,16 @@ def _compute_timing_grace_dates(below_dates: list[str], cal_days: list[_date]) -
     return grace
 
 
-def _compute_daily_positions_ratio(result: Any, cal_days: list[_date]) -> dict[str, float]:
+def _compute_daily_positions_ratio(result: Any, cal_days: list[_date],
+                                   bar_dates: "dict[str, set] | None" = None) -> dict[str, float]:
     """逐日持仓比例二值代理：当日收盘持任意正股数 ⇒ 1.0，完全空仓 ⇒ 0.0。
 
     口径说明：引擎未暴露逐日市值快照，此处以「持仓/空仓」二值比例作代理，
     足以支撑 S-2「破 MA200 是否空仓避险」判定（阈值 5%）。
+
+    ``bar_dates``（可选，symbol → 有 bar 的交易日集合）提供可成交口径：当日
+    无 bar 的持仓（停牌/退市，物理上无法卖出）不计入持仓分子——S-2 检验的是
+    「能卖而没卖」的死扛，不是「想卖卖不掉」的锁仓。缺省保持原二值口径。
     """
     from backtest.constants import OrderSide
 
@@ -257,7 +262,13 @@ def _compute_daily_positions_ratio(result: Any, cal_days: list[_date]) -> dict[s
             elif side_val.upper() == OrderSide.SELL.value:
                 holdings[t.symbol] = holdings.get(t.symbol, 0) - vol
             idx += 1
-        ratios[day.isoformat()] = 1.0 if any(v > 0 for v in holdings.values()) else 0.0
+        if bar_dates is None:
+            held = any(v > 0 for v in holdings.values())
+        else:
+            held = any(
+                v > 0 and day in bar_dates.get(s, frozenset())
+                for s, v in holdings.items())
+        ratios[day.isoformat()] = 1.0 if held else 0.0
     return ratios
 
 
@@ -268,6 +279,7 @@ def _build_post_run_gate_context(
     strategy_config: Any,
     index_frame: "pd.DataFrame | None",
     cal_days: list[_date],
+    bar_dates: "dict[str, set] | None" = None,
 ) -> dict[str, Any]:
     """从真实回测结果构造后置门禁 ctx（消除 runner 硬编码兜底的根因）。
 
@@ -323,7 +335,8 @@ def _build_post_run_gate_context(
         # 界外日期是「不适用」而非「缺证据」（产出方声明优于由键集反推）。
         "run_calendar_bounds": (
             [cal_days[0].isoformat(), cal_days[-1].isoformat()] if cal_days else []),
-        "daily_positions_ratio": _compute_daily_positions_ratio(result, cal_days),
+        "daily_positions_ratio": _compute_daily_positions_ratio(
+            result, cal_days, bar_dates=bar_dates),
         "must_fail_results": must_fail,
         "failed_cases": [k for k, v in must_fail.items() if not v],
         "task_id": "T312",

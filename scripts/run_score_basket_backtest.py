@@ -283,6 +283,13 @@ def main() -> int:
         logger.info("执行回测后置门禁审计 ...")
         from scripts.run_dividend_backtest import (
             _build_post_run_gate_context, _gate_status_map)
+        # 可成交口径：symbol → 有 bar 的交易日集合（停牌/退市无 bar = 物理不可卖；
+        # 只对实际持仓过的标的建索引）
+        traded_syms = {t.symbol for t in result.trades}
+        bar_dates = {
+            sym: {pd.Timestamp(d).date() for d in tables[sym]["date"]}
+            for sym in traded_syms if tables.get(sym) is not None
+        }
         gate_ctx = _build_post_run_gate_context(
             data_path=args.data_path,
             result=result,
@@ -290,6 +297,7 @@ def main() -> int:
             strategy_config=strategy_config,
             index_frame=index_frame,
             cal_days=cal_days,
+            bar_dates=bar_dates,
         )
         post_results = run_post_run_gates(
             context=gate_ctx,

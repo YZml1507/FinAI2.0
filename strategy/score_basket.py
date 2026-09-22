@@ -173,6 +173,14 @@ class ScoreBasketStrategy:
                         self._breach_streak = 0
                 else:
                     self._rebuild_streak = 0
+                # 停牌/跌停困住的残余仓位每日重试清仓：复牌第一时间退出（S-2 空仓
+                # 避险语义——信号期能卖的必须卖，卖不掉的挂单持续重试直至成交）。
+                if hasattr(book, "positions") and book.positions:
+                    current = {s: int(p.volume) for s, p in book.positions.items()
+                               if int(p.volume) > 0}
+                    if current:
+                        report = diff_to_orders(current, {}, bars, cfg.portfolio)
+                        self._submit(broker, report.intents, day)
                 return                           # 解除当日也不建仓，等下一节拍
 
             if index_bar.close < breach_line:
