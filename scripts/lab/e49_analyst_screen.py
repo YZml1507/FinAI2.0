@@ -54,18 +54,71 @@ def _norm_code(code: str) -> str:
     return c + '.SZ'
 
 
+# 东财评级名→序数（方向由序数差恢复；值越大越强）
+RATING_ORD = {'卖出': 1, '减持': 2, '中性': 3, '增持': 4, '买入': 5,
+              '强烈推荐': 5, '推荐': 4, '回避': 1, '弱于大市': 2,
+              '强于大市': 4, '跑赢行业': 4, '跑输行业': 2}
+
+
 def load_analyst() -> pd.DataFrame | None:
     """归一化到 {ts_code, ann_date, kind, rating_dir, fy_np_chg}。
-    kind='rating'：rating_dir=+1 上调 / -1 下调（同股同日取 |dir| 最大）；
-    kind='forecast'：fy_np_chg=预测净利环比变化率(%, 对上一期同机构预测)。
-    列名按采集 manifest 适配——未落地返回 None。"""
+
+    实表：research_report_em_{YYYY}.parquet（逐研报，publishDate=PIT锚）。
+    - rating_dir：emRatingName vs lastEmRatingName 序数差符号；
+      首次覆盖（ratingChange=2，无前评级）按新评级 UP/DN 集给 ±1/0。
+    - fy_np_chg：无逐研报净利历史（采集报告登记），用
+      predictThisYearEps 同股同机构同财年环比 % 近似。
+    """
     if not A_DIR.exists():
         return None
-    files = sorted(A_DIR.glob('*.parquet'))
+    files = sorted(A_DIR.glob('research_report_em_*.parquet'))
     if not files:
         return None
-    raise NotImplementedError(
-        "data/analyst/ 已存在——按实际 schema 实现列映射后重跑")
+    df = pd.concat([pd.read_parquet(f) for f in files], ignore_index=True)
+    df = df.drop_duplicates(['infoCode', 'stockCode'])
+    df['ann_date'] = pd.to_datetime(df['publishDate'], errors='coerce')
+    df = df.dropna(subset=['ann_date'])
+    df['ts_code'] = df['stockCode'].map(_norm_code)
+    df['org'] = df['orgSName'].astype(str)
+
+    # ---- rating 事件 ----
+    new_ord = df['emRatingName'].map(RATING_ORD)
+    old_ord = df['lastEmRatingName'].map(RATING_ORD)
+    df['rating_dir'] = np.sign(new_ord - old_ord)
+    first = df['ratingChange'].astype(str) == '2'
+    df.loc[first & old_ord.isna(), 'rating_dir'] = np.where(
+        df.loc[first & old_ord.isna(), 'emRatingName'].isin(RATING_UP),
+        1, np.where(
+            df.loc[first & old_ord.isna(), 'emRatingName'].isin(RATING_DN),
+            -1, 0))
+    rating = (df[df['rating_dir'] != 0]
+              [['ts_code', 'ann_date', 'rating_dir', 'org']]
+              .assign(kind='rating'))
+    # 同股同日取最强方向
+    rating = (rating.sort_values('rating_dir')
+              .drop_duplicates(['ts_code', 'ann_date'], keep='last'))
+
+    # ---- forecast 事件：同股同机构同财年 EPS 环比 ----
+    f = df[['ts_code', 'ann_date', 'org',
+            'predictThisYearEps']].copy()
+    f['eps'] = pd.to_numeric(f['predictThisYearEps'], errors='coerce')
+    f = f.dropna(subset=['eps'])
+    f['fy'] = f['ann_date'].dt.year
+    f = f.sort_values(['ts_code', 'org', 'fy', 'ann_date'])
+    prev = f.groupby(['ts_code', 'org', 'fy'])['eps'].shift(1)
+    f['fy_np_chg'] = np.where(prev.abs() > 0.01,
+                              (f['eps'] - prev) / prev.abs() * 100,
+                              np.nan)
+    fcst = (f.dropna(subset=['fy_np_chg'])
+            [['ts_code', 'ann_date', 'fy_np_chg', 'org']]
+            .assign(kind='forecast'))
+    fcst = fcst.loc[fcst['fy_np_chg'].abs()
+                    .groupby([fcst['ts_code'], fcst['ann_date']]).idxmax()]
+
+    out = pd.concat([rating, fcst], ignore_index=True)
+    _note(f"loader: rating={len(rating)} fcst={len(fcst)} "
+          f"org_n={out['org'].nunique()}")
+    return out
 
 
 def fillability_filter(ev: pd.DataFrame, r: pd.DataFrame,
@@ -104,12 +157,30 @@ def dedup_td(ev: pd.DataFrame) -> pd.DataFrame:
 
 
 def run_arm(name: str, ev: pd.DataFrame, r, valid, days_idx, fwd, base,
-            res: dict) -> None:
+            res: dict, direction: str = 'pos') -> None:
     ev = dedup_td(ev)
     car = e29.car_table(ev, r, valid, days_idx, fwd, base)
     st = e29.arm_stats(car, name)
-    st['verdict'] = e29.verdict(st) if st['n_events'] >= MIN_N \
-        else f'INCONCLUSIVE(n<{MIN_N})'
+    if direction == 'neg' and st['n_events'] >= MIN_N:
+        # 负向先验臂：同构 e52 负向判定 + 落池率前置门
+        from scripts.lab import e52_resumption_screen as e52
+        h20 = st.get('h20', {})
+        t20 = h20.get('t_cluster', np.nan)
+        st['neg_year_cons'] = 1 - (h20.get('year_cons', np.nan) or 0)
+        st['pool_hit_rate'] = e52.pool_hits(ev)
+        if pd.notna(t20) and t20 <= -2.6 and \
+                (h20.get('car_mean') or 0) < 0 and \
+                st['neg_year_cons'] >= 0.6:
+            st['verdict'] = '强(负→veto候选)'
+            if st['pool_hit_rate'] < 0.08:
+                st['verdict'] = '强(宽域待载体-落池率<8%)'
+        elif pd.notna(t20) and abs(t20) >= 2.0:
+            st['verdict'] = '弱'
+        else:
+            st['verdict'] = '负'
+    else:
+        st['verdict'] = e29.verdict(st) if st['n_events'] >= MIN_N \
+            else f'INCONCLUSIVE(n<{MIN_N})'
     if st['verdict'] == '强':
         mask = fillability_filter(ev, r, valid, days_idx)
         n_fill = int(mask.sum())
@@ -194,8 +265,10 @@ def main() -> int:
                        'verdict': 'INCONCLUSIVE(n=0)'}
             _note(f"{nm}: n=0")
             continue
+        direction = 'neg' if nm in ('A2_rating_down', 'A4_forecast_dn') \
+            else 'pos'
         run_arm(nm, ev[['trade_date', 'ts_code']], r, valid, days_idx,
-                fwd, base, res)
+                fwd, base, res, direction=direction)
 
     res['elapsed_min'] = (time.time() - t0) / 60
     (OUT_DIR / 'e49_results.json').write_text(json.dumps(
