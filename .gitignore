@@ -109,3 +109,4 @@ scripts/pipeline_12h/.pipeline_12h.run.*.sh
 tmp_audit/
 data/notice_meta/
 data/consensus/
+data/notice_body/
