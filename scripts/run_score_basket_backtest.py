@@ -184,6 +184,33 @@ def main() -> int:
         if sp.exists():
             exdiv_sidecars[sym] = pd.read_parquet(sp)
 
+    # ── 派生列富化 ─────────────────────────────────────────────────────
+    # is_resumption: 帧内缺口 ≥2 个指数交易日 ⇒ 停牌后复牌首日（结构性跳变=真实
+    # 行情，D-1 据此豁免；tradestatus 过滤行即停牌实证，缺口本身可证）。
+    # dividend_yield: compute_pit_fields 395 天滚动 PIT TTM 股息率（D-3 门要求
+    # 真实逐日变异，消灭全年常数未来函数）。
+    import numpy as _np
+    from scripts.repair_and_enrich_dividend_data import compute_pit_fields
+    _cal_dates = pd.to_datetime(index_frame["date"]).values.astype("datetime64[D]")
+
+    def _enrich(sym: str, df: pd.DataFrame) -> None:
+        ds = pd.to_datetime(df["date"]).values.astype("datetime64[D]")
+        pos = _np.searchsorted(_cal_dates, ds)
+        res = _np.zeros(len(df), dtype=bool)
+        res[1:] = _np.diff(pos) > 1
+        df["is_resumption"] = res
+        ev = exdiv_sidecars.get(sym)
+        if ev is not None and len(ev):
+            out = compute_pit_fields(df, ev.to_dict("records"), 1.0)
+            df["dividend_yield"] = out["dividend_yield"]
+
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        list(pool.map(lambda kv: _enrich(kv[0], kv[1]),
+                      [(s, f) for s, f in tables.items() if s != INDEX_SYMBOL]))
+    n_yield = sum(1 for s, f in tables.items()
+                  if s != INDEX_SYMBOL and "dividend_yield" in f.columns)
+    logger.info(f"派生列完成: is_resumption ×{len(tables) - 1}，dividend_yield ×{n_yield}")
+
     score_table = _load_score_table(args.scores)
     covered = {s for m in score_table.values() for s in m}
     missing = covered - set(tables)
@@ -210,12 +237,33 @@ def main() -> int:
     engine = BacktestEngine(broker=broker, feed=feed)
     engine.exdiv_provider = lambda day: exdiv_by_date.get(day)
 
+    # D-3 取证：抽样一只"自然年内股息率 PIT 变异足够"的标的（口径同
+    # context_builder._sample_data_evidence：≥60 日且 4 位精度去重 ≥50 种）。
+    pit_yields: dict[str, Any] = {}
+    for sym in sorted(tables):
+        if sym == INDEX_SYMBOL:
+            continue
+        df = tables[sym]
+        if "dividend_yield" not in df.columns:
+            continue
+        dd = df[["date", "dividend_yield"]].dropna()
+        if len(dd) < 60:
+            continue
+        dd = dd.assign(_y=dd["date"].astype(str).str[:4])
+        for y, grp in dd.groupby("_y"):
+            ys = grp["dividend_yield"].tolist()
+            if len(ys) >= 60 and len({round(float(v), 4) for v in ys}) >= 50:
+                pit_yields = {"daily_yields": ys, "year": int(y), "symbol": sym}
+                break
+        if pit_yields:
+            break
+
     gate_statuses: dict[str, Any] = {}
     if not args.no_gates:
         logger.info("执行回测前置门禁审计 ...")
         from scripts.run_dividend_backtest import _gate_status_map
         pre_results = run_pre_run_gates(
-            context={"active_features": ["DIVIDEND_TAX"]},
+            context={"active_features": ["DIVIDEND_TAX"], **pit_yields},
             tables=tables,
             exdiv_events=exdiv_events,
             strategy_config=strategy_config,

@@ -104,7 +104,8 @@ class RawPriceJumpGate(BaseGate):
     def _evaluate_frame(self, frame: Any, exdiv_dates: Any, symbol: str) -> GateResult:
         """向量化评估路径（context['frame']）。语义与逐行循环严格一致：
 
-        - is_exdiv[i] = 帧自带 is_exdiv 列 OR date 命中 exdiv_dates OR
+        - is_exdiv[i] = 帧自带 is_exdiv 列 OR 帧自带 is_resumption 列
+          （停牌后复牌首日结构性跳变=真实行情非脏数据）OR date 命中 exdiv_dates OR
           ∃ed∈exdiv_dates 使 d[i-1] < ed <= d[i]（区间规则，捕捉落在非交易日的除权事件）
           OR i < 5（首 5 行豁免，与原实现一致）
         - 相邻对 (i-1, i) 中 c_prev <= 0 的不计入 valid_pairs
@@ -123,6 +124,8 @@ class RawPriceJumpGate(BaseGate):
             is_ex = frame["is_exdiv"].fillna(False).to_numpy(dtype=bool, copy=True)
         else:
             is_ex = np.zeros(n, dtype=bool)
+        if "is_resumption" in frame.columns:
+            is_ex |= frame["is_resumption"].fillna(False).to_numpy(dtype=bool, copy=True)
         if exdiv_dates:
             eds = sorted(str(ed)[:10] for ed in exdiv_dates)
             is_ex |= np.isin(d_arr, eds)
