@@ -49,6 +49,9 @@ from .gate_consistency import (
     is_void_doc,
 )
 from .constants import TEST_BASELINE_PASSED
+from .market_rules import MarketRules, coerce_market_rules, resolve_market_rules
+from .adapter import ExternalEvidenceAdapter, assemble_context
+from .audit_external import EXTERNAL_GATE_IDS, REPO_ONLY_GATE_IDS, get_external_gates, run_external_audit
 from .gate_repro import ReproducibilityGate
 from .context_builder import (
     RUN_EVIDENCE_GATE_IDS,
@@ -135,6 +138,16 @@ __all__ = [
     "expected_test_baseline",
     # 单一事实源常量
     "TEST_BASELINE_PASSED",
+    # E 路线通用化：市场规则参数对象 + 外部证据适配器 + 外部审计入口
+    "MarketRules",
+    "coerce_market_rules",
+    "resolve_market_rules",
+    "ExternalEvidenceAdapter",
+    "assemble_context",
+    "EXTERNAL_GATE_IDS",
+    "REPO_ONLY_GATE_IDS",
+    "get_external_gates",
+    "run_external_audit",
     # 复现一致性门禁（M2/PM-1）
     "ReproducibilityGate",
     # 门禁分类（推送期 / CI 期）

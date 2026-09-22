@@ -13,6 +13,7 @@ from decimal import Decimal
 from typing import Any
 
 from .base import BaseGate, GateCategory, GateResult, GateSeverity, GateStatus
+from .market_rules import resolve_market_rules
 
 
 class TurnoverCeilingGate(BaseGate):
@@ -506,28 +507,37 @@ class AttributionEvidenceGate(BaseGate):
                 evidence=self.evidence,
             )
 
-        tax = Decimal(str(context.get("total_stamp_tax", 0) if isinstance(context, dict) else getattr(context, "total_stamp_tax", 0)))
-        comm = Decimal(str(context.get("total_commission", 0) if isinstance(context, dict) else getattr(context, "total_commission", 0)))
+        rules = resolve_market_rules(context)
+        # 有成交则必须非零的聚合费用键由市场规则档决定（A 股=印花税+佣金；无印花税市场只列佣金）。
+        fee_items = [
+            (key, label, Decimal(str(
+                context.get(key, 0) if isinstance(context, dict) else getattr(context, key, 0)
+            )))
+            for key, label in rules.required_fee_totals
+        ]
         trades_count = int(context.get("trades_count", 0) if isinstance(context, dict) else getattr(context, "trades_count", 0))
         trades_given = isinstance(context, dict) and "trades_count" in context
         code_ev = str(context.get("code_evidence", "") if isinstance(context, dict) else getattr(context, "code_evidence", ""))
 
         if trades_count > 0:
-            if tax <= Decimal("0") or comm <= Decimal("0"):
+            if any(v <= Decimal("0") for _, _, v in fee_items):
+                joined = "或".join(f"{label}({v})" for _, label, v in fee_items)
                 return GateResult(
                     gate_id=self.gate_id,
                     name=self.name,
                     category=self.category,
                     status=GateStatus.FAIL,
                     severity=self.severity,
-                    message=f"在存在 {trades_count} 笔成交的情况下，印花税({tax})或佣金({comm})为零，判定为关税作弊！",
-                    metrics={"trades_count": trades_count, "stamp_tax": str(tax), "commission": str(comm)},
+                    message=f"在存在 {trades_count} 笔成交的情况下，{joined}为零，判定为关税作弊！",
+                    metrics={"trades_count": trades_count,
+                             **{key.removeprefix("total_"): str(v) for key, _, v in fee_items}},
                     threshold=self.threshold_desc,
                     evidence=self.evidence,
                 )
-        elif not trades_given and (tax <= Decimal("0") or comm <= Decimal("0")):
-            # ⛔ Fail-Closed：未提供成交笔数，且印花税/佣金为零或缺失 ⇒ 无法区分"无成交"与
+        elif not trades_given and any(v <= Decimal("0") for _, _, v in fee_items):
+            # ⛔ Fail-Closed：未提供成交笔数，且必需规费为零或缺失 ⇒ 无法区分"无成交"与
             # "有成交但把规费置零作弊" ⇒ INCONCLUSIVE（⛔ 默认 trades_count=0 不得静默跳过核心断言）。
+            joined = "/".join(f"{label}({v})" for _, label, v in fee_items)
             return GateResult(
                 gate_id=self.gate_id,
                 name=self.name,
@@ -535,10 +545,10 @@ class AttributionEvidenceGate(BaseGate):
                 status=GateStatus.INCONCLUSIVE,
                 severity=self.severity,
                 message=(
-                    f"缺少成交笔数（trades_count），且印花税({tax})/佣金({comm})为零或缺失，"
+                    f"缺少成交笔数（trades_count），且{joined}为零或缺失，"
                     "无法排除'有成交却把规费置零'的关税作弊（证据不足 ≠ 通过）"
                 ),
-                metrics={"stamp_tax": str(tax), "commission": str(comm)},
+                metrics={key.removeprefix("total_"): str(v) for key, _, v in fee_items},
                 threshold=self.threshold_desc,
                 evidence=self.evidence,
             )

@@ -12,6 +12,7 @@ from __future__ import annotations
 from typing import Any
 
 from .base import BaseGate, GateCategory, GateResult, GateSeverity, GateStatus
+from .market_rules import resolve_market_rules
 
 
 class RawPriceJumpGate(BaseGate):
@@ -615,6 +616,8 @@ class HighPriceLotGate(BaseGate):
                 evidence=self.evidence,
             )
 
+        rules = resolve_market_rules(context)
+
         violations = []
         buy_orders = 0
         for o in orders:
@@ -624,10 +627,10 @@ class HighPriceLotGate(BaseGate):
 
             if "BUY" in side:
                 buy_orders += 1
-                if price > 300.0:
-                    violations.append(f"买入高价股单价 {price} > 300 元")
-                if vol % 100 != 0:
-                    violations.append(f"买入股数 {vol} 非 100 股整手")
+                if rules.max_buy_price is not None and price > rules.max_buy_price:
+                    violations.append(f"买入高价股单价 {price} > {rules.max_buy_price} 元")
+                if rules.lot_size is not None and vol % rules.lot_size != 0:
+                    violations.append(f"买入股数 {vol} 非 {rules.lot_size} 股整手")
 
         if violations:
             return GateResult(

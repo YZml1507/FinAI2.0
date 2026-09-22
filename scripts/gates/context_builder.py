@@ -26,6 +26,7 @@ from pathlib import Path
 from typing import Any
 
 from .base import GateResult, GateStatus
+from .market_rules import MarketRules
 
 #: 可"静态/推送期"取证的门禁：FAIL 或 INCONCLUSIVE 都应阻断。
 #: ⚠ M3 门禁改造（任务 1 三层分层）：``G-MDD-1`` **移出**本集合——推送代码不产生回撤，
@@ -167,6 +168,9 @@ def build_repo_context(repo_root: Path | str | None = None) -> tuple[dict[str, A
     """从仓库现状构建门禁 ctx；返回 ``(ctx, 取证来源说明)``。"""
     root = Path(repo_root).resolve() if repo_root is not None else Path(__file__).resolve().parents[2]
     ctx: dict[str, Any] = {}
+    # E 路线通用化：显式注入本仓市场规则档（默认 = A 股口径，与各门内嵌默认值一致——
+    # 本仓行为逐位不变；外部回测经 ExternalEvidenceAdapter 注入自有 MarketRules 覆盖）。
+    ctx["market_rules"] = MarketRules()
     source = "无回测产物（仅静态证据）"
 
     # 出处三件套：Git SHA + Timestamp
