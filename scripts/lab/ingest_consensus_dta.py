@@ -20,8 +20,9 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[2]
 DELISTED_SAMPLES = ['300104', '600074']  # 乐视网/保千里
-CAND_DATE = ['estbdt', 'ann_date', 'date', 'est_date', 'rpt_date',
-             'Estbdt', 'ANNDATE', 'ESTBDT', 'pub_date', 'disclosure_date']
+CAND_DATE = ['forecastdate', 'estbdt', 'ann_date', 'date', 'est_date',
+             'rpt_date', 'Estbdt', 'ANNDATE', 'ESTBDT', 'pub_date',
+             'disclosure_date']
 CAND_CODE = ['stockcode', 'stkcd', 'code', 'symbol', 'Stkcd', 'STKCD',
              'ts_code', '证券代码', '股票代码']
 CAND_EST = ['eps', 'f_eps', 'est_eps', 'mean_eps', 'FEPS', 'estpe',
