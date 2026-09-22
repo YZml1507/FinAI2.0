@@ -364,6 +364,11 @@ def _build_post_run_gate_context(
         ctx["use_breadth_timing"] = True
         if params.get("breadth_defense_threshold") is not None:
             ctx["breadth_defense_threshold"] = params["breadth_defense_threshold"]
+
+    # S-2 适用性接线：策略声明的择时避险义务（False=不担此义务 → S-2 SKIP）。
+    # 仅当 params 显式携带该键才上报——历史 run 缺键保持既有判定路径。
+    if "use_ma200_timing" in params:
+        ctx["use_ma200_timing"] = bool(params["use_ma200_timing"])
         bser = params.get("breadth_series")
         if bser:
             ctx["breadth_series"] = bser

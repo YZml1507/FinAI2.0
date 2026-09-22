@@ -341,6 +341,28 @@ class TestIndividualGatesModular:
         })
         assert res.status == GateStatus.FAIL
 
+    def test_s2_skips_when_timing_not_declared(self):
+        """S-2 适用性：策略显式声明无择时避险义务（use_ma200_timing=False）⇒ SKIP。
+
+        破位日仍持仓不构成违约——本门禁检验的是『声明避险却死扛』；
+        声明落签名 params，G-MDD-1/换手等门仍全量适用。
+        """
+        res = TimingExitSurvivalGate().evaluate({
+            "use_ma200_timing": False,
+            "index_below_ma200_dates": ["2024-01-15"],
+            "daily_positions_ratio": {"2024-01-15": 0.80},
+        })
+        assert res.status == GateStatus.SKIP
+
+    def test_s2_still_fails_when_timing_declared_true(self):
+        """S-2 不误放：声明避险（use_ma200_timing=True）且破位日持仓 ⇒ FAIL。"""
+        res = TimingExitSurvivalGate().evaluate({
+            "use_ma200_timing": True,
+            "index_below_ma200_dates": ["2024-01-15"],
+            "daily_positions_ratio": {"2024-01-15": 0.80},
+        })
+        assert res.status == GateStatus.FAIL
+
     def test_s4_dividend_tax_penalty_blocks(self):
         """S-4 惩罚性红利税占比超 20% ⇒ FAIL（门禁级；S-4 需分红分档真相，归 CI）"""
         res = DividendTaxLockGate().evaluate({

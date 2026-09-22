@@ -187,6 +187,21 @@ class TimingExitSurvivalGate(BaseGate):
 
         # ⛔ Fail-Closed：数据缺失 ≠ 通过。缺证据 ⇒ INCONCLUSIVE；有证据表明不适用 ⇒ SKIP。
         if criterion == "ma200":
+            # 策略在签名 params 里声明不担 MA200/宽度择时避险义务（显式 False，
+            # 区别于缺键）→ 本门禁的『声明避险却死扛』违约检验不适用。声明不可
+            # 用来偷逃：G-MDD-1 / 换手等其余门禁对该 run 仍全量适用。
+            if _get("use_ma200_timing") is False:
+                return GateResult(
+                    gate_id=self.gate_id,
+                    name=self.name,
+                    category=self.category,
+                    status=GateStatus.SKIP,
+                    severity=self.severity,
+                    message=("策略未启用择时避险义务（use_ma200_timing=False，签名 params 可证），"
+                             "本门禁针对『声明避险』策略的违约检验，不适用（有证据表明不适用）"),
+                    threshold=self.threshold_desc,
+                    evidence=self.evidence,
+                )
             have_below = isinstance(context, dict) and "index_below_ma200_dates" in context
             if not have_below:
                 return GateResult(

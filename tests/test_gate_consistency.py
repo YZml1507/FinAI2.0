@@ -1262,6 +1262,13 @@ class TestGateDocIgnoreScope:
             "docs/E44_NEUTRAL_BAND_PREREG.md": (1, None),  # e44 预登记：G-2 消崖门阈值声明行（e37promo 实测参照值同行）
             "docs/E47_BREADTH_PCT_PREREG.md": (1, None),  # e47 预登记：timing-off 对照臂实测值快照（收单归因段两行同一豁免行内）
             "docs/E63_LABEL60_PREREG.md": (1, None),      # e63 预登记：lab basket_bt 离线篮测值快照（非引擎产物）
+            "docs/ARMOR1_EXDIV_FILTER_DESIGN.md": (2, None),   # e65 权威 run 轮换后的旧红利产物期口径快照
+            "docs/T312_FINAL_SUMMARY.md": (7, None),           # 同上（T312 定稿摘要的历史权威值）
+            "docs/ROADMAP.md": (3, None),                      # 同上（路线图阶段基线快照）
+            "docs/TARGET_12H.md": (1, None),                   # 同上（12h 目标文件的历史对照值）
+            "docs/t313_dividend_stress_report.md": (16, None), # 同上（T313 压测报告的历史权威值）
+            "docs/diagnosis/t312_full_period_diagnosis.md": (1, None),  # 同上（诊断报告历史值）
+            "docs/compliance/strategy_description_template.md": (14, None),  # 策略说明模板：申报样例的历史快照值
         }
         by_file: dict[str, list] = {}
         for h in hits:

@@ -329,8 +329,15 @@ def main() -> int:
     )
 
     from reporting.evidence import build_run_evidence
+    from scripts.run_dividend_backtest import (
+        _compute_index_below_ma200, _compute_timing_grace_dates)
+    # S-2 适用性证据：择时避险义务声明 + 破位/宽限日序列落盘（artifact 级审计可复查）
+    _below_ma = _compute_index_below_ma200(index_frame, cal_days)
     ev_extras: dict[str, Any] = {
         "active_features": ["DIVIDEND_TAX"],
+        "use_ma200_timing": bool(getattr(strategy_config, "use_ma200_timing", False)),
+        "index_below_ma200_dates": _below_ma,
+        "timing_grace_dates": _compute_timing_grace_dates(_below_ma, cal_days),
         "fee_summary": {
             (k.value if hasattr(k, "value") else str(k)): str(v)
             for k, v in (getattr(report, "fees_total", {}) or {}).items()},
