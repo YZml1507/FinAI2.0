@@ -1272,3 +1272,13 @@ MDD 24.40% vs 17.40%（+7.00pp）、换手 6.45、round_trips 312（156→312 �
 - **e63 XGB参数×预测域网格**(Kaggle GPU): h60标签 IC 0.147/t10.1
   碾压 h20 0.089/t6.5——alpha慢变量在更长域上信号密度更高;
   最优配 depth6/lr.05; 下一步导出最优分数验篮回测组合层增益。
+- **e64 fund-holdings fund-level (Kaggle tushare snapshot)**: 1.97M
+  filas 1537 fondos x 5795 stocks trimestral 1998-2023-06 con ann_date
+  PIT-exacto. 6 señales F1-F6 todas |t|<3, |IC|<0.03 -> 判弱
+  (F5 nuevos entrantes -0.016/t-2.65 el mas cerca, direccion crowding
+  negativa consistente). Dataset guardado data/fund_holdings_fundlvl/.
+- **e63组合层验证(篮回测,scores exportados del kernel GPU)**:
+  h20 top500 mensual CAGR 4.76%/MDD0.38; **h60 top500 mensual
+  CAGR 21.5%/MDD 0.28** (h60 trimestral 11.2%) — entrenar con label
+  fwd60 cuadruplica el alpha realizado de la cesta vs e58 original.
+  Candidato a nueva config T3 pendiente validación completa.
