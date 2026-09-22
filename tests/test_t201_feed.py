@@ -198,9 +198,9 @@ def test_suspended_day_symbol_absent_not_none():
     assert _SYM in feed.get_bars([_SYM], _D3)
 
 
-def test_unknown_symbol_absent():
+def test_unknown_symbol_absent(tmp_path):
     """没有分区/没有预加载的 symbol 同样缺席（未上市 / 已退市），⛔ 不 raise。"""
-    feed = _feed([_row(_D1)])
+    feed = _feed([_row(_D1)], root=tmp_path)
     bars = feed.get_bars([_SYM, "sz.000001"], _D1)
     assert set(bars) == {_SYM}
 

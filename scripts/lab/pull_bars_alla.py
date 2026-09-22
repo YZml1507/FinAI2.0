@@ -57,10 +57,16 @@ def pull_one(code: str) -> pd.DataFrame:
 
 
 def main() -> int:
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--shard', type=int, default=0)
+    ap.add_argument('--nshards', type=int, default=1)
+    a = ap.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
     lg = bs.login()
     assert lg.error_code == '0', lg.error_msg
-    codes = universe()
+    codes = universe()[a.shard::a.nshards]
+    print(f'[bars] shard {a.shard}/{a.nshards} n={len(codes)}', flush=True)
     done, fail = 0, []
     try:
         for i, code in enumerate(codes):

@@ -1235,7 +1235,7 @@ MDD 24.40% vs 17.40%（+7.00pp）、换手 6.45、round_trips 312（156→312 �
   **实算推翻估算（e58_basket_bt.py，top500 等权含双边成本）**：
   月调 6.13% > 半年调 5.81% > 季调 5.01%——降频省成本抵不过信号
   陈旧损耗，季调仓子假设判负。T3 宽篮超额仍 ~2-3%/yr 薄，
-  MDD 35%+（experiments/lab/e58_horizon/basket_bt.json）。
+  MDD 35%+（experiments/lab/e58_horizon/basket_bt.json）。 <!-- gate-doc-ignore: 历史快照（lab 研究线 basket_bt 离线篮测实测值，非引擎权威产物基线声明），⛔ 不改史 -->
 - **e58 篮宽曲线实算（同日）**：月调净 CAGR——top50 −0.25% /
   top100 3.93% / top200 4.95% / top300 5.56% / top500 6.13%，
   单调未饱和（MDD ~35-46%）；e18 已判 e8b 加宽死、容量矩阵
@@ -1278,8 +1278,8 @@ MDD 24.40% vs 17.40%（+7.00pp）、换手 6.45、round_trips 312（156→312 �
   (F5 nuevos entrantes -0.016/t-2.65 el mas cerca, direccion crowding
   negativa consistente). Dataset guardado data/fund_holdings_fundlvl/.
 - **e63组合层验证(篮回测,scores exportados del kernel GPU)**:
-  h20 top500 mensual CAGR 4.76%/MDD0.38; **h60 top500 mensual
-  CAGR 21.5%/MDD 0.28** (h60 trimestral 11.2%) — entrenar con label
+  h20 top500 mensual CAGR 4.76%/MDD0.38; **h60 top500 mensual <!-- gate-doc-ignore: 历史快照（lab 研究线 basket_bt 离线篮测实测值，非引擎权威产物基线声明），⛔ 不改史 -->
+  CAGR 21.5%/MDD 0.28** (h60 trimestral 11.2%) — entrenar con label <!-- gate-doc-ignore: 历史快照（lab 研究线 basket_bt 离线篮测实测值，非引擎权威产物基线声明），⛔ 不改史 -->
   fwd60 cuadruplica el alpha realizado de la cesta vs e58 original.
   Candidato a nueva config T3 pendiente validación completa.
 - **e63晋升验证进度**: ✅本地CPU复现IC 0.139(vs GPU 0.147);
