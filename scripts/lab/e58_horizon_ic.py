@@ -60,23 +60,23 @@ def main() -> int:
         prev_top = set()
         churn_m = []
         for T in sig_days:
-        tr = Xz[(Xz.sig_date < T - pd.Timedelta(days=EMBARGO_TD + 10))]
-        tr = tr[tr.sig_date >= T - pd.Timedelta(days=MIN_TRAIN_MONTHS * 31)]
-        te = Xz[Xz.sig_date == T]
-        if len(te) < 100 or tr.sig_date.nunique() < MIN_TRAIN_MONTHS:
-            continue
-        ytr = tr.groupby('sig_date')['label'].rank(pct=True)
-        ds = lgb.Dataset(tr[PRICE_FEATS + EVENT_FEATS], label=ytr)
-        mdl = lgb.train(LGBM_PARAMS, ds)
-        g = te.copy()
-        g['score'] = mdl.predict(g[PRICE_FEATS + EVENT_FEATS])
-        scores.append(g[['sig_date', 'ts_code', 'score']])
-        top = set(g.nlargest(min(500, len(g)), 'score').ts_code)
-        if prev_top:
-            churn_m.append(1 - len(top & prev_top) / len(top))
-        prev_top = top
-    S = pd.concat(scores, ignore_index=True)
-    S.to_parquet(OUT / 'scores.parquet')
+            tr = Xz[(Xz.sig_date < T - pd.Timedelta(days=EMBARGO_TD + 10))]
+            tr = tr[tr.sig_date >= T - pd.Timedelta(days=MIN_TRAIN_MONTHS * 31)]
+            te = Xz[Xz.sig_date == T]
+            if len(te) < 100 or tr.sig_date.nunique() < MIN_TRAIN_MONTHS:
+                continue
+            ytr = tr.groupby('sig_date')['label'].rank(pct=True)
+            ds = lgb.Dataset(tr[PRICE_FEATS + EVENT_FEATS], label=ytr)
+            mdl = lgb.train(LGBM_PARAMS, ds)
+            g = te.copy()
+            g['score'] = mdl.predict(g[PRICE_FEATS + EVENT_FEATS])
+            scores.append(g[['sig_date', 'ts_code', 'score']])
+            top = set(g.nlargest(min(500, len(g)), 'score').ts_code)
+            if prev_top:
+                churn_m.append(1 - len(top & prev_top) / len(top))
+            prev_top = top
+        S = pd.concat(scores, ignore_index=True)
+        S.to_parquet(OUT / 'scores.parquet')
     print(f'[note] scores {S.shape}, monthly top500 churn {np.mean(churn_m):.3f}')
 
     res = {'churn_monthly_top500': float(np.mean(churn_m))}
