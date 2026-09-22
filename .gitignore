@@ -107,3 +107,4 @@ scripts/pipeline_12h/.pipeline_12h.run.*.sh
 
 # 本地临时审计/补丁脚本（不入库）
 tmp_audit/
+data/notice_meta/
