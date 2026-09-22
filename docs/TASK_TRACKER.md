@@ -1315,3 +1315,22 @@ MDD 24.40% vs 17.40%（+7.00pp）、换手 6.45、round_trips 312（156→312 �
 - h150分年全正(最差2018+0.4%), 成本x3=44.0%;  scores_label150.parquet 已落盘
 - e65 引擎验证对象最终定为 h150-top100; 后验调参注记同前(引擎+OOS双证)
 
+
+
+## e65 引擎路径接入与门禁修复 — 2026-09-22 深夜
+- 框架落盘：strategy/score_basket.py + scripts/run_score_basket_backtest.py +
+  tests/test_e65_score_basket.py；外部分数表→真引擎（含费/含撮合/T+1/涨跌停/除权）
+- 修复链（全实证驱动）：①D-1 误杀复牌首日——161 只全史 >30% 跳变 94% 为停牌
+  复牌真实行情 ⇒ 帧注入 is_resumption 派生列（缺口≥2 指数交易日），门豁免该列；
+  ②D-3 全 A 缺股息率 ⇒ compute_pit_fields 395 天 PIT TTM 注入 yield 列（2811 只）；
+  ③S-2 327 天违规根因=破位日一次性清仓后停牌困仓不再重试 ⇒ 策略避险期每日
+  重试清仓（复牌第一时间退出）+ 持仓比例改可成交口径（无 bar=物理不可卖不算死扛，
+  _compute_daily_positions_ratio 增 bar_dates 可选参，缺省原口径）；
+  ④runner 字段错修（final_nav/annual_turnover）+ exdiv sidecar 5374 只注入
+- 干跑（部分全集 4122 只、分片 sh 偏差未消）全门通过：15PASS+D-4 SKIP+E-3
+  进程内 INCONCLUSIVE（artifact 路径重算板价为权威口径，与 dividend runner 同）
+- 遗留登记：DividendStrategy 同构「破位清仓不重试」潜伏 bug（窄篮未触发，登记
+  待其窄域再评）；pull_bars_alla 加 --start/--end（2025 OOS 段续采已启 6 分片）
+- e68 kernel 已跑：label150 分数延伸到 2024-11（89 期，共享 306k 行 max diff 0.0）
+  → scores_label150x.parquet；真跑窗口扩到 2024-12
+- 待：bars 拉满(4122/5520)→2016-08→2024-12 全真跑→29门→晋升裁决
