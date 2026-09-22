@@ -69,8 +69,8 @@ def _parse_iso(value: Any) -> _date | None:
         return None
 
 
-def _load_index_frame(data_path: Path) -> pd.DataFrame | None:
-    idx_dir = data_path / INDEX_SYMBOL
+def _load_index_frame(data_path: Path, index_symbol: str) -> pd.DataFrame | None:
+    idx_dir = data_path / index_symbol
     parts = [pd.read_parquet(p) for p in sorted(idx_dir.glob("*.parquet"))
              if p.stem.isdigit()]
     if not parts:
@@ -132,6 +132,10 @@ def main() -> int:
     ap.add_argument("--registry-root", type=Path, default=None)
     ap.add_argument("--no-gates", action="store_true")
     ap.add_argument("--gate-strict", action="store_true")
+    ap.add_argument("--index-symbol", default=INDEX_SYMBOL,
+                    help="MA200 择时指数（诊断用变体；默认沪深300）")
+    ap.add_argument("--no-timing", action="store_true",
+                    help="关闭 MA200 择时（诊断归因用，⛔ 非晋级口径）")
     args = ap.parse_args()
 
     start = _date.fromisoformat(args.start)
@@ -148,12 +152,15 @@ def main() -> int:
         portfolio=portfolio_config,
         rebalance_days=args.rebalance_days,
         max_score_age_days=args.max_score_age_days,
+        index_symbol=args.index_symbol,
+        use_ma200_timing=not args.no_timing,
     )
+    index_sym = args.index_symbol
 
     # 日历：复用 dividend_stocks 的指数分区（全市场日历基准）
-    index_frame = _load_index_frame(args.index_path)
+    index_frame = _load_index_frame(args.index_path, index_sym)
     if index_frame is None:
-        raise RuntimeError(f"指数 {INDEX_SYMBOL} 分区缺失于 {args.index_path}")
+        raise RuntimeError(f"指数 {index_sym} 分区缺失于 {args.index_path}")
     cal_days = [_parse_iso(d) for d in index_frame["date"]]
     cal_days = [d for d in cal_days if d and start <= d <= end]
     if not cal_days:
@@ -167,10 +174,10 @@ def main() -> int:
 
     # 指数并入 feed（MA200 择时数据源）——preloaded 优先于目录查询，
     # index_path 与 data_path 可为不同根
-    if INDEX_SYMBOL not in tables:
+    if index_sym not in tables:
         idx_bar = index_frame.copy()
-        tables[INDEX_SYMBOL] = idx_bar
-        logger.info(f"指数 {INDEX_SYMBOL} 并入 feed（{len(idx_bar)} 行）")
+        tables[index_sym] = idx_bar
+        logger.info(f"指数 {index_sym} 并入 feed（{len(idx_bar)} 行）")
 
     # 除权事件（dividend_events_alla 已构建的 sidecar → ExdivEvent）
     from scripts.run_dividend_backtest import (
@@ -207,9 +214,9 @@ def main() -> int:
 
     with ThreadPoolExecutor(max_workers=8) as pool:
         list(pool.map(lambda kv: _enrich(kv[0], kv[1]),
-                      [(s, f) for s, f in tables.items() if s != INDEX_SYMBOL]))
+                      [(s, f) for s, f in tables.items() if s != index_sym]))
     n_yield = sum(1 for s, f in tables.items()
-                  if s != INDEX_SYMBOL and "dividend_yield" in f.columns)
+                  if s != index_sym and "dividend_yield" in f.columns)
     logger.info(f"派生列完成: is_resumption ×{len(tables) - 1}，dividend_yield ×{n_yield}")
 
     score_table = _load_score_table(args.scores)
@@ -242,7 +249,7 @@ def main() -> int:
     # context_builder._sample_data_evidence：≥60 日且 4 位精度去重 ≥50 种）。
     pit_yields: dict[str, Any] = {}
     for sym in sorted(tables):
-        if sym == INDEX_SYMBOL:
+        if sym == index_sym:
             continue
         df = tables[sym]
         if "dividend_yield" not in df.columns:
