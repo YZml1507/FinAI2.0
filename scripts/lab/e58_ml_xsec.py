@@ -207,12 +207,16 @@ def build_features() -> tuple[pd.DataFrame, pd.DatetimeIndex]:
         if not ana.empty:
             a20 = ana[(ana.ann_date > T - pd.Timedelta(days=30))
                       & (ana.ann_date <= T)]
-            col['an_rating_dir20'] = col.index.map(
-                a20[a20.kind == 'rating'].groupby('ts_code')
-                .rating_dir.sum()).fillna(0)
-            col['an_epsrev20'] = col.index.map(
-                a20[a20.kind == 'forecast'].groupby('ts_code')
-                .fy_np_chg.count()).fillna(0)
+            col['an_rating_dir20'] = pd.to_numeric(
+                col.index.map(
+                    a20[a20.kind == 'rating'].groupby('ts_code')
+                    .rating_dir.sum()),
+                errors='coerce').fillna(0).astype(float)
+            col['an_epsrev20'] = pd.to_numeric(
+                col.index.map(
+                    a20[a20.kind == 'forecast'].groupby('ts_code')
+                    .fy_np_chg.count()),
+                errors='coerce').fillna(0).astype(float)
         col['sig_date'] = T
         rows.append(col.reset_index().rename(columns={'index': 'ts_code'}))
     X = pd.concat(rows, ignore_index=True)
@@ -342,6 +346,9 @@ def main() -> int:
     cache = OUT_DIR / 'features.parquet'
     if cache.exists():
         X = pd.read_parquet(cache)
+        for c in PRICE_FEATS + EVENT_FEATS + ['label']:
+            if c in X.columns:
+                X[c] = pd.to_numeric(X[c], errors='coerce')
     else:
         X, _ = build_features()
         X.to_parquet(cache)
