@@ -1260,6 +1260,7 @@ class TestGateDocIgnoreScope:
             "docs/delivery/FINAL_DELIVERY_20260920.md": (1, None),  # 定稿结论书：锚点/消融/容量/OOS 实测值快照汇总引用
             "docs/E37_VETO_PROMOTION_EVAL.md": (2, None),  # e8b-v2 晋升电池：实验臂/扰动臂实测值快照
             "docs/E44_NEUTRAL_BAND_PREREG.md": (1, None),  # e44 预登记：G-2 消崖门阈值声明行（e37promo 实测参照值同行）
+            "docs/E47_BREADTH_PCT_PREREG.md": (1, None),  # e47 预登记：timing-off 对照臂实测值快照（收单归因段两行同一豁免行内）
         }
         by_file: dict[str, list] = {}
         for h in hits:
