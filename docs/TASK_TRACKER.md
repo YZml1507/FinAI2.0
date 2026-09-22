@@ -201,6 +201,15 @@
   ——即便宽篮兑现也只达 +2%/年 边缘，不构成可立项基座；
   e58 信号定位为「筛选层学术证据」，宽域载体彻底判不立项。
 
+- **定时 audit 远端失败根因修复（同日）**：scheduled_audit.yml 原等
+  actions/download-artifact「backtest-run-artifacts」——全仓无 job
+  上传过该 artifact，14 门 run 证据类门禁远程永久 INCONCLUSIVE。
+  改走 Release 规约：canonical 证据包上传至 tag `run-evidence`
+  （617KB，含验证对 093905/093948 + legacy 锚），workflow 改为
+  curl 下载解压（失败即红不 continue-on-error）。干净 clone 仿真
+  29/29 全绿验证。刷新证据=gh release upload --clobber。
+
+
 - **e56 cninfo六词族收单判负（同日）**：0/7 强。减持计划
   n=20603 无负漂（+0.20%/t1.30，悬顶先验证伪）；质押/增持
   ≈0；冻结 t−2.08 弱；高送转两期 inconclusive（240条稀疏）。

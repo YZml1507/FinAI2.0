@@ -47,12 +47,19 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install "pytest>=8,<9" "pandas>=2.0,<3" "pyarrow>=14" "numpy>=1.24,<3" requests
 
-      - name: Download run artifacts (if previously uploaded)
-        uses: actions/download-artifact@v4
-        continue-on-error: true
-        with:
-          name: backtest-run-artifacts
-          path: experiments/runs
+      - name: Download canonical run evidence bundle (release asset)
+        # ㊴ 原 actions/download-artifact 等 artifact「backtest-run-artifacts」
+        #    全仓无任何 job 上传过它 —— 14 门 run 证据类门禁因此远程永久 INCONCLUSIVE。
+        #    改走 Release 规约（同 data-20260920b）：canonical 证据包随 run-evidence tag 发布；
+        #    刷新证据 = 本地产新 run 后 `gh release upload run-evidence run-evidence.tar.gz --clobber`。
+        #    下载失败不 continue-on-error —— 无证据就该红，fail-closed。
+        run: |
+          set -euo pipefail
+          mkdir -p experiments/runs
+          curl -fL --retry 3 -o /tmp/run-evidence.tar.gz \
+            "https://github.com/${{ github.repository }}/releases/download/run-evidence/run-evidence.tar.gz"
+          tar -xzf /tmp/run-evidence.tar.gz -C experiments/runs
+          ls -la experiments/runs
 
       - name: "Scheduled Gate Audit: full 29 gates with real repo ctx (--scheduled：run 证据缺失也阻断)"
         run: |
