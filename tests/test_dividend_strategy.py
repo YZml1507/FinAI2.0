@@ -421,10 +421,76 @@ def test_ma200_breach_confirmation_requires_two_days():
     assert broker.orders[0].side == OrderSide.SELL
     assert strategy._timing_avoid is True
 
-    # D6：站回 1 日即解除避险（不对称确认），当日仍不下单（待下一调仓节拍）
+    # D6：站回 1 日即解除避险（不对称确认），当日无新 BUY；
+    # 残留仓位仍按日重试 SELL（困仓每日清仓语义）
     _feed("101")
-    assert len(broker.orders) == 1
+    assert len(broker.orders) == 2
+    assert broker.orders[1].side == OrderSide.SELL
     assert strategy._timing_avoid is False
+
+
+def test_ma200_avoid_retries_liquidation_daily():
+    """避险确认清仓后若仓位被困（停牌/跌停撮合拒单），避险期每日重试清仓"""
+    cfg = DividendConfig(
+        min_dividend_yield=Decimal("0.03"),
+        use_ma200_timing=True,
+        index_symbol="sh.000300",
+        warmup_bars=210,
+        rebalance_days=10,
+    )
+    strategy = DividendStrategy(config=cfg)
+    strategy.watchlist = ["sh.600000", "sh.000300"]
+
+    for _ in range(199):
+        strategy._ma200_buffer.append(Decimal("100"))
+    strategy._bar_count = cfg.warmup_bars
+    strategy._last_rebalance_bar = strategy._bar_count
+
+    class _Pos:
+        volume = 100
+
+    book = MockBook(nav=Decimal("100000"))
+    book.positions = {"sh.600000": _Pos()}
+    broker = MockBroker()
+
+    day = date(2020, 1, 1)
+
+    def _bars(index_close: str) -> dict:
+        return {
+            "sh.000300": Bar(
+                date=day, symbol="sh.000300",
+                open=Decimal(index_close), high=Decimal(index_close), low=Decimal(index_close),
+                close=Decimal(index_close), preclose=Decimal(index_close),
+                volume=Decimal("1000000"), amount=Decimal("80000000"),
+            ),
+            "sh.600000": Bar(
+                date=day, symbol="sh.600000",
+                open=Decimal("10"), high=Decimal("10"), low=Decimal("10"),
+                close=Decimal("10"), preclose=Decimal("10"),
+                volume=Decimal("0"), amount=Decimal("0"),  # 停牌日无成交
+                dividend_yield=Decimal("0.05"), market_cap=Decimal("1000000000"),
+            ),
+        }
+
+    def _feed(close: str) -> None:
+        nonlocal day
+        day = day + timedelta(days=1)
+        strategy.on_bar(day, _bars(close), book, broker)
+
+    # 连续 2 日破位 → 确认清仓（第一次 SELL）
+    _feed("98.5")
+    _feed("98.5")
+    assert strategy._timing_avoid is True
+    assert len(broker.orders) == 1
+    assert broker.orders[0].side == OrderSide.SELL
+
+    # 仓位仍被困（book.positions 未变）→ 避险期每日重试清仓
+    _feed("98.5")
+    assert len(broker.orders) == 2
+    assert broker.orders[1].side == OrderSide.SELL
+    _feed("98.0")
+    assert len(broker.orders) == 3
+    assert broker.orders[2].side == OrderSide.SELL
 
 
 def test_ma200_rebuild_after_one_day_above():
@@ -482,16 +548,18 @@ def test_ma200_rebuild_after_one_day_above():
     assert len(broker.orders) == 1  # 清仓单
     assert strategy._timing_avoid is True
 
-    # 站回 1 日即解除避险（不对称确认），当日仍不动（待下一调仓节拍）
+    # 站回 1 日即解除避险（不对称确认），当日无新 BUY；
+    # 残留仓位仍按日重试 SELL（困仓每日清仓语义）
     _feed("101")
-    assert len(broker.orders) == 1
+    assert len(broker.orders) == 2
+    assert broker.orders[1].side == OrderSide.SELL
     assert strategy._timing_avoid is False
 
     # 下一 bar 为调仓节拍：恢复选股
     book.positions = {}
     _feed("101")
-    assert len(broker.orders) > 1
-    assert any(o.side == OrderSide.BUY for o in broker.orders[1:])
+    assert len(broker.orders) > 2
+    assert any(o.side == OrderSide.BUY for o in broker.orders[2:])
 
 
 # ==============================================================================

@@ -600,6 +600,13 @@ class DividendStrategy:
                         self._breach_streak = 0
                 else:
                     self._rebuild_streak = 0
+                # 停牌/跌停困住的残余仓位每日重试清仓：复牌第一时间退出
+                if hasattr(book, "positions") and book.positions:
+                    current = {s: int(p.volume) for s, p in book.positions.items()
+                               if int(p.volume) > 0}
+                    if current:
+                        report = diff_to_orders(current, {}, bars, cfg.portfolio)
+                        self._submit(broker, report.intents, day)
                 # 无论是否解除避险，当日均不重建（解除后待下一调仓节拍）
                 if self._timing_avoid:
                     return
@@ -638,6 +645,13 @@ class DividendStrategy:
                 if b >= cfg.breadth_defense_threshold:
                     self._breadth_ice = False
                     self._breadth_ice_streak = 0
+                # 停牌/跌停困住的残余仓位每日重试清仓：复牌第一时间退出
+                if hasattr(book, "positions") and book.positions:
+                    current = {s: int(p.volume) for s, p in book.positions.items()
+                               if int(p.volume) > 0}
+                    if current:
+                        report = diff_to_orders(current, {}, bars, cfg.portfolio)
+                        self._submit(broker, report.intents, day)
                 return  # 解除当日也不建仓，等下一调仓节拍
             if b < cfg.breadth_defense_threshold:
                 self._breadth_ice_streak += 1

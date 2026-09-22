@@ -45,6 +45,7 @@ from backtest.ledger import Ledger
 from backtest.matching import MatchEngine
 from backtest.metrics import compute_metrics
 from reporting.registry import ExperimentRegistry
+from scripts.run_dividend_backtest import _git_code_hash
 from reporting.provenance import hash_path_manifest, hash_sequence
 from strategy.portfolio import PortfolioConfig
 from strategy.score_basket import (
@@ -314,7 +315,7 @@ def main() -> int:
         root=args.registry_root or (_root / "experiments"),
         code_version="e65-score-basket-v1",
         data_version="daily-bars-alla-2014-2024+raw+exdiv",
-        code_hash=None,
+        code_hash=_git_code_hash(),
         data_hash=data_hash,
         calendar_hash=hash_sequence(cal_days, label="cal"),
         universe_hash=hash_sequence(universe_codes, label="universe"),
