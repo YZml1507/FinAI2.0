@@ -1282,3 +1282,6 @@ MDD 24.40% vs 17.40%（+7.00pp）、换手 6.45、round_trips 312（156→312 �
   CAGR 21.5%/MDD 0.28** (h60 trimestral 11.2%) — entrenar con label
   fwd60 cuadruplica el alpha realizado de la cesta vs e58 original.
   Candidato a nueva config T3 pendiente validación completa.
+- **e63晋升验证进度**: ✅本地CPU复现IC 0.139(vs GPU 0.147);
+  ✅成本x3仍17.7%>12%; ✅分年仅2018负(-11.5%毛);
+  pendiente: 引擎级全周期回测+29门证据(下一工作项)。
