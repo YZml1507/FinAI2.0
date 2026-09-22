@@ -136,6 +136,8 @@ def main() -> int:
                     help="MA200 择时指数（诊断用变体；默认沪深300）")
     ap.add_argument("--no-timing", action="store_true",
                     help="关闭 MA200 择时（诊断归因用，⛔ 非晋级口径）")
+    ap.add_argument("--min-daily-amount", type=Decimal, default=None,
+                    help="建仓流动性下限（当日成交额，元）；缺省用组合层默认 5000 万")
     args = ap.parse_args()
 
     start = _date.fromisoformat(args.start)
@@ -145,9 +147,13 @@ def main() -> int:
     max_pos = args.max_positions if args.max_positions is not None else target + 10
     hard = args.hard_limit if args.hard_limit is not None else max_pos + 10
 
+    portfolio_kwargs: dict[str, Any] = {}
+    if args.min_daily_amount is not None:
+        portfolio_kwargs["min_daily_amount"] = args.min_daily_amount
     portfolio_config = PortfolioConfig(
         target_count=target, min_positions=min_pos, max_positions=max_pos,
-        hard_limit=hard, min_position_value=args.min_position_value)
+        hard_limit=hard, min_position_value=args.min_position_value,
+        **portfolio_kwargs)
     strategy_config = ScoreBasketConfig(
         portfolio=portfolio_config,
         rebalance_days=args.rebalance_days,
