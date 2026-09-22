@@ -553,6 +553,9 @@ def run_post_run_gates(
             s2_ctx["daily_positions_ratio"] = ctx["daily_positions_ratio"]
         if "timing_grace_dates" in ctx:
             s2_ctx["timing_grace_dates"] = ctx["timing_grace_dates"]
+        # 适用性声明透传：显式 False ⇒ S-2 SKIP（未声明避险义务）
+        if "use_ma200_timing" in ctx:
+            s2_ctx["use_ma200_timing"] = ctx["use_ma200_timing"]
     if not s2_ctx:
         _check_result(_inconclusive(s2_gate, "缺少破位日期（MA200/宽度冰点）与逐日仓位比例数据，无法判定择时空仓生存（无证据 ≠ 通过）"))
     else:
