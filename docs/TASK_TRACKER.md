@@ -1225,3 +1225,7 @@ MDD 24.40% vs 17.40%（+7.00pp）、换手 6.45、round_trips 312（156→312 �
   rank IC——raw 覆盖家数 −0.016/t−1.1（纯市值噪声）；Δ覆盖 0.013/
   t1.94；市值中性化残差 0.023/t2.20——均低于判强线（t≥3），
   判弱不立项。数据留底（半年频 23 期）供日后合成特征复用。
+- **一致预期接入管线就位（同日）**：scripts/lab/ingest_consensus_dta.py
+  ——dta→按年 parquet + manifest + 退市股样本验收门(300104/600074)，
+  合成 dta 冒烟 PASS；pyreadstat 1.3.6 已装。data/consensus/ gitignore。
+  数据到手即跑。
