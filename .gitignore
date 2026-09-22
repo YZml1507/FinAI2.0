@@ -71,6 +71,7 @@ data/analyst/
 data/delisted_forecast/
 data/esop_events/
 data/cninfo_events/
+data/fund_holdings_agg/
 data/e30_repurchase/
 data/e30_restricted/
 data/minute_probe/
