@@ -341,7 +341,7 @@ def main() -> int:
     print(f"总收益:       {float(report.total_return) * 100:>13.2f} %")
     print(f"CAGR:         {float(report.cagr) * 100:>13.2f} %")
     print(f"最大回撤:     {float(report.max_drawdown) * 100:>13.2f} %")
-    print(f"年化换手:     {float(report.annual_turnover or 0):>13.1f} %")
+    print(f"年化换手:     {float(report.annual_turnover or 0) * 100:>13.1f} %")
     print(f"费用合计:     {sum(Decimal(str(v)) for v in (getattr(report, 'fees_total', {}) or {}).values()):>14,.2f} 元")
     print(f"run_id: {run_id}")
     return 0

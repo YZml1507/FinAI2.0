@@ -35,9 +35,9 @@ def universe() -> list[str]:
     return out
 
 
-def pull_one(code: str) -> pd.DataFrame:
+def pull_one(code: str, start: str = START, end: str = END) -> pd.DataFrame:
     rs = bs.query_history_k_data_plus(
-        code, FIELDS, start_date=START, end_date=END,
+        code, FIELDS, start_date=start, end_date=end,
         frequency='d', adjustflag='3')
     rows = []
     while rs.error_code == '0' and rs.next():
@@ -61,6 +61,8 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument('--shard', type=int, default=0)
     ap.add_argument('--nshards', type=int, default=1)
+    ap.add_argument('--start', default=START)
+    ap.add_argument('--end', default=END)
     a = ap.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
     lg = bs.login()
@@ -72,7 +74,7 @@ def main() -> int:
         for i, code in enumerate(codes):
             sym_dir = OUT / code
             try:
-                df = pull_one(code)
+                df = pull_one(code, a.start, a.end)
                 if df.empty:
                     done += 1
                     continue
