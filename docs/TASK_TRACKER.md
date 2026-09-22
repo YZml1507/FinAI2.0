@@ -1229,3 +1229,8 @@ MDD 24.40% vs 17.40%（+7.00pp）、换手 6.45、round_trips 312（156→312 �
   ——dta→按年 parquet + manifest + 退市股样本验收门(300104/600074)，
   合成 dta 冒烟 PASS；pyreadstat 1.3.6 已装。data/consensus/ gitignore。
   数据到手即跑。
+- **e58 IC衰减诊断（同日）**：信号预测力随持有期上升而非衰减
+  （fwd20 IC .0705→fwd80 .1012，ICIR 1.81→3.43）——alpha 属慢变量。
+  季调仓 top500 churn 仍 80% 但年换手降 ~3x：T3 宽篮净收益估算
+  +2.15%/yr → ~+3.5-4%/yr（成本 2.65%→~0.9%）。诊断非晋升，
+  实证待真回测（scores.parquet 已缓存 experiments/lab/e58_horizon/）。
