@@ -1,0 +1,62 @@
+# E58 ML 截面排序 spike 预登记（冻结版）
+
+> 冻结时间：2026-09-22（先于任何训练运行）。
+> 定位：memo51 前沿②——手工因子/事件族边际耗尽后，检验
+> 「非线性交互是否还有残余 alpha」。这是一次性 spike：
+> 判负即关 ML 方向，不迭代调参。
+
+## 一、宇宙/信号日/标签（冻结）
+
+- 宇宙：全 A 有效（上市≥120td、当日有收盘——同 e23/e29 口径）。
+- 信号日：每月最后交易日 T（月频，对齐散户费率约束）。
+- 标签：T+1..T+20 累计收益 − 同日截面均值（excess），再取
+  截面 rank∈[0,1] 为回归目标。上市<120td/停牌日剔除样本。
+
+## 二、特征清单（冻结，全部 ≤T PIT）
+
+价量（r 面板/daily_basic_alla）：ret5/ret20/ret60/ret120、
+vol20、max20（20d 最大单日收益）、amihud20、turnover20（均值）、
+pe、pb、dv_ttm、log(circ_mv)。
+两融：fin_bal_chg20、short_qty_chg20（margin_detail，
+标的期外 NaN 如实保留）。
+事件旗标（trailing 20td ∈{0,1}）：letter_v4（函件）、
+resumption（e52 集）、forecast_pos/forecast_neg（yjyg 方向）、
+incentive_s2（股权激励）、lhb_any、insider_netsell（e27）、
+blocktrade_seller_inst（e32-B2）、cninfo_reduce（减持计划）、
+cninfo_frozen（冻结）。
+分析师：rating_dir_sum20（评级方向 20d 净额）、
+eps_rev_cnt20（预测修正条数 20d）。
+
+共 ~25 特征；训练前截面 z-score 标准化（winsorize 1/99%）。
+
+## 三、模型/评估协议（冻结）
+
+- 模型：LightGBM 回归，超参一次冻结：num_leaves=31,
+  lr=0.05, n_estimators=500, min_data_in_leaf=100,
+  feature_fraction=0.8, seed=42。⛔ 不搜参不调参。
+- Walk-forward：每年初重训，训练集=所有历史月样本且
+  标签窗完全 < 预测年首个信号日（20td embargo 防重叠泄露）；
+  首训年要求 ≥24 月训练样本。
+- 安慰剂：同流程训练集标签打乱跑一次——IC 应≈0。
+- 评估窗 ≤2024-12-31；2025+ 段只观察登记不调参。
+
+## 四、判定门（冻结）
+
+判「强」须全过：
+1. OOS 月均 Rank IC ≥0.03 且 ICIR ≥0.3；
+2. Q_top−Q_bottom 月价差均值 >0，事件日聚类 t≥2.6；
+3. 正 IC 年份占比 ≥60%；
+4. Q_top 篮月均换手成本后净边际 ≥+0.15%/月（≈1.8%/年，
+   单边 0.15% 成本估计）；
+5. 安慰剂 IC ≈0（|IC|<0.01）。
+
+判负即关：ML 方向在散户费率+日频+免费数据下无残余 alpha
+如实登记，不再变体。
+
+## 五、已知局限
+
+- 特征全是已测信号的拼接——ML 的赌注=非线性交互，
+  若信号本身无线性边际，非线性残余理论上更薄；
+- 25 特征 × ~55 万样本 × LightGBM CPU 可行；
+- 标签 20td 重叠用 embargo+聚类 t 处理，功效折扣如实披露；
+- 退市股含在内（面板含退市）→ 无幸存者偏差。
