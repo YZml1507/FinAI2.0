@@ -40,7 +40,7 @@ VETO_25 = ROOT / "data" / "e37_veto" / "veto_daily_2025plus.parquet"
 SCORES_25 = ROOT / "experiments" / "lab" / "e63" / "scores_label150_2025.parquet"
 
 STEPS = ("bars", "lhb", "veto", "features", "score", "emit", "nav",
-         "anatomic")
+         "anatomic", "adiff")
 
 
 def _commands(today: str, topn: int, capital: int) -> dict[str, list[str]]:
@@ -60,6 +60,7 @@ def _commands(today: str, topn: int, capital: int) -> dict[str, list[str]]:
                  "--veto-path", str(VETO_25)],
         "nav": [PY, str(LAB / "shadow_nav.py")],
         "anatomic": [PY, str(LAB / "pull_analyst_atomic_em.py")],
+        "adiff": [PY, str(LAB / "diff_analyst_atomic.py")],
     }
 
 
