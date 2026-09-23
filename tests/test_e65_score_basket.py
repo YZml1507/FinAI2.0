@@ -180,3 +180,52 @@ class TestMa200Timing:
         assert sells, "破位确认后应有清仓成交"
         assert all(t.date >= date(2024, 7, 25) for t in sells), "清仓应发生在破位段"
         assert all(t.side and t.symbol != self._IDX for t in sells)
+
+
+class TestWeightMode:
+    _SCORES = {
+        _D0: {_SY_A: 0.9, _SY_B: 0.1, _SY_C: 0.8},
+        _D0 + timedelta(days=20): {_SY_A: 0.9, _SY_B: 0.1, _SY_C: 0.8},
+    }
+
+    @staticmethod
+    def _buy_notional(broker) -> dict:
+        out: dict = {}
+        for t in broker.trades:
+            if str(t.side).endswith("BUY"):
+                out[t.symbol] = out.get(t.symbol, D("0")) + t.volume * t.price
+        return out
+
+    def test_config_rejects_bad_mode(self) -> None:
+        with pytest.raises(ValueError):
+            ScoreBasketConfig(
+                portfolio=PortfolioConfig(
+                    target_count=2, min_positions=1, max_positions=4,
+                    hard_limit=6, min_position_value=D("1000")),
+                weight_mode="bogus")
+
+    def test_score_weight_skews_to_top(self) -> None:
+        """weight_mode=score：top 分 A(0.9) 名义买入额 > C(0.8)。"""
+        cfg = ScoreBasketConfig(
+            portfolio=PortfolioConfig(
+                target_count=2, min_positions=1, max_positions=4,
+                hard_limit=6, min_position_value=D("1000")),
+            rebalance_days=5, max_score_age_days=45, warmup_bars=2,
+            use_ma200_timing=False, weight_mode="score")
+        st = ScoreBasketStrategy(cfg, dict(self._SCORES))
+        _, broker = _run(st)
+        notionals = self._buy_notional(broker)
+        assert notionals[_SY_A] > notionals[_SY_C] > D("0")
+
+    def test_invvol_prefers_low_vol(self) -> None:
+        """weight_mode=invvol：低 σ 的 C 名义买入额 > A（σ_C<σ_A<σ_B）。"""
+        cfg = ScoreBasketConfig(
+            portfolio=PortfolioConfig(
+                target_count=2, min_positions=1, max_positions=4,
+                hard_limit=6, min_position_value=D("1000")),
+            rebalance_days=5, max_score_age_days=45, warmup_bars=2,
+            use_ma200_timing=False, weight_mode="invvol")
+        st = ScoreBasketStrategy(cfg, dict(self._SCORES))
+        _, broker = _run(st)
+        notionals = self._buy_notional(broker)
+        assert notionals[_SY_C] > notionals[_SY_A] > D("0")

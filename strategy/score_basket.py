@@ -83,12 +83,20 @@ class ScoreBasketConfig:
     timing_breach_buffer: Decimal = Decimal("0.01")     # 破位缓冲带
     timing_breach_confirm_days: int = 2                 # 连续 N 日有效破位才确认清仓
     timing_rebuild_confirm_days: int = 1                # 站回当日即解除（不对称）
+    # 权重模式（E78 构造臂）：equal=等权（历史口径默认）；score=权重∝分数；
+    # invvol=权重∝1/σ（σ=invvol_window 日收益波动，由策略内收盘缓冲自维护）
+    weight_mode: str = "equal"
+    invvol_window: int = 20
 
     def __post_init__(self) -> None:
         if self.rebalance_days < 1:
             raise ValueError("rebalance_days 须 ≥ 1")
         if self.max_score_age_days < 1:
             raise ValueError("max_score_age_days 须 ≥ 1")
+        if self.weight_mode not in ("equal", "score", "invvol"):
+            raise ValueError("weight_mode 须为 equal|score|invvol")
+        if self.invvol_window < 5:
+            raise ValueError("invvol_window 须 ≥ 5")
         if not isinstance(self.timing_breach_buffer, Decimal):
             raise TypeError("timing_breach_buffer 须为 Decimal（⛔ 禁 float）")
         if not (Decimal("0") <= self.timing_breach_buffer <= Decimal("0.10")):
@@ -131,6 +139,8 @@ class ScoreBasketStrategy:
         self._breach_streak = 0
         self._timing_avoid = False
         self._rebuild_streak = 0
+        # invvol 权重用收盘缓冲（首个 bar 起随日推入，暖机期也在攒）
+        self._px_hist: dict[str, deque[Decimal]] = {}
 
     # ------------------------------------------------------------------
     # 引擎契约
@@ -139,6 +149,13 @@ class ScoreBasketStrategy:
     def on_bar(self, day: _date, bars: Mapping[str, Bar], book: Any, broker: Any) -> None:
         cfg = self.config
         self._bar_count += 1
+
+        if cfg.weight_mode == "invvol":
+            for _s, _b in bars.items():
+                dq = self._px_hist.get(_s)
+                if dq is None:
+                    dq = self._px_hist[_s] = deque(maxlen=cfg.invvol_window + 1)
+                dq.append(_b.close)
 
         if self.universe_provider is not None:
             self.watchlist = list(self.universe_provider(day))
@@ -232,7 +249,28 @@ class ScoreBasketStrategy:
         current = {s: int(book.positions[s].volume) for s in held_symbols}
         targets = select_targets(scores, cfg.portfolio)
         total_nav = book.total_nav if hasattr(book, "total_nav") else getattr(book, "nav", Decimal("0"))
-        plan, _plan_dropped = plan_positions(targets, total_nav, bars, cfg.portfolio)
+        weights: dict[str, Decimal] | None = None
+        if cfg.weight_mode == "score":
+            weights = {s: scores[s] for s in targets}
+        elif cfg.weight_mode == "invvol":
+            weights = {}
+            for s in targets:
+                dq = self._px_hist.get(s)
+                if dq is None or len(dq) < cfg.invvol_window + 1:
+                    continue
+                rets = [dq[i] / dq[i - 1] - Decimal("1")
+                        for i in range(1, len(dq))]
+                n = Decimal(len(rets))
+                mu = sum(rets) / n
+                var = sum((r - mu) * (r - mu) for r in rets) / (n - Decimal("1"))
+                sigma = var.sqrt()
+                if sigma <= Decimal("0"):
+                    continue
+                weights[s] = Decimal("1") / sigma
+            if not weights:
+                return
+        plan, _plan_dropped = plan_positions(targets, total_nav, bars, cfg.portfolio,
+                                             weights=weights)
         report = diff_to_orders(current, plan, bars, cfg.portfolio)
         self._submit(broker, report.intents, day)
 

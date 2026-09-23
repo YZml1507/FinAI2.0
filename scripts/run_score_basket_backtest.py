@@ -153,6 +153,9 @@ def main() -> int:
     ap.add_argument("--min-position-value", type=Decimal,
                     default=Decimal("20000"))
     ap.add_argument("--rebalance-days", type=int, default=20)
+    ap.add_argument("--weight-mode", default="equal",
+                    choices=["equal", "score", "invvol"],
+                    help="E78 构造臂：equal=等权 | score=权重∝分数 | invvol=权重∝1/σ20")
     ap.add_argument("--max-score-age-days", type=int, default=45)
     ap.add_argument("--risk-free-annual", type=Decimal, default=Decimal("0.015"))
     ap.add_argument("--registry-root", type=Path, default=None)
@@ -188,6 +191,7 @@ def main() -> int:
         max_score_age_days=args.max_score_age_days,
         index_symbol=args.index_symbol,
         use_ma200_timing=not args.no_timing,
+        weight_mode=args.weight_mode,
     )
     index_sym = args.index_symbol
 
