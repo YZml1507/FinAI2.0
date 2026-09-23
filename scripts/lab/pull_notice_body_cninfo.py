@@ -60,11 +60,48 @@ def _sess() -> requests.Session:
     return s
 
 
+ORGID_FILE = OUT_DIR / 'orgid_map.json'
+_orgid_lock = threading.Lock()
+_orgid_map: dict | None = None
+TOP_SEARCH = 'http://www.cninfo.com.cn/new/information/topSearch/query'
+
+
+def _orgid_cache() -> dict:
+    global _orgid_map
+    if _orgid_map is None:
+        _orgid_map = (json.loads(ORGID_FILE.read_text())
+                      if ORGID_FILE.exists() else {})
+    return _orgid_map
+
+
+def _resolve_orgid(code: str) -> str | None:
+    """topSearch 官方解析 code→orgId（处理 99xxxxx 非 gssz 式）。"""
+    try:
+        r = _sess().post(TOP_SEARCH,
+                         data={'keyWord': code, 'maxSecNum': 10},
+                         headers={'User-Agent': 'Mozilla/5.0',
+                                  'X-Requested-With': 'XMLHttpRequest'},
+                         timeout=15)
+        for s in r.json():
+            if str(s.get('code')) == code:
+                return s.get('orgId')
+    except Exception:  # noqa: BLE001
+        return None
+    return None
+
+
 def _org_id(code: str) -> str:
     c = code.zfill(6)
-    if c[0] in '69':  # 沪市主板 60x/科创板 688
-        return f'gssh0{c}'  # cninfo orgId = gssh/gssz + '0' + 6位码
-    return f'gssz0{c}'  # 深市 00x/30x/002；北交所兜底查不到仅空索引
+    m = _orgid_cache()
+    if c in m:
+        return m[c]
+    org = _resolve_orgid(c)
+    if not org:
+        org = f'gssh0{c}' if c[0] in '69' else f'gssz0{c}'
+    with _orgid_lock:
+        m[c] = org
+        ORGID_FILE.write_text(json.dumps(m, ensure_ascii=False))
+    return org
 
 
 def want(atype) -> bool:
@@ -190,8 +227,15 @@ def main() -> int:
     ap.add_argument('--years', default='')
     ap.add_argument('--workers', type=int, default=8)
     ap.add_argument('--limit-stocks', type=int, default=0)
+    ap.add_argument('--code-prefix', default='',
+                    help='逗号分隔股票代码前缀（如 0,1,2）；缺省全量。'
+                         '用于同年代码面拆多车道')
+    ap.add_argument('--out-suffix', default='',
+                    help='输出文件名后缀（如 _d → 2024_d.parquet）；'
+                         '并行同年代道防写冲突必传')
     a = ap.parse_args()
     years = set(a.years.split(',')) if a.years else None
+    prefixes = tuple(p for p in a.code_prefix.split(',') if p)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     done = _load_done()
 
@@ -208,6 +252,8 @@ def main() -> int:
             ac = r.art_code
             yr = int(str(r.公告日期)[:4])
             code = str(r.代码).zfill(6)
+            if prefixes and not code.startswith(prefixes):
+                continue
             groups.setdefault((code, yr), []).append(
                 (ac, code, r.名称, r.公告标题, r.公告类型, r.公告日期))
     keys = sorted(groups)
@@ -237,7 +283,7 @@ def main() -> int:
                     _mark_done(ac, done)
                 else:
                     _mark_fail(ac, why or 'unk')
-        out_f = OUT_DIR / f'{yr}.parquet'
+        out_f = OUT_DIR / f'{yr}{a.out_suffix}.parquet'
         if rows:
             buf = (pd.read_parquet(out_f) if out_f.exists()
                    else pd.DataFrame())
