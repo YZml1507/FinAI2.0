@@ -1,0 +1,78 @@
+{
+  "sig_date": "2026-09-22",
+  "asof": "2026-09-22",
+  "topn": 20,
+  "capital": "150000",
+  "min_amount": "5000000",
+  "min_pos": "5000",
+  "cash_left": "8959",
+  "n_rows": 19,
+  "bench": [
+    {
+      "symbol": "sz.300198",
+      "close": "2.31",
+      "amount20_m": "1806.7",
+      "is_st": true
+    },
+    {
+      "symbol": "sz.002802",
+      "close": "12.36",
+      "amount20_m": "2738.7",
+      "is_st": false
+    },
+    {
+      "symbol": "sh.600455",
+      "close": "24.23",
+      "amount20_m": "3409.8",
+      "is_st": false
+    },
+    {
+      "symbol": "sh.603385",
+      "close": "5.66",
+      "amount20_m": "2327.8",
+      "is_st": false
+    },
+    {
+      "symbol": "sz.000953",
+      "close": "6.17",
+      "amount20_m": "4828.8",
+      "is_st": false
+    },
+    {
+      "symbol": "sh.603208",
+      "close": "11.33",
+      "amount20_m": "1972.4",
+      "is_st": false
+    },
+    {
+      "symbol": "sz.002890",
+      "close": "15.62",
+      "amount20_m": "3819.8",
+      "is_st": false
+    },
+    {
+      "symbol": "sz.002193",
+      "close": "4.66",
+      "amount20_m": "2517.0",
+      "is_st": true
+    },
+    {
+      "symbol": "sz.001306",
+      "close": "57.07",
+      "amount20_m": "4423.2",
+      "is_st": false
+    },
+    {
+      "symbol": "sz.002694",
+      "close": "2.47",
+      "amount20_m": "1232.0",
+      "is_st": true
+    }
+  ],
+  "scores_path": "experiments/lab/e63/scores_label150_2025.parquet",
+  "veto_paths": [
+    "data/e37_veto/veto_daily.parquet",
+    "data/e37_veto/veto_daily_2025plus.parquet"
+  ],
+  "veto_n": 547
+}

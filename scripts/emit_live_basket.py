@@ -34,6 +34,7 @@ sys.path.insert(0, str(_root))
 
 from data.cleaner import board_limit_pct  # noqa: E402
 from strategy.score_basket import normalize_score_code  # noqa: E402
+from strategy.veto import load_veto_series  # noqa: E402
 
 logger = logging.getLogger("emit_live_basket")
 logging.basicConfig(level=logging.INFO,
@@ -121,6 +122,12 @@ def _plan(targets: list[Snap], capital: Decimal, min_pos: Decimal,
         alive = [s for s in alive if s not in dropped]
 
 
+def _veto_banned_at(veto: dict, asof: _date) -> frozenset[str]:
+    """asof 当日（或最近 ≤asof 交易日）生效的买入否决集；无覆盖→空集。"""
+    days = [d for d in veto if d <= asof]
+    return veto[max(days)] if days else frozenset()
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--scores", type=Path, required=True)
@@ -132,6 +139,8 @@ def main() -> int:
     ap.add_argument("--data-path", type=Path,
                     default=_root / "data" / "daily_bars")
     ap.add_argument("--bench", type=int, default=10, help="候补名单长度")
+    ap.add_argument("--veto-path", type=Path, action="append", default=None,
+                    help="e37 否决序列 parquet（可重复传，多文件按日期合并；缺省不启用——生产构型应启用）")
     ap.add_argument("--out", type=Path, default=None)
     args = ap.parse_args()
 
@@ -153,6 +162,17 @@ def main() -> int:
         raise SystemExit("无可用行情快照——检查 --data-path")
     asof = max(s.last_date for s in snaps.values()).date()
     age = (asof - sig_day).days
+
+    banned: frozenset[str] = frozenset()
+    if args.veto_path:
+        veto: dict = {}
+        for vp in args.veto_path:
+            veto.update(load_veto_series(vp))
+        banned = _veto_banned_at(veto, asof)
+        if banned:
+            logger.info(f"否决序列生效（asof {asof} 最近可用期）：{len(banned)} 只禁买")
+        else:
+            logger.warning(f"否决序列无 ≤{asof} 的日期——本清单未应用否决")
     logger.info(f"最新分数期 {sig_day}（{len(scores)} 标的，距数据端 {asof} "
                 f"{age} 天）")
     if age > args.max_score_age:
@@ -164,7 +184,8 @@ def main() -> int:
     for sym, _ in pool:
         s = snaps.get(sym)
         if s is None or s.last_date.date() != asof or not s.trading \
-                or s.at_limit or s.amount20 < args.min_amount:
+                or s.at_limit or s.amount20 < args.min_amount \
+                or sym in banned:
             continue
         if len(chosen) < args.topn:
             chosen.append(s)
@@ -199,6 +220,8 @@ def main() -> int:
         "cash_left": str(cash_left.quantize(Decimal("1"))),
         "n_rows": len(rows), "bench": bench_recs,
         "scores_path": str(args.scores),
+        "veto_paths": [str(v) for v in (args.veto_path or [])],
+        "veto_n": len(banned),
     }
     (out.parent / (out.stem + "_meta.json")).write_text(
         json.dumps(meta, ensure_ascii=False, indent=2))

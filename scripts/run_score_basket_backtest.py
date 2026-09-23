@@ -53,6 +53,7 @@ from strategy.score_basket import (
     ScoreBasketStrategy,
     normalize_score_code,
 )
+from strategy.veto import load_veto_series
 from scripts.gates import run_post_run_gates, run_pre_run_gates
 
 logging.basicConfig(level=logging.INFO,
@@ -131,16 +132,6 @@ def _load_industry_frames(industry_path: Path) -> list:
         raise FileNotFoundError(f"{industry_path} 无行业快照")
     return frames
 
-
-def _load_veto_series(veto_path: Path) -> dict:
-    """veto_daily.parquet (date, symbols[]) → {date: frozenset(代码)}。
-
-    代码格式与分数表一致（'000001.SZ'）——e37_veto_series 已规范。
-    """
-    d = pd.read_parquet(veto_path, columns=["date", "symbols"])
-    return {_date.fromisoformat(str(r.date)[:10]):
-            frozenset(normalize_score_code(s) for s in r.symbols)
-            for r in d.itertuples(index=False)}
 
 
 def _load_score_table(scores_path: Path) -> dict[_date, dict[str, float]]:
@@ -305,7 +296,7 @@ def main() -> int:
 
     veto_series = None
     if args.veto_path is not None:
-        veto_series = _load_veto_series(args.veto_path)
+        veto_series = load_veto_series(args.veto_path)
         logger.info(f"否决序列 {len(veto_series)} 期载入 ({args.veto_path})")
 
     strategy = ScoreBasketStrategy(

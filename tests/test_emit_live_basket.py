@@ -1,9 +1,11 @@
 """emit_live_basket._plan：整手迭代剔除 + min_pos 语义测试（纯函数零 IO）。"""
+from datetime import date as _date
 from decimal import Decimal as D
 
 import pandas as pd
 
-from scripts.emit_live_basket import Snap, _plan
+from scripts.emit_live_basket import Snap, _plan, _veto_banned_at
+from strategy.veto import load_veto_series
 
 
 def _snap(symbol: str, close: str, trading: bool = True,
@@ -38,3 +40,25 @@ class TestPlan:
         # 5000/5000 恰达线：close=50 → 100 股 = 5000 == min_pos 保留
         rows, _ = _plan([_snap("a", "50")], D("5000"), D("5000"))
         assert rows and rows[0][1] == 100
+
+
+class TestVeto:
+    def test_load_veto_series_normalizes(self, tmp_path) -> None:
+        p = tmp_path / "v.parquet"
+        pd.DataFrame({"date": ["2026-09-21", "2026-09-22"],
+                      "symbols": [["000001.SZ", "600000.SH"], ["300750.SZ"]]}
+                     ).to_parquet(p)
+        v = load_veto_series(p)
+        assert v[_date(2026, 9, 21)] == frozenset({"sz.000001", "sh.600000"})
+        assert v[_date(2026, 9, 22)] == frozenset({"sz.300750"})
+
+    def test_banned_at_picks_latest_le_asof(self) -> None:
+        v = {_date(2026, 9, 18): frozenset({"sz.000001"}),
+             _date(2026, 9, 21): frozenset({"sz.300750"}),
+             _date(2026, 9, 25): frozenset({"sh.600000"})}
+        assert _veto_banned_at(v, _date(2026, 9, 22)) == frozenset({"sz.300750"})
+        assert _veto_banned_at(v, _date(2026, 9, 21)) == frozenset({"sz.300750"})
+
+    def test_banned_at_empty_before_first(self) -> None:
+        v = {_date(2026, 9, 21): frozenset({"sz.300750"})}
+        assert _veto_banned_at(v, _date(2026, 9, 18)) == frozenset()
