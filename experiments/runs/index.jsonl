@@ -30,3 +30,4 @@
 {"run_id": "20260923-043905-e65-score-basket-v1-noseed", "status": "FINISHED", "timestamp": "2026-09-23T04:39:05+00:00", "note": "e70 sensitivity: timing-on arm"}
 {"run_id": "20260923-044636-e65-score-basket-v1-noseed", "status": "FINISHED", "timestamp": "2026-09-23T04:46:36+00:00", "note": "e70 horizon: h240 x top40 arm"}
 {"run_id": "20260923-045353-e65-score-basket-v1-noseed", "status": "FINISHED", "timestamp": "2026-09-23T04:53:53+00:00", "note": "e70 horizon: h240 x top100 arm"}
+{"run_id": "20260923-012520-e65-score-basket-v1-noseed", "status": "FINISHED", "timestamp": "2026-09-23T01:25:20+00:00", "note": "e68 width frontier: top20 arm"}
