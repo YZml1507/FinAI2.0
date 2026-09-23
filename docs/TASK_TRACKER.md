@@ -1782,3 +1782,4 @@ MDD 24.40% vs 17.40%（+7.00pp）、换手 6.45、round_trips 312（156→312 �
 - 2026-09-23 全量pytest权威确认: 1303 passed/2345s (pytest_full3, 与constants.py基线一致)。
 - 2026-09-23 e83特征边际扫描进行中: v0基线(BASE27) IC_train=0.2415/t21.3, OOS25 IC=0.1502/t10.6 (82+13月); v1-v4矩阵内7列边际臂+v5-v7辅助特征臂排队。
 - 2026-09-23 daily_ops bars缺陷修复×2: ①_needs容差end-2d把"昨日已更新"符号全跳过→改baostock query_trade_dates判末交易日(5277股范围); ②pandas CoW下 iloc[0] 链式赋值报错→.loc修复。
+- 2026-09-23 e83首轮收单: v4(BASE+fund_cov系+s1-4+fwd_ep共34列) 判强晋级——IC_train 0.2674(Δ+0.026>=0.010), t_train 24.1, OOS25 IC 0.2021(Δ+0.052)/t12.4。v1(+0.012)/v3(+0.007)/v2(+0.008)互补。v5-v7辅助特征臂(ann_cnt60/gdhs_qoq)续跑中。
