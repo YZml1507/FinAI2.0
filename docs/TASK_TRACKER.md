@@ -1465,3 +1465,11 @@ MDD 24.40% vs 17.40%（+7.00pp）、换手 6.45、round_trips 312（156→312 �
 - 下一步：h240×top40/top100 两臂 diag 后，全门电池重跑 top40 晋升口径
 - 新跑法固化：解禁/复牌行标 is_resumption（248 文件补标+extend 脚本防回归），
   D-1 门禁恢复真绿
+
+## runner is_resumption 覆写缺陷修复 — 2026-09-23 (c820400)
+- gated 晋升跑 050201 暴露第二缺陷：_enrich 无条件 df['is_resumption']=gap推导，
+  抹掉数据层翻转标记 ⇒ 占位形态停牌复牌 D-1 再挂；另发现首行 fill_value=0 误标
+- 修复：抽 _derive_is_resumption(df, cal_dates) 三路 OR（gap∪文件标记∪tradestatus
+  0→1 翻转），_enrich 改调用；+5 例单测，基线 1265
+- 另：v2 gated 跑误用 --start 2015-01-01（口径应 2016-08-01=score 覆盖窗起点），
+  已停；v3 gated（正确 --start + 修复码）在跑，预期 D-1 真绿后写晋升判定
