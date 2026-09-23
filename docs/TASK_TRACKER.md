@@ -1833,3 +1833,12 @@ MDD 24.40% vs 17.40%（+7.00pp）、换手 6.45、round_trips 312（156→312 �
   pct_buy ~0 无效（A股评级几乎全"买"）。
 - 后续：快照日增 → 修订事件流（rev_dir/rev_breadth）约 3-6 个月后可测；
   dispersion 已可入月度 gates 观察池。预登记 docs/E86_ATOMIC_FORECAST_PREREG.md。
+
+
+## 2026-09-23 e85 收单：判强不晋级
+
+- depth 轴网格 18 臂完结（详表 docs/E85_HYPERPARAM_RESCAN_EVAL.md）：
+  d16n900 OOS 最高 0.2770；分数层改善未传导 top40 篮 CAGR。
+- 引擎三验证（17 门全绿）：d16 38.42%/0.2036(184021)、
+  d16n900 37.28%/0.1988(191813)、d20 38.19%/0.1968(192820)，
+  ΔCAGR 全 <+1pp ⇒ v7 d6n600 维持生产参数；MDD 系统性改善 ~4pp 留档。
