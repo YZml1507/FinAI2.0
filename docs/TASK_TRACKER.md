@@ -1776,3 +1776,5 @@ MDD 24.40% vs 17.40%（+7.00pp）、换手 6.45、round_trips 312（156→312 �
 - **daily_ops 补 lhb 步 + LHB 增量拉取器**（2026-09-23 云）：`scripts/lab/pull_lhb_daily.py`（akshare EM 龙虎榜明细→data/lhb/{date}.parquet 增量续采，.empty 空日标记防重拉）——veto V2/日历延伸的新鲜度源接入编排（bars→lhb→veto→features→score→emit）。+1 测试，TEST_BASELINE_PASSED 1301→1302。
 - **data-delta-20260923 增量数据包发布**（2026-09-23 云）：112MB（e37_veto 全量+e63 scores/X 矩阵含 2025 OOS 段）→ Release tag `data-delta-20260923`，blueprint 建议已发（基础包之上叠加，spawned session 暖启动即可跑 daily_ops/emit_live_basket）。
 - **e62 正文采集扇出**（2026-09-23 云）：cninfo orgId 盲区修复（topSearch 官方解析+orgid_map.json 持久缓存——99xxxxx 式代码此前全量 nomatch，实证 300041 索引 0→143）后分片扇出：本地 5 道（2015-17/2018-20/2025-26×2/2021-24·pref489）+ 子会话 4 道（2021-24·pref{0},{3},{6},{1,2}，产物传 Release `notice-body-shards` 按 art_code 去重合并）。
+
+- **shadow_nav 实盘对照追踪器**（2026-09-23 云）：`scripts/lab/shadow_nav.py`——每个 experiments/live/basket_*.csv 按日推进假想净值（Σ shares×RAW close + cash_left，归一化到清单日），落 `experiments/live/shadow_nav.parquet`（basket_id,date,nav,ret,priced_n,n），不经回测口径修饰的真 OOS 对照记分；接入 daily_ops 尾步（bars→lhb→veto→features→score→emit→nav 七步）。+1 测试，TEST_BASELINE_PASSED 1302→1303。

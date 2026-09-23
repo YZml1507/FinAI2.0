@@ -74,3 +74,8 @@ class TestMain:
         assert "pull_lhb_daily.py" in cmds["lhb"][1]
         assert "20260923" in cmds["lhb"]
         assert STEPS.index("lhb") < STEPS.index("veto")
+
+    def test_nav_step_after_emit(self):
+        cmds = _commands("2026-09-23", 20, 150000)
+        assert "shadow_nav.py" in cmds["nav"][1]
+        assert STEPS.index("emit") < STEPS.index("nav")
