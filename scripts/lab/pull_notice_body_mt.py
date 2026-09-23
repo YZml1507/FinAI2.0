@@ -23,7 +23,24 @@ from pathlib import Path
 import pandas as pd
 import requests
 
-from scripts.lab.pull_notice_body import API, art_code, want
+import re
+
+# 与 pull_notice_body 同源（脚本直跑无包路径，内联常量）
+BODY_TYPES = ['年度报告全文', '半年度报告', '季度报告', '业绩快报',
+              '业绩预告', '重大事项', '停牌', '复牌', '诉讼', '仲裁',
+              '风险提示', '退市', '违规', '处罚', '警示', '问询',
+              '关注函', '监管', '立案调查']
+API = ('https://np-cnotice-stock.eastmoney.com/api/content/ann'
+       '?art_code={code}&client_source=web&page_index=1')
+
+
+def art_code(url):
+    m = re.search(r'(AN\d{15,})', str(url))
+    return m.group(1) if m else None
+
+
+def want(atype):
+    return any(k in str(atype) for k in BODY_TYPES)
 
 ROOT = Path(__file__).resolve().parents[2]
 META_DIR = ROOT / 'data' / 'notice_meta'
