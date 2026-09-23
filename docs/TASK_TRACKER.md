@@ -1665,3 +1665,9 @@ MDD 24.40% vs 17.40%（+7.00pp）、换手 6.45、round_trips 312（156→312 �
   换手 277.1%**：ΔCAGR −0.47pp → 判弱。
 - 模型侧变体全闭：horizon（h150）/参数面（d6n600 平坦）/损失（reg）
   /集成——label150-regressor 配置局部最优坐实。构造+模型双侧收敛。
+
+## 2026-09-23 e62 正文通道切换（东财 567 → 巨潮 PDF）
+- 东财 np-cnotice 正文端点对数据中心 IP 整体 567 WAF 封禁（本机+子会话双出口复测一致）；np-anotice 列表端点仍正常。
+- 绕行：pull_notice_body_cninfo.py（hisAnnouncement 索引→标题双形式匹配→static.cninfo PDF→PyMuPDF 抽文），冒烟命中 78%（72/92），miss 主因 nomatch。
+- 三道并行 2015-17/2018-20/2021-26，断点 done_codes_mt.jsonl 与旧 done_codes.json 合并兼容。
+- e62 NLP 门仍受限于覆盖率；巨潮源单次约 0.5-1.5s/条（含 PDF 下载+抽文）。
