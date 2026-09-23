@@ -28,6 +28,10 @@ GRID = {
     "p3_lr5": dict(learning_rate=0.05),
     "p4_n400": dict(n_estimators=400),
     "p5_n900": dict(n_estimators=900),
+    # 二轮：d8 优势方向细化
+    "q0_d10": dict(max_depth=10),
+    "q1_d8n900": dict(max_depth=8, n_estimators=900),
+    "q2_d8lr5": dict(max_depth=8, learning_rate=0.05),
 }
 
 
