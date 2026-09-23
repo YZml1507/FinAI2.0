@@ -103,13 +103,23 @@ def build_event_sets(r_index) -> dict[str, dict]:
     # 大宗卖方机构
     fs = glob.glob(str(ROOT / 'data/block_trade/*.parquet'))
     if fs:
-        b = pd.concat([pd.read_parquet(
-            f, columns=['trade_date', 'ts_code', 'seller_broker'])
-            for f in fs])
-        b = b[b['seller_broker'].astype(str).str.contains('机构专用',
-                                                         na=False)]
-        b['trade_date'] = pd.to_datetime(b['trade_date'])
-        sets['ev_bt_inst_sell'] = _day_codes(b, 'trade_date')
+        # 异构 schema 共存：EN 分片（2015-24，含 seller_broker）与 CN 分片
+        # （2025-26 新采，无券商列）——只读含目标列的分片，缺列分片跳过登记
+        import pyarrow.parquet as _pq
+        need_cols = {'trade_date', 'ts_code', 'seller_broker'}
+        ok = [f for f in fs
+              if need_cols <= {c.name for c in _pq.read_schema(f)}]
+        skipped = len(fs) - len(ok)
+        if skipped:
+            print(f"[note] block_trade 分片跳过（缺列）: {skipped}", flush=True)
+        if ok:
+            b = pd.concat([pd.read_parquet(
+                f, columns=['trade_date', 'ts_code', 'seller_broker'])
+                for f in ok])
+            b = b[b['seller_broker'].astype(str).str.contains('机构专用',
+                                                             na=False)]
+            b['trade_date'] = pd.to_datetime(b['trade_date'])
+            sets['ev_bt_inst_sell'] = _day_codes(b, 'trade_date')
     # cninfo 减持计划/司法冻结
     for kw, tag in (('减持计划', 'ev_reduce'), ('司法冻结', 'ev_frozen')):
         fs = glob.glob(str(ROOT / f'data/cninfo_events/{kw}_*.parquet'))
