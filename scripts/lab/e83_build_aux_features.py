@@ -41,6 +41,8 @@ def load_sig_dates() -> np.ndarray:
 def build_ann_cnt60(sig_dates: np.ndarray) -> pd.DataFrame:
     rows = []
     for f in sorted(glob.glob(str(ROOT / "data/notice_meta/*.parquet"))):
+        if not Path(f).stem.isdigit():
+            continue
         d = pd.read_parquet(f, columns=["代码", "公告日期"])
         d = d[d["公告日期"].notna()]
         rows.append(d)
