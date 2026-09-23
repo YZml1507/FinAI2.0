@@ -328,3 +328,48 @@ class TestSensitivityReportFixture:
             assert actual == expected, (
                 f"{name}/{slip}: 实测 {actual} ≠ 文档固化 {expected} —— 改了引擎/费用/"
                 f"价格口径就必须重出敏感度报告")
+
+
+class TestPerBoardLimits:
+    """per_board_limits=True：按 bar.symbol 板块登记表限幅（E-3 既有缺陷修复）。"""
+
+    def test_main_board_10pct_clamp_buy(self) -> None:
+        # sh.600000 主板 10%：open=11.00 涨停开，滑点推 11.01 > 11.00 ⇒ 限回
+        pm = make_price_model(per_board_limits=True)
+        assert pm(_order(OrderSide.BUY), _bar(o="11.00", p="10.00")) == D("11.00")
+
+    def test_chinext_20pct_allows_wider(self) -> None:
+        # sz.300001 创业板 20%：open=11.50 → 11.5055→11.51 < 12.00 不截断
+        pm = make_price_model(per_board_limits=True)
+        bar = _bar(o="11.50", p="10.00", symbol="sz.300001")
+        assert pm(_order(OrderSide.BUY), bar) == D("11.51")
+
+    def test_chinext_20pct_clamp_buy(self) -> None:
+        # open=12.00 涨停开 → 12.01 > 12.00 ⇒ 限回 12.00
+        pm = make_price_model(per_board_limits=True)
+        bar = _bar(o="12.00", p="10.00", symbol="sz.300001")
+        assert pm(_order(OrderSide.BUY), bar) == D("12.00")
+
+    def test_st_5pct_clamp(self) -> None:
+        # ST 5%：open=10.50 → 10.5055→10.51 > 10.50 ⇒ 限回 10.50
+        pm = make_price_model(per_board_limits=True)
+        bar = _bar(o="10.50", p="10.00", is_st=True)
+        assert pm(_order(OrderSide.BUY), bar) == D("10.50")
+
+    def test_sell_side_clamp(self) -> None:
+        # 主板跌停开 9.00：9.00×0.9995=8.9955→9.00 不越界；再压 15bps：8.99<9.00 ⇒ 限回
+        pm = make_price_model(
+            default_fee_config(slippage_rate=D("0.0015")),
+            per_board_limits=True)
+        bar = _bar(o="9.00", p="10.00")
+        assert pm(_order(OrderSide.SELL), bar) == D("9.00")
+
+    def test_explicit_limit_pct_wins(self) -> None:
+        # limit_pct 显式给定时优先于逐板块推导（向后兼容）
+        pm = make_price_model(limit_pct=D("0.1"), per_board_limits=True)
+        bar = _bar(o="11.50", p="10.00", symbol="sz.300001")
+        assert pm(_order(OrderSide.BUY), bar) == D("11.00")
+
+    def test_unclamped_inside_board(self) -> None:
+        pm = make_price_model(per_board_limits=True)
+        assert pm(_order(OrderSide.BUY), _bar()) == D("10.05")

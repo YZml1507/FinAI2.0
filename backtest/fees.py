@@ -66,6 +66,7 @@ from typing import Callable, Iterable, Sequence
 
 from backtest.constants import FeeItem, OrderSide
 from backtest.types import Bar, Order
+from data.cleaner import board_limit_pct
 
 __all__ = [
     "FeeError",
@@ -413,6 +414,7 @@ def make_price_model(
     config: FeeConfig | None = None,
     *,
     limit_pct: Decimal | None = None,
+    per_board_limits: bool = False,
     gap_slippage_pct: Decimal | None = None,
     gap_threshold_pct: Decimal = Decimal("0.03"),
 ) -> Callable[[Order, Bar], Decimal]:
@@ -437,6 +439,9 @@ def make_price_model(
         config: 费率配置（基础滑点率来源）；``None`` ⇒ :func:`default_fee_config`（5bps）。
         limit_pct: 可选涨跌停幅度（如 ``Decimal("0.1")``）。``None`` ⇒ 只推价+取整，
             不做限幅（调用方/数据层未提供幅度时的安全默认）。
+        per_board_limits: ``True`` 且 ``limit_pct`` 为空时，按 ``bar.symbol``
+            板块登记表取限幅（ST 5% / 主板 10% / 创业科创 20%）——
+            滑点后成交价不得越过真实板价。未登记代码抛 ``UnknownBoardError``。
         gap_slippage_pct: 可选缺口滑点率（如 ``Decimal("0.0010")`` = 10bps）。``None`` ⇒
             不启用缺口滑点（默认，向后兼容）。非空时在检测到缺口超阈值时额外叠加。
         gap_threshold_pct: 缺口检测阈值（默认 3% = ``Decimal("0.03")``）。当
@@ -480,11 +485,17 @@ def make_price_model(
                 slipped = slipped * (_ONE + sign * gap_slippage_pct)
 
         price = _tick_round(slipped)
-        if limit_pct is None:
+        eff_pct = limit_pct
+        if eff_pct is None and per_board_limits:
+            # 逐标的限幅：ST 5%，否则按板块登记表（10%/20% 等）——
+            # 滑点不得把成交价推过真实板价（FR-BT-6 物理约束）
+            eff_pct = (Decimal("0.05") if bar.is_st
+                       else Decimal(str(board_limit_pct(bar.symbol))) / 100)
+        if eff_pct is None:
             return price
         # 涨跌停限幅（13 号：滑点后成交价不越界）
-        limit_up = _tick_round(bar.preclose * (_ONE + limit_pct))
-        limit_down = _tick_round(bar.preclose * (_ONE - limit_pct))
+        limit_up = _tick_round(bar.preclose * (_ONE + eff_pct))
+        limit_down = _tick_round(bar.preclose * (_ONE - eff_pct))
         if order.side is OrderSide.BUY and price > limit_up:
             return limit_up
         if order.side is OrderSide.SELL and price < limit_down:

@@ -769,7 +769,8 @@ def run_dividend_backtest_2015_2024(
                     cash_yield_series=cash_yield_series)
     matcher = MatchEngine(
         fee_model=make_fee_model(),
-        price_model=price_model if price_model is not None else make_price_model())
+        price_model=(price_model if price_model is not None
+                     else make_price_model(per_board_limits=True)))
     broker = BacktestBroker(
         matcher=matcher, ledger=ledger, feed=feed, enable_dividend_tax=True,
         # e15：基金分红不适用股息红利差别化个税（股票口径税）——攻击资产豁免

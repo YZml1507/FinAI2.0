@@ -271,8 +271,9 @@ def main() -> int:
     ledger = Ledger(initial_cash=args.capital, date=start)
     fee_config = (default_fee_config(slippage_rate=args.slippage_rate)
                   if args.slippage_rate is not None else None)
-    matcher = MatchEngine(fee_model=make_fee_model(fee_config),
-                          price_model=make_price_model(fee_config))
+    matcher = MatchEngine(
+        fee_model=make_fee_model(fee_config),
+        price_model=make_price_model(fee_config, per_board_limits=True))
     broker = BacktestBroker(matcher=matcher, ledger=ledger, feed=feed,
                             enable_dividend_tax=True)
     engine = BacktestEngine(broker=broker, feed=feed)

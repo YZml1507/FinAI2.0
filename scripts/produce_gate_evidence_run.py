@@ -295,7 +295,7 @@ def _slippage_price_model(mult: Decimal) -> Any:
     from dataclasses import replace as _dreplace
     cfg = default_fee_config()
     cfg = _dreplace(cfg, slippage_rate=cfg.slippage_rate * mult)
-    return make_price_model(config=cfg)
+    return make_price_model(config=cfg, per_board_limits=True)
 
 
 def main() -> int:
