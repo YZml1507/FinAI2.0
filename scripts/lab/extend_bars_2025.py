@@ -72,6 +72,11 @@ def main() -> int:
             df["isST"] = df["isST"].astype(str)
             df["date"] = pd.to_datetime(df["date"]).dt.date
             df = df[COLS].sort_values("date", kind="stable").reset_index(drop=True)
+            # D-1 豁免列：停牌占位行(tradestatus==0)→复牌行(tradestatus==1)
+            # 的首个交易日记 is_resumption=True（复牌结构性跳变属真实行情）
+            _ts = df["tradestatus"].fillna("1").astype(int)
+            df["is_resumption"] = (_ts == 1) & (_ts.shift(1) == 0)
+            df["is_resumption"].iloc[0] = False
             for yr, g in df.groupby(pd.to_datetime(df["date"]).dt.year):
                 fp = symdir / f"{yr}.parquet"
                 if fp.exists():
