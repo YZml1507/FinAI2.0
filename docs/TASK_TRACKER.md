@@ -1671,3 +1671,13 @@ MDD 24.40% vs 17.40%（+7.00pp）、换手 6.45、round_trips 312（156→312 �
 - 绕行：pull_notice_body_cninfo.py（hisAnnouncement 索引→标题双形式匹配→static.cninfo PDF→PyMuPDF 抽文），冒烟命中 78%（72/92），miss 主因 nomatch。
 - 三道并行 2015-17/2018-20/2021-26，断点 done_codes_mt.jsonl 与旧 done_codes.json 合并兼容。
 - e62 NLP 门仍受限于覆盖率；巨潮源单次约 0.5-1.5s/条（含 PDF 下载+抽文）。
+
+## 2026-09-23 e81 veto 叠加层收单：判强→并入现役基线
+
+- V-on gated（run 20260923-110342）：CAGR **33.55%**/MDD **0.2249**/
+  换手 300.1% vs V-base（052313）32.42%/0.2291/298.2% —— ΔCAGR **+1.13pp**
+  ≥+1pp 且 ΔMDD −0.42pp 同向 → 预登记判强分支命中，17 门全 PASS。
+- **现役基线升级**：top40 等权 + e37 veto_daily 买侧否决（含分数顺延回填）。
+  veto 规则冻结不追参；后续敏感度臂（amt0/资金档）统一改在 V-on 口径跑。
+- G-REPRO 补修：veto_path+veto_sha256 入 run_params（同 commit 链）。
+- 证据：docs/E81_VETO_OVERLAY_RESULT.md。

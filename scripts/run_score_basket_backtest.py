@@ -438,6 +438,9 @@ def main() -> int:
     run_params = dict(_asdict(strategy_config))
     run_params["scores_sha256"] = _sha256(args.scores.read_bytes()).hexdigest()[:16]
     run_params["scores_path"] = str(args.scores)
+    if args.veto_path is not None:
+        run_params["veto_sha256"] = _sha256(args.veto_path.read_bytes()).hexdigest()[:16]
+        run_params["veto_path"] = str(args.veto_path)
 
     run_id = registry.record_run(
         params=run_params,
