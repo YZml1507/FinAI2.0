@@ -422,3 +422,42 @@ class TestProvenanceNullSafety:
         d2 = json.loads((tmp_path / "e2" / "runs" / f"{rid2}.json").read_text("utf-8"))
         assert d2["repro_fingerprint"] is None
         assert d2["calendar_hash"] is None and d2["universe_hash"] is None
+
+
+class TestScoresIdentityInFingerprint:
+    """G-REPRO-1 回归锁：分数表（--scores parquet）身份必须入 params_hash。
+
+    实测事故：run 20260923-062849 vs 064906 用了不同分数文件但
+    params 全同 ⇒ 指纹相同而指标分叉 ⇒ G-REPRO-1 撞对 FAIL。
+    锁两层：(a) params 语义锁——同参 + 不同 scores_sha256 ⇒
+    params_hash 与指纹皆变；(b) 源码锁——runner 的 record_run 调用
+    必须把 scores_sha256 注入 params（防未来重构静默移除）。
+    """
+
+    def test_scores_sha256_changes_fingerprint(self, tmp_path: Path) -> None:
+        from reporting.provenance import repro_fingerprint
+        base_params = {"strategy": "score_basket", "top": 40}
+        reg1 = ExperimentRegistry(
+            tmp_path / "e1", code_version="abc1234", data_version="sha256:abc",
+            code_hash="c1", data_hash="d1", calendar_hash="cal",
+            universe_hash="u", clock=_clock())
+        r1 = reg1.record_run(dict(base_params, scores_sha256="aaa"),
+                             _report(), seed=None)
+        reg2 = ExperimentRegistry(
+            tmp_path / "e2", code_version="abc1234", data_version="sha256:abc",
+            code_hash="c1", data_hash="d1", calendar_hash="cal",
+            universe_hash="u", clock=_clock(s=1))
+        r2 = reg2.record_run(dict(base_params, scores_sha256="bbb"),
+                             _report(), seed=None)
+        d1 = json.loads((tmp_path / "e1" / "runs" / f"{r1}.json").read_text())
+        d2 = json.loads((tmp_path / "e2" / "runs" / f"{r2}.json").read_text())
+        assert d1["params_hash"] != d2["params_hash"]
+        assert d1["repro_fingerprint"] != d2["repro_fingerprint"]
+
+    def test_runner_injects_scores_sha256_into_params(self) -> None:
+        """源码契约：record_run 收到的 params 必须含 scores 身份。"""
+        src = (Path(__file__).resolve().parents[1]
+               / "scripts" / "run_score_basket_backtest.py").read_text("utf-8")
+        assert "scores_sha256" in src and "run_params" in src
+        # params 必须引用 run_params（含 hash 的字典），非裸 asdict
+        assert "params=run_params" in src
