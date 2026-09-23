@@ -3,11 +3,12 @@
 把「产分数 → 产清单」的手工链固化成可定时执行的单一入口：
 
   1. bars    增量续采（extend_bars_2025 --end 今天；幂等水位）
-  2. veto    否决序列延伸（e37_veto_series --run --extend-calendar
+  2. lhb     龙虎榜日增量（pull_lhb_daily；veto V2 与日历延伸的新鲜度源）
+  3. veto    否决序列延伸（e37_veto_series --run --extend-calendar
              --min-date 2025-01-01 --out veto_daily_2025plus.parquet）
-  3. features 2025 特征矩阵重建（e63_build_2025 → e63_Xlab_2025.parquet）
-  4. score   2025 分数重算（e63_score_2025 → scores_label150_2025.parquet）
-  5. emit    实盘篮（emit_live_basket --veto-path ×2）
+  4. features 2025 特征矩阵重建（e63_build_2025 → e63_Xlab_2025.parquet）
+  5. score   2025 分数重算（e63_score_2025 → scores_label150_2025.parquet）
+  6. emit    实盘篮（emit_live_basket --veto-path ×2）
 
 纪律：fail-closed——任一步非零退出即停，宁可不发清单不发半新鲜数据；
 每步日志落 ``experiments/live/ops_log/<stamp>_<step>.log`` 可回查。
@@ -15,6 +16,7 @@
 用法：
   python -m scripts.daily_ops                    # 全链
   python -m scripts.daily_ops --steps veto,emit  # 子集
+  # 注：veto 依赖 lhb 最新分片；跨日跑 veto 前先跑 lhb
   python -m scripts.daily_ops --topn 20 --capital 150000
 """
 from __future__ import annotations
@@ -35,12 +37,14 @@ VETO_HIST = ROOT / "data" / "e37_veto" / "veto_daily.parquet"
 VETO_25 = ROOT / "data" / "e37_veto" / "veto_daily_2025plus.parquet"
 SCORES_25 = ROOT / "experiments" / "lab" / "e63" / "scores_label150_2025.parquet"
 
-STEPS = ("bars", "veto", "features", "score", "emit")
+STEPS = ("bars", "lhb", "veto", "features", "score", "emit")
 
 
 def _commands(today: str, topn: int, capital: int) -> dict[str, list[str]]:
     return {
         "bars": [PY, str(LAB / "extend_bars_2025.py"), "--end", today],
+        "lhb": [PY, str(LAB / "pull_lhb_daily.py"), "--end",
+                today.replace("-", "")],
         "veto": [PY, str(LAB / "e37_veto_series.py"), "--run",
                  "--extend-calendar", "--min-date", "2025-01-01",
                  "--out", str(VETO_25)],

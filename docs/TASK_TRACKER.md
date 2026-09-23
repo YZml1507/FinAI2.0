@@ -1772,3 +1772,7 @@ MDD 24.40% vs 17.40%（+7.00pp）、换手 6.45、round_trips 312（156→312 �
 - **run 产物瘦身：ledger_entries sidecar 化**（2026-09-23 云）：宽篮 run 的 evidence.ledger_entries（top200 臂达 39.4MB，121414 产物 79.5MB 逼近 GitHub 100MB 硬限）拆为 `runs/<id>.ledger.json.gz`（mtime=0 确定性压缩，~10x 收缩）；evidence 原位留 `{_sidecar,sha256,count}` 引用块；context_builder 回填时惰性解压还原为 list（sha/count fail-closed 校验）——A/L 门零改动兼容；旧内联格式产物继续可读。+4 测试锁（spill 往返/内联透传/空表不拆/篡改 raise），TEST_BASELINE_PASSED 1291→1295。
 
 - **daily_ops 日频运维管线落地**（2026-09-23 云）：DEPLOY_LIVE 三步走固化为一键编排 `scripts/daily_ops.py`（bars 增量→veto_2025plus 重建→e63_Xlab_2025→scores_2025→emit_live_basket），--steps 子集/每步独立日志/fail-closed 即停；顺带修 extend_bars_2025 `_needs` 硬编码水位改为随 --end 滑动（此前 2026-09-18 后的数据不会被续采）。+6 测试锁，TEST_BASELINE_PASSED 1295→1301。
+
+- **daily_ops 补 lhb 步 + LHB 增量拉取器**（2026-09-23 云）：`scripts/lab/pull_lhb_daily.py`（akshare EM 龙虎榜明细→data/lhb/{date}.parquet 增量续采，.empty 空日标记防重拉）——veto V2/日历延伸的新鲜度源接入编排（bars→lhb→veto→features→score→emit）。+1 测试，TEST_BASELINE_PASSED 1301→1302。
+- **data-delta-20260923 增量数据包发布**（2026-09-23 云）：112MB（e37_veto 全量+e63 scores/X 矩阵含 2025 OOS 段）→ Release tag `data-delta-20260923`，blueprint 建议已发（基础包之上叠加，spawned session 暖启动即可跑 daily_ops/emit_live_basket）。
+- **e62 正文采集扇出**（2026-09-23 云）：cninfo orgId 盲区修复（topSearch 官方解析+orgid_map.json 持久缓存——99xxxxx 式代码此前全量 nomatch，实证 300041 索引 0→143）后分片扇出：本地 5 道（2015-17/2018-20/2025-26×2/2021-24·pref489）+ 子会话 4 道（2021-24·pref{0},{3},{6},{1,2}，产物传 Release `notice-body-shards` 按 art_code 去重合并）。

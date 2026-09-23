@@ -68,3 +68,9 @@ class TestMain:
         assert rc == 0
         assert ran == ["e63_score_2025", "emit_live_basket"]
         assert "bars" not in STEPS[:0]  # 顺序常量不被破坏
+
+    def test_lhb_step_wired_before_veto(self):
+        cmds = _commands("2026-09-23", 20, 150000)
+        assert "pull_lhb_daily.py" in cmds["lhb"][1]
+        assert "20260923" in cmds["lhb"]
+        assert STEPS.index("lhb") < STEPS.index("veto")
