@@ -1473,3 +1473,13 @@ MDD 24.40% vs 17.40%（+7.00pp）、换手 6.45、round_trips 312（156→312 �
   0→1 翻转），_enrich 改调用；+5 例单测，基线 1265
 - 另：v2 gated 跑误用 --start 2015-01-01（口径应 2016-08-01=score 覆盖窗起点），
   已停；v3 gated（正确 --start + 修复码）在跑，预期 D-1 真绿后写晋升判定
+
+## ★ top40 晋升为新基线构型 — 2026-09-23（e70 收单）
+- gated 晋升跑 20260923-052313：CAGR 32.42%（与前沿 033758 逐位复现）、
+  MDD 0.2291；门态 15 PASS+D-4 SKIP+S-2 SKIP+E-3 INCONCLUSIVE=
+  与基线 232024 逐项一致；D-1 5276/5276 全 PASS（修复后真绿）
+- E-3 artifact 扫：1988/1988 带板价，3 笔微越 1-2 分（基线同型 6/4818，
+  引擎价格模型既有缺陷登记：滑点应在 limit 处截断——入 checklist）
+- **现役基线 = e63 label150(h150) top40 等权 / reb60 / no-timing /
+  amt5M / min_pos5000**（替代 top100；E65 文档已标记 superseded）
+- 权威产物已晋级 experiments/runs/ + index.jsonl（含 5 个被引臂产物补齐）

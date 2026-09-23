@@ -1,5 +1,9 @@
 # e65 分数宽篮晋升评估 — 2026-09-22
 
+> ⚠️ 已被 e70 取代：2026-09-23 全门电池晋升跑后，现役基线构型为
+> **top40**（CAGR 32.42%/MDD 0.229，run 20260923-052313），
+> 见 docs/E70_TOP40_EVAL.md §6 终判。本文档留存为前任基线证据。
+
 > 口径：e63 冻结晋升线（CAGR ≥12% @3x 成本、MDD ≤0.35、29 门证据）。
 > 权威产物：`experiments/runs/20260922-232024-e65-score-basket-v1-noseed.json`
 > （fingerprint 9b583f33…，17 门全绿口径：15 PASS + D-4 SKIP + S-2 SKIP +
