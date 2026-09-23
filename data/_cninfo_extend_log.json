@@ -1,0 +1,1013 @@
+{
+ "finished": "2026-09-22T23:53:27.715676+00:00",
+ "files": [
+  {
+   "group": "cninfo_events",
+   "kw": "减持计划",
+   "month": "202501",
+   "rows": 234
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "减持计划",
+   "month": "202502",
+   "rows": 339
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "减持计划",
+   "month": "202503",
+   "rows": 311
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "减持计划",
+   "month": "202504",
+   "rows": 189
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "减持计划",
+   "month": "202505",
+   "rows": 289
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "减持计划",
+   "month": "202506",
+   "rows": 365
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "减持计划",
+   "month": "202507",
+   "rows": 486
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "减持计划",
+   "month": "202508",
+   "rows": 476
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "减持计划",
+   "month": "202509",
+   "rows": 578
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "减持计划",
+   "month": "202510",
+   "rows": 360
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "减持计划",
+   "month": "202511",
+   "rows": 464
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "减持计划",
+   "month": "202512",
+   "rows": 470
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "减持计划",
+   "month": "202601",
+   "rows": 473
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "减持计划",
+   "month": "202602",
+   "rows": 263
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "减持计划",
+   "month": "202603",
+   "rows": 316
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "减持计划",
+   "month": "202604",
+   "rows": 305
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "减持计划",
+   "month": "202605",
+   "rows": 389
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "减持计划",
+   "month": "202606",
+   "rows": 303
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "减持计划",
+   "month": "202607",
+   "rows": 259
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "减持计划",
+   "month": "202608",
+   "rows": 204
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "减持计划",
+   "month": "202609",
+   "rows": 235
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "司法冻结",
+   "month": "202501",
+   "rows": 23
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "司法冻结",
+   "month": "202502",
+   "rows": 29
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "司法冻结",
+   "month": "202503",
+   "rows": 25
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "司法冻结",
+   "month": "202504",
+   "rows": 26
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "司法冻结",
+   "month": "202505",
+   "rows": 31
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "司法冻结",
+   "month": "202506",
+   "rows": 29
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "司法冻结",
+   "month": "202507",
+   "rows": 27
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "司法冻结",
+   "month": "202508",
+   "rows": 28
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "司法冻结",
+   "month": "202509",
+   "rows": 39
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "司法冻结",
+   "month": "202510",
+   "rows": 17
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "司法冻结",
+   "month": "202511",
+   "rows": 29
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "司法冻结",
+   "month": "202512",
+   "rows": 40
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "司法冻结",
+   "month": "202601",
+   "rows": 36
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "司法冻结",
+   "month": "202602",
+   "rows": 25
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "司法冻结",
+   "month": "202603",
+   "rows": 40
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "司法冻结",
+   "month": "202604",
+   "rows": 33
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "司法冻结",
+   "month": "202605",
+   "rows": 22
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "司法冻结",
+   "month": "202606",
+   "rows": 26
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "司法冻结",
+   "month": "202607",
+   "rows": 22
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "司法冻结",
+   "month": "202608",
+   "rows": 18
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "司法冻结",
+   "month": "202609",
+   "rows": 21
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "增持计划",
+   "month": "202501",
+   "rows": 136
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "增持计划",
+   "month": "202502",
+   "rows": 89
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "增持计划",
+   "month": "202503",
+   "rows": 89
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "增持计划",
+   "month": "202504",
+   "rows": 224
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "增持计划",
+   "month": "202505",
+   "rows": 87
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "增持计划",
+   "month": "202506",
+   "rows": 82
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "增持计划",
+   "month": "202507",
+   "rows": 91
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "增持计划",
+   "month": "202508",
+   "rows": 66
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "增持计划",
+   "month": "202509",
+   "rows": 79
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "增持计划",
+   "month": "202510",
+   "rows": 78
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "增持计划",
+   "month": "202511",
+   "rows": 57
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "增持计划",
+   "month": "202512",
+   "rows": 56
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "增持计划",
+   "month": "202601",
+   "rows": 45
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "增持计划",
+   "month": "202602",
+   "rows": 44
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "增持计划",
+   "month": "202603",
+   "rows": 73
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "增持计划",
+   "month": "202604",
+   "rows": 68
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "增持计划",
+   "month": "202605",
+   "rows": 67
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "增持计划",
+   "month": "202606",
+   "rows": 110
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "增持计划",
+   "month": "202607",
+   "rows": 192
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "增持计划",
+   "month": "202608",
+   "rows": 58
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "增持计划",
+   "month": "202609",
+   "rows": 64
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "权益变动",
+   "month": "202501",
+   "rows": 591
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "权益变动",
+   "month": "202502",
+   "rows": 567
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "权益变动",
+   "month": "202503",
+   "rows": 672
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "权益变动",
+   "month": "202504",
+   "rows": 611
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "权益变动",
+   "month": "202505",
+   "rows": 702
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "权益变动",
+   "month": "202506",
+   "rows": 832
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "权益变动",
+   "month": "202507",
+   "rows": 837
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "权益变动",
+   "month": "202508",
+   "rows": 703
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "权益变动",
+   "month": "202509",
+   "rows": 930
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "权益变动",
+   "month": "202510",
+   "rows": 572
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "权益变动",
+   "month": "202511",
+   "rows": 888
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "权益变动",
+   "month": "202512",
+   "rows": 895
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "权益变动",
+   "month": "202601",
+   "rows": 759
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "权益变动",
+   "month": "202602",
+   "rows": 441
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "权益变动",
+   "month": "202603",
+   "rows": 537
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "权益变动",
+   "month": "202604",
+   "rows": 577
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "权益变动",
+   "month": "202605",
+   "rows": 632
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "权益变动",
+   "month": "202606",
+   "rows": 541
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "权益变动",
+   "month": "202607",
+   "rows": 571
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "权益变动",
+   "month": "202608",
+   "rows": 396
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "权益变动",
+   "month": "202609",
+   "rows": 454
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "股权质押",
+   "month": "202501",
+   "rows": 66
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "股权质押",
+   "month": "202502",
+   "rows": 34
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "股权质押",
+   "month": "202503",
+   "rows": 65
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "股权质押",
+   "month": "202504",
+   "rows": 63
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "股权质押",
+   "month": "202505",
+   "rows": 42
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "股权质押",
+   "month": "202506",
+   "rows": 63
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "股权质押",
+   "month": "202507",
+   "rows": 51
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "股权质押",
+   "month": "202508",
+   "rows": 41
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "股权质押",
+   "month": "202509",
+   "rows": 35
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "股权质押",
+   "month": "202510",
+   "rows": 26
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "股权质押",
+   "month": "202511",
+   "rows": 33
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "股权质押",
+   "month": "202512",
+   "rows": 41
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "股权质押",
+   "month": "202601",
+   "rows": 50
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "股权质押",
+   "month": "202602",
+   "rows": 24
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "股权质押",
+   "month": "202603",
+   "rows": 42
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "股权质押",
+   "month": "202604",
+   "rows": 38
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "股权质押",
+   "month": "202605",
+   "rows": 23
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "股权质押",
+   "month": "202606",
+   "rows": 37
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "股权质押",
+   "month": "202607",
+   "rows": 42
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "股权质押",
+   "month": "202608",
+   "rows": 28
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "股权质押",
+   "month": "202609",
+   "rows": 17
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "高送转",
+   "month": "202501",
+   "rows": 0
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "高送转",
+   "month": "202502",
+   "rows": 0
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "高送转",
+   "month": "202503",
+   "rows": 0
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "高送转",
+   "month": "202504",
+   "rows": 0
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "高送转",
+   "month": "202505",
+   "rows": 0
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "高送转",
+   "month": "202506",
+   "rows": 0
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "高送转",
+   "month": "202507",
+   "rows": 0
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "高送转",
+   "month": "202508",
+   "rows": 0
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "高送转",
+   "month": "202509",
+   "rows": 0
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "高送转",
+   "month": "202510",
+   "rows": 0
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "高送转",
+   "month": "202511",
+   "rows": 0
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "高送转",
+   "month": "202512",
+   "rows": 0
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "高送转",
+   "month": "202601",
+   "rows": 0
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "高送转",
+   "month": "202602",
+   "rows": 0
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "高送转",
+   "month": "202603",
+   "rows": 0
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "高送转",
+   "month": "202604",
+   "rows": 0
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "高送转",
+   "month": "202605",
+   "rows": 0
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "高送转",
+   "month": "202606",
+   "rows": 0
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "高送转",
+   "month": "202607",
+   "rows": 0
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "高送转",
+   "month": "202608",
+   "rows": 1
+  },
+  {
+   "group": "cninfo_events",
+   "kw": "高送转",
+   "month": "202609",
+   "rows": 0
+  },
+  {
+   "group": "esop_events",
+   "kw": "员工持股计划",
+   "month": "202501",
+   "rows": 236
+  },
+  {
+   "group": "esop_events",
+   "kw": "员工持股计划",
+   "month": "202502",
+   "rows": 184
+  },
+  {
+   "group": "esop_events",
+   "kw": "员工持股计划",
+   "month": "202503",
+   "rows": 374
+  },
+  {
+   "group": "esop_events",
+   "kw": "员工持股计划",
+   "month": "202504",
+   "rows": 609
+  },
+  {
+   "group": "esop_events",
+   "kw": "员工持股计划",
+   "month": "202505",
+   "rows": 371
+  },
+  {
+   "group": "esop_events",
+   "kw": "员工持股计划",
+   "month": "202506",
+   "rows": 402
+  },
+  {
+   "group": "esop_events",
+   "kw": "员工持股计划",
+   "month": "202507",
+   "rows": 373
+  },
+  {
+   "group": "esop_events",
+   "kw": "员工持股计划",
+   "month": "202508",
+   "rows": 510
+  },
+  {
+   "group": "esop_events",
+   "kw": "员工持股计划",
+   "month": "202509",
+   "rows": 522
+  },
+  {
+   "group": "esop_events",
+   "kw": "员工持股计划",
+   "month": "202510",
+   "rows": 294
+  },
+  {
+   "group": "esop_events",
+   "kw": "员工持股计划",
+   "month": "202511",
+   "rows": 291
+  },
+  {
+   "group": "esop_events",
+   "kw": "员工持股计划",
+   "month": "202512",
+   "rows": 335
+  },
+  {
+   "group": "esop_events",
+   "kw": "员工持股计划",
+   "month": "202601",
+   "rows": 249
+  },
+  {
+   "group": "esop_events",
+   "kw": "员工持股计划",
+   "month": "202602",
+   "rows": 241
+  },
+  {
+   "group": "esop_events",
+   "kw": "员工持股计划",
+   "month": "202603",
+   "rows": 314
+  },
+  {
+   "group": "esop_events",
+   "kw": "员工持股计划",
+   "month": "202604",
+   "rows": 499
+  },
+  {
+   "group": "esop_events",
+   "kw": "员工持股计划",
+   "month": "202605",
+   "rows": 379
+  },
+  {
+   "group": "esop_events",
+   "kw": "员工持股计划",
+   "month": "202606",
+   "rows": 498
+  },
+  {
+   "group": "esop_events",
+   "kw": "员工持股计划",
+   "month": "202607",
+   "rows": 338
+  },
+  {
+   "group": "esop_events",
+   "kw": "员工持股计划",
+   "month": "202608",
+   "rows": 548
+  },
+  {
+   "group": "esop_events",
+   "kw": "员工持股计划",
+   "month": "202609",
+   "rows": 308
+  },
+  {
+   "group": "esop_events",
+   "kw": "非公开发行",
+   "month": "202501",
+   "rows": 380
+  },
+  {
+   "group": "esop_events",
+   "kw": "非公开发行",
+   "month": "202502",
+   "rows": 187
+  },
+  {
+   "group": "esop_events",
+   "kw": "非公开发行",
+   "month": "202503",
+   "rows": 445
+  },
+  {
+   "group": "esop_events",
+   "kw": "非公开发行",
+   "month": "202504",
+   "rows": 589
+  },
+  {
+   "group": "esop_events",
+   "kw": "非公开发行",
+   "month": "202505",
+   "rows": 301
+  },
+  {
+   "group": "esop_events",
+   "kw": "非公开发行",
+   "month": "202506",
+   "rows": 455
+  },
+  {
+   "group": "esop_events",
+   "kw": "非公开发行",
+   "month": "202507",
+   "rows": 374
+  },
+  {
+   "group": "esop_events",
+   "kw": "非公开发行",
+   "month": "202508",
+   "rows": 182
+  },
+  {
+   "group": "esop_events",
+   "kw": "非公开发行",
+   "month": "202509",
+   "rows": 60
+  },
+  {
+   "group": "esop_events",
+   "kw": "非公开发行",
+   "month": "202510",
+   "rows": 59
+  },
+  {
+   "group": "esop_events",
+   "kw": "非公开发行",
+   "month": "202511",
+   "rows": 66
+  },
+  {
+   "group": "esop_events",
+   "kw": "非公开发行",
+   "month": "202512",
+   "rows": 87
+  },
+  {
+   "group": "esop_events",
+   "kw": "非公开发行",
+   "month": "202601",
+   "rows": 64
+  },
+  {
+   "group": "esop_events",
+   "kw": "非公开发行",
+   "month": "202602",
+   "rows": 43
+  },
+  {
+   "group": "esop_events",
+   "kw": "非公开发行",
+   "month": "202603",
+   "rows": 63
+  },
+  {
+   "group": "esop_events",
+   "kw": "非公开发行",
+   "month": "202604",
+   "rows": 60
+  },
+  {
+   "group": "esop_events",
+   "kw": "非公开发行",
+   "month": "202605",
+   "rows": 35
+  },
+  {
+   "group": "esop_events",
+   "kw": "非公开发行",
+   "month": "202606",
+   "rows": 50
+  },
+  {
+   "group": "esop_events",
+   "kw": "非公开发行",
+   "month": "202607",
+   "rows": 42
+  },
+  {
+   "group": "esop_events",
+   "kw": "非公开发行",
+   "month": "202608",
+   "rows": 71
+  },
+  {
+   "group": "esop_events",
+   "kw": "非公开发行",
+   "month": "202609",
+   "rows": 36
+  }
+ ]
+}
