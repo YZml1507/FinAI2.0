@@ -1768,3 +1768,5 @@ MDD 24.40% vs 17.40%（+7.00pp）、换手 6.45、round_trips 312（156→312 �
   1288→1291 待同步（本笔提交前须 bump constants 并全量复核）。
 
 - **e82 reb80 臂收单（判弱）**（2026-09-23 云）：label150+V-on top40 reb80 gated run `20260923-125631` → CAGR 25.09%/MDD 0.2708/换手 222.5%，vs reb60 基线 33.55%/0.2249（run 110342）。reb 曲线三点 20/60/80 呈中间峰：reb60 为最优甜点，reb80 换手降幅（222 vs 274）不足以抵 α 衰减（−8.46pp）。登记判弱不追。
+
+- **run 产物瘦身：ledger_entries sidecar 化**（2026-09-23 云）：宽篮 run 的 evidence.ledger_entries（top200 臂达 39.4MB，121414 产物 79.5MB 逼近 GitHub 100MB 硬限）拆为 `runs/<id>.ledger.json.gz`（mtime=0 确定性压缩，~10x 收缩）；evidence 原位留 `{_sidecar,sha256,count}` 引用块；context_builder 回填时惰性解压还原为 list（sha/count fail-closed 校验）——A/L 门零改动兼容；旧内联格式产物继续可读。+4 测试锁（spill 往返/内联透传/空表不拆/篡改 raise），TEST_BASELINE_PASSED 1291→1295。

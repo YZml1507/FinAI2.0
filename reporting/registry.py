@@ -85,6 +85,56 @@ class RunRecord:
     gate_statuses: dict | None = None    # 本次回测各门禁 status 快照（报告，不阻断）
 
 
+def _spill_ledger_sidecar(
+    runs_dir: Path, run_id: str, ev_block: dict[str, Any]
+) -> dict[str, Any]:
+    """ledger_entries 拆出为 ``<run_id>.ledger.json.gz`` sidecar，原位留引用块。
+
+    动机：宽篮 run 的全量账本流水 ~39MB，让 run JSON 逼近 GitHub 单文件
+    100MB 硬限。sidecar 以 gzip 单 json 数组落盘（~10x 收缩），sha256 锁内容
+    完整性；旧格式（ledger_entries 内联 list）产物不受影响——读取端
+    ``load_ledger_sidecar`` 两口径兼容。空表不拆（引用块也省）。
+    """
+    entries = ev_block.get("ledger_entries")
+    if not isinstance(entries, list) or not entries:
+        return ev_block
+    import gzip
+    raw = json.dumps(
+        entries, ensure_ascii=False, separators=(",", ":")
+    ).encode("utf-8")
+    blob = gzip.compress(raw, compresslevel=6, mtime=0)
+    fname = f"{run_id}.ledger.json.gz"
+    (runs_dir / fname).write_bytes(blob)
+    ev_block["ledger_entries"] = {
+        "_sidecar": fname,
+        "sha256": sha256(raw).hexdigest(),
+        "count": len(entries),
+    }
+    return ev_block
+
+
+def load_ledger_sidecar(
+    runs_dir: Path, ref_or_entries: Any
+) -> list[dict[str, Any]]:
+    """把 ``evidence.ledger_entries`` 还原为 list——兼容内联 list 与 sidecar 引用块。
+
+    sidecar 缺失/sha 不符 fail-closed raise（宁缺勿滥，不许静默吐空表）。
+    """
+    if isinstance(ref_or_entries, list):
+        return ref_or_entries
+    if not isinstance(ref_or_entries, dict) or "_sidecar" not in ref_or_entries:
+        return []
+    import gzip
+    path = runs_dir / str(ref_or_entries["_sidecar"])
+    raw = gzip.decompress(path.read_bytes())
+    if sha256(raw).hexdigest() != ref_or_entries.get("sha256"):
+        raise ValueError(f"ledger sidecar sha256 mismatch: {path.name}")
+    entries = json.loads(raw)
+    if len(entries) != ref_or_entries.get("count"):
+        raise ValueError(f"ledger sidecar count mismatch: {path.name}")
+    return entries
+
+
 def _params_hash(params: Mapping[str, Any]) -> str:
     """参数快照的 SHA-256 前 16 hex（canonical 尺与 ``tx_hash`` 同宗，键序无关）。"""
     canon = _canonicalize(dict(params))
@@ -257,7 +307,9 @@ class ExperimentRegistry:
             # 证据块在签名**之后**合并：签名域不含 evidence（审计数据允许
             # 事后补充解释，但出处五要素+指标被签名锁死，篡改无处藏身）。
             from reporting.evidence import to_json_safe
-            record_payload["evidence"] = to_json_safe(dict(evidence))
+            ev_block = to_json_safe(dict(evidence))
+            record_payload["evidence"] = _spill_ledger_sidecar(
+                self.root / "runs", run_id, ev_block)
         payload = json.dumps(
             record_payload,
             ensure_ascii=False, indent=2, sort_keys=True,

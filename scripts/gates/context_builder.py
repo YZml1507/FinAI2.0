@@ -228,6 +228,11 @@ def build_repo_context(repo_root: Path | str | None = None) -> tuple[dict[str, A
         ev = record.get("evidence")
         if isinstance(ev, dict):
             ctx.update(ev)
+            # ledger_entries sidecar 回填（registry._spill_ledger_sidecar 的对端）：
+            # 引用块 ``{_sidecar,sha256,count}`` → 解压还原为 list，供 A/L 门直接消费。
+            from reporting.registry import load_ledger_sidecar
+            ctx["ledger_entries"] = load_ledger_sidecar(
+                path.parent, ctx.get("ledger_entries"))
         if metrics.get("annual_turnover") is not None:
             ctx["annualized_turnover"] = float(metrics["annual_turnover"])
         ctx["total_return"] = metrics.get("total_return")

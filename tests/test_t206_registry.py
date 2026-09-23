@@ -461,3 +461,63 @@ class TestScoresIdentityInFingerprint:
         assert "scores_sha256" in src and "run_params" in src
         # params 必须引用 run_params（含 hash 的字典），非裸 asdict
         assert "params=run_params" in src
+
+
+class TestLedgerSidecar:
+    """宽篮 run 产物瘦身：ledger_entries 拆 sidecar gz + 引用块回填。
+
+    背景：top200 run 的 evidence.ledger_entries ~39MB 让产物逼近 GitHub
+    100MB 单文件上限。锁三事：(a) 写盘产物不含内联流水、sidecar 存在且
+    sha 可验；(b) ``load_ledger_sidecar`` 两口径兼容（引用块/旧内联）；
+    (c) sha/count 被篡改 fail-closed raise。
+    """
+
+    def _reg(self, tmp_path: Path) -> ExperimentRegistry:
+        return ExperimentRegistry(
+            tmp_path / "e", code_version="abc1234", data_version="sha256:abc",
+            code_hash="c1", data_hash="d1", calendar_hash="cal",
+            universe_hash="u", clock=_clock())
+
+    def test_sidecar_spill_and_roundtrip(self, tmp_path: Path) -> None:
+        from reporting.registry import load_ledger_sidecar
+        reg = self._reg(tmp_path)
+        entries = [{"entry_type": "TRADE", "amount": f"{i}.50"}
+                   for i in range(50)]
+        rid = reg.record_run({"a": 1}, _report(), seed=1,
+                             evidence={"ledger_entries": entries,
+                                       "trades_count": 50})
+        d = json.loads((tmp_path / "e" / "runs" / f"{rid}.json").read_text())
+        ref = d["evidence"]["ledger_entries"]
+        assert isinstance(ref, dict) and ref["_sidecar"].endswith(".ledger.json.gz")
+        assert ref["count"] == 50 and len(ref["sha256"]) == 64
+        gz = tmp_path / "e" / "runs" / ref["_sidecar"]
+        assert gz.exists() and gz.stat().st_size < 50_000
+        back = load_ledger_sidecar(tmp_path / "e" / "runs", ref)
+        assert back == entries
+
+    def test_inline_list_passthrough(self, tmp_path: Path) -> None:
+        from reporting.registry import load_ledger_sidecar
+        entries = [{"entry_type": "FEE", "amount": "1.0"}]
+        assert load_ledger_sidecar(tmp_path, entries) == entries
+        assert load_ledger_sidecar(tmp_path, None) == []
+        assert load_ledger_sidecar(tmp_path, {}) == []
+
+    def test_empty_list_no_spill(self, tmp_path: Path) -> None:
+        reg = self._reg(tmp_path)
+        rid = reg.record_run({"a": 1}, _report(), seed=1,
+                             evidence={"ledger_entries": []})
+        d = json.loads((tmp_path / "e" / "runs" / f"{rid}.json").read_text())
+        assert d["evidence"]["ledger_entries"] == []
+
+    def test_tampered_sidecar_raises(self, tmp_path: Path) -> None:
+        import gzip as _gz
+        from reporting.registry import load_ledger_sidecar
+        reg = self._reg(tmp_path)
+        rid = reg.record_run({"a": 1}, _report(), seed=1,
+                             evidence={"ledger_entries": [{"x": 1}]})
+        d = json.loads((tmp_path / "e" / "runs" / f"{rid}.json").read_text())
+        ref = d["evidence"]["ledger_entries"]
+        gz = tmp_path / "e" / "runs" / ref["_sidecar"]
+        gz.write_bytes(_gz.compress(b'[{"x": 999}]', mtime=0))
+        with pytest.raises(ValueError, match="sha256"):
+            load_ledger_sidecar(tmp_path / "e" / "runs", ref)
