@@ -87,6 +87,9 @@ class ScoreBasketConfig:
     # invvol=权重∝1/σ（σ=invvol_window 日收益波动，由策略内收盘缓冲自维护）
     weight_mode: str = "equal"
     invvol_window: int = 20
+    # 行业中性化（E79）：单行业篮内名额上限；None=不约束（默认历史口径）。
+    # 行业表由策略参数 industry_frames 注入（PIT：updateDate ≤ 当日最新快照）。
+    industry_cap: int | None = None
 
     def __post_init__(self) -> None:
         if self.rebalance_days < 1:
@@ -97,6 +100,8 @@ class ScoreBasketConfig:
             raise ValueError("weight_mode 须为 equal|score|invvol")
         if self.invvol_window < 5:
             raise ValueError("invvol_window 须 ≥ 5")
+        if self.industry_cap is not None and self.industry_cap < 1:
+            raise ValueError("industry_cap 须 ≥ 1 或 None")
         if not isinstance(self.timing_breach_buffer, Decimal):
             raise TypeError("timing_breach_buffer 须为 Decimal（⛔ 禁 float）")
         if not (Decimal("0") <= self.timing_breach_buffer <= Decimal("0.10")):
@@ -111,6 +116,7 @@ class ScoreBasketStrategy:
         config: ScoreBasketConfig,
         score_table: Mapping[_date, Mapping[str, float]],
         universe_provider: Any | None = None,
+        industry_frames: Sequence[tuple[_date, Mapping[str, str]]] | None = None,
     ) -> None:
         """
         Args:
@@ -118,10 +124,16 @@ class ScoreBasketStrategy:
                 parquet 读进来并按 ``normalize_score_code`` 规范代码。
             universe_provider: ``(date) -> Iterable[str]`` 当日可交易池
                 （防幸存者偏差）；None = 用分数表覆盖域做 watchlist。
+            industry_frames: [(updateDate, {symbol: industry})]——PIT 行业
+                快照序列；仅 ``industry_cap`` 生效时需要。
         """
         self.config = config
         self.universe_provider = universe_provider
         self.watchlist: list[str] = []
+        # 行业快照序列：[(updateDate, {symbol: industry})] 按日期升序（PIT）
+        self._ind_frames: list[tuple[_date, Mapping[str, str]]] = sorted(
+            (f for f in (industry_frames or [])), key=lambda kv: kv[0])
+        self._ind_dates: list[_date] = [d for d, _ in self._ind_frames]
         # 按日期排序的分数期索引
         self._sig_dates: list[_date] = sorted(score_table.keys())
         self._score_by_date: dict[_date, dict[str, float]] = {
@@ -248,6 +260,8 @@ class ScoreBasketStrategy:
         held_symbols = list(book.positions.keys()) if hasattr(book, "positions") else []
         current = {s: int(book.positions[s].volume) for s in held_symbols}
         targets = select_targets(scores, cfg.portfolio)
+        if cfg.industry_cap is not None:
+            targets = self._apply_industry_cap(targets, scores, day, cfg)
         total_nav = book.total_nav if hasattr(book, "total_nav") else getattr(book, "nav", Decimal("0"))
         weights: dict[str, Decimal] | None = None
         if cfg.weight_mode == "score":
@@ -275,6 +289,46 @@ class ScoreBasketStrategy:
         self._submit(broker, report.intents, day)
 
     # ------------------------------------------------------------------
+
+    def _apply_industry_cap(self, targets: list[str],
+                            scores: dict[str, Decimal], day: _date,
+                            cfg: ScoreBasketConfig) -> list[str]:
+        """单行业名额 ≤ industry_cap：分数降序取，超额行业跳过换次优行业，
+        取满 target_count 或分数耗尽为止。无行业记录代码=伪桶不受限。
+        """
+        ind_map: Mapping[str, str] = {}
+        if self._ind_dates:
+            i = bisect.bisect_right(self._ind_dates, day) - 1
+            if i >= 0:
+                ind_map = self._ind_frames[i][1]
+        cap = cfg.industry_cap or 0
+        need = cfg.portfolio.target_count
+        picked: list[str] = list(targets[:need])
+        counts: dict[str, int] = {}
+        kept: list[str] = []
+        for s in picked:
+            ind = ind_map.get(s) or f"__NA_{s}"
+            if counts.get(ind, 0) >= cap:
+                continue
+            counts[ind] = counts.get(ind, 0) + 1
+            kept.append(s)
+        if len(kept) >= need:
+            return kept
+        # 回补：从分数降序的剩余候选中继续取（次优行业）
+        kept_set = set(kept)
+        ranking = sorted(scores.items(), key=lambda kv: (-float(kv[1]), kv[0]))
+        for s, _ in ranking:
+            if len(kept) >= need:
+                break
+            if s in kept_set:
+                continue
+            ind = ind_map.get(s) or f"__NA_{s}"
+            if counts.get(ind, 0) >= cap:
+                continue
+            counts[ind] = counts.get(ind, 0) + 1
+            kept.append(s)
+            kept_set.add(s)
+        return kept
 
     def _submit(self, broker: Any, intents: Sequence[OrderIntent], day: _date) -> None:
         for intent in intents:

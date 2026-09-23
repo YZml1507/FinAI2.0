@@ -120,6 +120,18 @@ def _load_universe_tables(data_path: Path) -> dict[str, pd.DataFrame]:
     return tables
 
 
+def _load_industry_frames(industry_path: Path) -> list:
+    """data/industry/{updateDate}.parquet → [(updateDate, {symbol: industry})]。"""
+    frames: list[tuple[_date, dict[str, str]]] = []
+    for f in sorted(industry_path.glob("*.parquet")):
+        d = pd.read_parquet(f, columns=["updateDate", "code", "industry"])
+        upd = _date.fromisoformat(str(d["updateDate"].iloc[0])[:10])
+        frames.append((upd, dict(zip(d["code"], d["industry"]))))
+    if not frames:
+        raise FileNotFoundError(f"{industry_path} 无行业快照")
+    return frames
+
+
 def _load_score_table(scores_path: Path) -> dict[_date, dict[str, float]]:
     df = pd.read_parquet(scores_path)
     need = {"sig_date", "ts_code", "score"}
@@ -156,6 +168,10 @@ def main() -> int:
     ap.add_argument("--weight-mode", default="equal",
                     choices=["equal", "score", "invvol"],
                     help="E78 构造臂：equal=等权 | score=权重∝分数 | invvol=权重∝1/σ20")
+    ap.add_argument("--industry-cap", type=int, default=None,
+                    help="E79 行业中性化：单行业篮内名额上限（缺省不约束）")
+    ap.add_argument("--industry-path", type=Path,
+                    default=_root / "data" / "industry")
     ap.add_argument("--max-score-age-days", type=int, default=45)
     ap.add_argument("--risk-free-annual", type=Decimal, default=Decimal("0.015"))
     ap.add_argument("--registry-root", type=Path, default=None)
@@ -192,6 +208,7 @@ def main() -> int:
         index_symbol=args.index_symbol,
         use_ma200_timing=not args.no_timing,
         weight_mode=args.weight_mode,
+        industry_cap=args.industry_cap,
     )
     index_sym = args.index_symbol
 
@@ -266,10 +283,17 @@ def main() -> int:
         exdiv_events=exdiv_sidecars,
     )
 
+    industry_frames = None
+    if args.industry_cap is not None:
+        industry_frames = _load_industry_frames(args.industry_path)
+        logger.info(f"行业快照 {len(industry_frames)} 期 "
+                    f"({industry_frames[0][0]} ~ {industry_frames[-1][0]})")
+
     strategy = ScoreBasketStrategy(
         config=strategy_config,
         score_table=score_table,
         universe_provider=None,          # watchlist = 分数覆盖域 ∩ 当日有 bar
+        industry_frames=industry_frames,
     )
 
     ledger = Ledger(initial_cash=args.capital, date=start)
