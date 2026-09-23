@@ -1501,3 +1501,16 @@ MDD 24.40% vs 17.40%（+7.00pp）、换手 6.45、round_trips 312（156→312 �
 - 测试：TestPerBoardLimits×7 + TestE3GateContract×2；
   TEST_BASELINE_PASSED 1265→1274（套件 1F 定位=G-DOC-1 行内
   run-id 引用 2 处，E70/E71 文档已内联修复）。
+
+### 2026-09-23 OOS-2025 观察登记收单（Q1 关闭）
+
+- **链全通**：dbasic 440/1809 补丁落盘（1369 结构性停牌/退市，0 FAIL）
+  → Xlab_2025 116,067×21 期 → score 21 期；block_trade 2025-26 异构
+  schema 修复（续采误用 mrtj→改回 mrmx 契约重拉 419 分片，31634 行）。
+- **登记**（只观察不晋级）：13 已标注月 **IC 0.150 / t 10.65**，
+  与 in-sample 0.147/10 同位——label150 跨窗泛化成立。
+  `results_label150_2025.json`；`scores_label150_2025.parquet`
+  覆盖 2025-01→2026-09-22 共 21 期。
+- **延伸**：emit_live_basket 接该分数产首期实盘清单
+  `experiments/live/basket_2026-09-22_top20.csv`（age=0，19 成活，
+  8 只 ST 属策略原生成分——DEPLOY_LIVE §4 已披露语义与风险自担边界）。

@@ -29,10 +29,15 @@
 
 ## 2. 下一阶段队列（按期望价值排序）
 
-### Q1 OOS-2025 永久观察登记（进行中）
-链：dbasic 2025 补救跑（→ETA ~2h）→ `e63_build_2025.py`（46 列口径复刻，
-consensus/fund_cov 已就位）→ `e63_score_2025.py` walk-forward 打分 →
-月度 IC 登记（**只观察不晋级**，2026 sig days 一致预期特征 NaN 为已知降级）。
+### Q1 OOS-2025 永久观察登记 ✅ 已收单（2026-09-23）
+链全通：dbasic 440/1809 补丁落盘（1369=结构性停牌/退市非失败）→
+`e63_build_2025.py` 116,067 行 ×21 期（block_trade 异构 schema 已修，
+ev_bt_inst_sell 限 2015-24，2025+ 该特征缺席属已知降级）→
+`e63_score_2025.py` 打分 21 期。**登记结果：13 已标注月
+IC 0.150 / t 10.65 —— 与 in-sample 0.147/10 同位，跨窗未见衰减**
+（2026-02 起 label150 未实现自然右删）。产物
+`experiments/lab/e63/scores_label150_2025.parquet`（最新期 2026-09-22）
++ `results_label150_2025.json`；已接 emit_live_basket 产首期实盘清单。
 
 ### Q2 公告正文 NLP 因子族（数据在路上）
 pull_body4 白名单类型正文采集中（2015-01 段在跑，全史 ~10GB 级）。

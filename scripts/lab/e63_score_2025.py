@@ -25,6 +25,7 @@ X_TRAIN = ROOT / "experiments/lab/e63_Xlab4.parquet"
 X_SCORE = ROOT / "experiments/lab/e63_Xlab_2025.parquet"
 OUT = ROOT / "experiments/lab/e63"
 
+sys.path.insert(0, str(ROOT))
 from scripts.lab.e63_score_sweep_local import (  # noqa: E402
     BASE, MIN_TRAIN_MONTHS, EMBARGO_TD, PARAMS)
 
