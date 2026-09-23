@@ -62,6 +62,32 @@ logger = logging.getLogger(__name__)
 INDEX_SYMBOL = "sh.000300"
 
 
+def _derive_is_resumption(df: pd.DataFrame,
+                          cal_dates: "np.ndarray") -> "np.ndarray":
+    """复牌日标记（D-1 豁免依据）：两种停牌形态互补，取 OR 不可覆写。
+
+    - 有占位行：停牌期间 tradestatus==0 行照占日历，复牌日 = 首个 0→1 翻转行；
+    - 无占位行：停牌期直接缺行，复牌日 = 指数日历缺口（>=2 个交易日）后首行；
+    - 文件层已落地的标记一律保留（采集端写入的权威标注）。
+    """
+    import numpy as _np
+    n = len(df)
+    res = _np.zeros(n, dtype=bool)
+    if n == 0:
+        return res
+    ds = pd.to_datetime(df["date"]).values.astype("datetime64[D]")
+    pos = _np.searchsorted(cal_dates, ds)
+    res[1:] = _np.diff(pos) > 1
+    if "is_resumption" in df.columns:
+        res |= df["is_resumption"].fillna(False).to_numpy(
+            dtype=bool, copy=True)
+    if "tradestatus" in df.columns:
+        _ts = pd.to_numeric(df["tradestatus"], errors="coerce")
+        _ts = _ts.fillna(1).astype(int)
+        res |= ((_ts == 1) & (_ts.shift(1, fill_value=1) == 0)).to_numpy()
+    return res
+
+
 def _parse_iso(value: Any) -> _date | None:
     try:
         return _date.fromisoformat(str(value)[:10])
@@ -210,11 +236,7 @@ def main() -> int:
     _cal_dates = pd.to_datetime(index_frame["date"]).values.astype("datetime64[D]")
 
     def _enrich(sym: str, df: pd.DataFrame) -> None:
-        ds = pd.to_datetime(df["date"]).values.astype("datetime64[D]")
-        pos = _np.searchsorted(_cal_dates, ds)
-        res = _np.zeros(len(df), dtype=bool)
-        res[1:] = _np.diff(pos) > 1
-        df["is_resumption"] = res
+        df["is_resumption"] = _derive_is_resumption(df, _cal_dates)
         ev = exdiv_sidecars.get(sym)
         if ev is not None and len(ev):
             out = compute_pit_fields(df, ev.to_dict("records"), 1.0)
