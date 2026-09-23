@@ -1778,3 +1778,4 @@ MDD 24.40% vs 17.40%（+7.00pp）、换手 6.45、round_trips 312（156→312 �
 - **e62 正文采集扇出**（2026-09-23 云）：cninfo orgId 盲区修复（topSearch 官方解析+orgid_map.json 持久缓存——99xxxxx 式代码此前全量 nomatch，实证 300041 索引 0→143）后分片扇出：本地 5 道（2015-17/2018-20/2025-26×2/2021-24·pref489）+ 子会话 4 道（2021-24·pref{0},{3},{6},{1,2}，产物传 Release `notice-body-shards` 按 art_code 去重合并）。
 
 - **shadow_nav 实盘对照追踪器**（2026-09-23 云）：`scripts/lab/shadow_nav.py`——每个 experiments/live/basket_*.csv 按日推进假想净值（Σ shares×RAW close + cash_left，归一化到清单日），落 `experiments/live/shadow_nav.parquet`（basket_id,date,nav,ret,priced_n,n），不经回测口径修饰的真 OOS 对照记分；接入 daily_ops 尾步（bars→lhb→veto→features→score→emit→nav 七步）。+1 测试，TEST_BASELINE_PASSED 1302→1303。
+- 2026-09-23 e62分片修正: 子会话s4(prefix{1,2})实测为空片——东财公告集代码分布{0:68940,3:62531,6:90319,8:33,9:11660,A:7399}，1/2前缀零行(转债基金/深B非A股域)；'A'前缀(辅导备案未上市)确认不采。真实覆盖映射: s1={0} s2={3} s3={6} s5local={4,8,9}，有效权重92%行集中在0/3/6。
