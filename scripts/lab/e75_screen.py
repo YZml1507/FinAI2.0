@@ -129,7 +129,11 @@ def main() -> int:
     _note(f"events={len(df)} codes={df['ts_code'].nunique()} "
           f"win={df['pubdate'].min().date()}→{df['pubdate'].max().date()}")
 
-    close_w = pd.read_parquet(e27.OUT_DIR / 'panel_close.parquet')
+    panel = e27.OUT_DIR / 'panel_close_2025.parquet'
+    if not panel.exists():
+        panel = e27.OUT_DIR / 'panel_close.parquet'
+    _note(f"panel={panel.name}")
+    close_w = pd.read_parquet(panel)
     r = daily_returns(close_w)
     valid = (~close_w.isna()).cumsum().ge(MIN_LISTED_DAYS)
     days_idx = r.index
