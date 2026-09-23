@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 import time
 from pathlib import Path
@@ -77,7 +78,9 @@ def main() -> int:
                     old = pd.read_parquet(fp)
                     g = (pd.concat([old[~old["date"].isin(g["date"])], g])
                            .sort_values("date", kind="stable"))
-                g.reset_index(drop=True).to_parquet(fp, index=False)
+                tmp = fp.with_suffix(".parquet.tmp")
+                g.reset_index(drop=True).to_parquet(tmp, index=False)
+                os.replace(tmp, fp)
             done += 1
             if done % 100 == 0:
                 print(f"  {done}/{len(todo)} @{code}", flush=True)

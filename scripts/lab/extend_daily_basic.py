@@ -19,6 +19,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 import time
 from pathlib import Path
@@ -64,11 +65,17 @@ def main() -> int:
     ap.add_argument("--start", default="2025-01-01")
     ap.add_argument("--end", default="2026-09-22")
     ap.add_argument("--sleep", type=float, default=0.15)
+    ap.add_argument("--only", type=Path, default=None,
+                    help="文件清单：每行一个 sh./sz. 符号目录名，只跑这些")
     args = ap.parse_args()
 
     bs.login()
-    syms = sorted(d for d in BARS.iterdir()
-                  if d.is_dir() and d.name.startswith(("sh.", "sz.")))
+    if args.only:
+        syms = [BARS / s.strip() for s in args.only.read_text().split()
+                if s.strip() and (BARS / s.strip()).is_dir()]
+    else:
+        syms = sorted(d for d in BARS.iterdir()
+                      if d.is_dir() and d.name.startswith(("sh.", "sz.")))
     print(f"symbols={len(syms)}", flush=True)
     done = 0
     for symdir in syms:
@@ -117,7 +124,9 @@ def main() -> int:
                     old = pd.read_parquet(fp)
                     g = (pd.concat([old[~old["ts_code"].isin(g["ts_code"])], g])
                            .sort_values("ts_code", kind="stable"))
-                g.reset_index(drop=True).to_parquet(fp, index=False)
+                tmp = fp.with_suffix(".parquet.tmp")
+                g.reset_index(drop=True).to_parquet(tmp, index=False)
+                os.replace(tmp, fp)
             done += 1
             if done % 200 == 0:
                 print(f"  {done}/{len(syms)}", flush=True)
