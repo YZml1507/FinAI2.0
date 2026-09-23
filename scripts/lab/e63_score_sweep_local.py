@@ -19,12 +19,16 @@ ROOT = Path(__file__).resolve().parents[2]
 XPATH = ROOT / "experiments/lab/e63_Xlab4.parquet"
 OUT = ROOT / "experiments/lab/e63"
 
+# e83 晋级特征集（v7=36列，docs/E83_PROMOTION_EVAL.md run 20260923-150115）
 BASE = ['ret5', 'ret20', 'ret60', 'ret120', 'vol20', 'max20',
         'turnover20', 'amihud20', 'pe', 'pb', 'dv_ttm', 'circ_mv',
         'log_circ_mv', 'fin_bal_chg20', 'short_qty_chg20',
         'ev_letter', 'ev_resumption', 'ev_fc_pos', 'ev_fc_neg',
         'ev_incentive', 'ev_lhb', 'ev_insider_sell', 'ev_bt_inst_sell',
-        'ev_reduce', 'ev_frozen', 'an_rating_dir20', 'an_epsrev20']
+        'ev_reduce', 'ev_frozen', 'an_rating_dir20', 'an_epsrev20',
+        'fund_cov', 'fund_cov_chg',
+        's1_eps_rev90', 's2_np_rev90', 's3_fy_slope', 's4_pe_chg',
+        'fwd_ep', 'ann_cnt60', 'gdhs_qoq']
 MIN_TRAIN_MONTHS, EMBARGO_TD = 24, 20
 PARAMS = dict(max_depth=6, learning_rate=0.03, n_estimators=600,
               min_child_weight=80, subsample=0.9, colsample_bytree=0.8,

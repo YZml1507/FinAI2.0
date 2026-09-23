@@ -27,6 +27,8 @@ sys.path.insert(0, str(ROOT))
 
 from scripts.lab.e23_shadow_screen import MIN_LISTED_DAYS, daily_returns  # noqa: E402
 from scripts.lab import e58_ml_xsec as e58  # noqa: E402
+from scripts.lab.e83_build_aux_features import (  # noqa: E402
+    build_ann_cnt60, build_gdhs_qoq)
 
 PANEL = ROOT / "experiments/lab/e27/panel_close_2025.parquet"
 OUT = ROOT / "experiments/lab/e63_Xlab_2025.parquet"
@@ -124,6 +126,13 @@ def main() -> int:
     cons = _load_consensus()
     cov = _load_fund_cov(days)
     cov_chg = cov.diff(21)
+    # e83 v7 辅助特征（PIT 锚定公告日，勿未来函数）
+    aux_ann = build_ann_cnt60(sig_days.values)
+    aux_ann = {(r.sig_date, r.ts_code): r.ann_cnt60
+               for r in aux_ann.itertuples()}
+    aux_g = build_gdhs_qoq(sig_days.values)
+    aux_g = {(r.sig_date, r.ts_code): r.gdhs_qoq
+             for r in aux_g.itertuples()}
 
     valid20 = (~close_w.isna()).cumsum().ge(MIN_LISTED_DAYS)
     cons_idx = cons.set_index("date").sort_index()
@@ -169,6 +178,12 @@ def main() -> int:
                                         errors="coerce")
         col["fund_cov_chg"] = pd.to_numeric(
             col.index.map(cov_chg.loc[T]), errors="coerce")
+        col["ann_cnt60"] = pd.to_numeric(
+            col.index.map(lambda c: aux_ann.get((T, c))),
+            errors="coerce")
+        col["gdhs_qoq"] = pd.to_numeric(
+            col.index.map(lambda c: aux_g.get((T, c))),
+            errors="coerce")
         col["sig_date"] = T
         rows.append(col.reset_index().rename(columns={"index": "ts_code"}))
         print(f"[note] {T.date()} rows={len(col)}", flush=True)
