@@ -340,6 +340,7 @@ def main() -> int:
             index_frame=index_frame,
             cal_days=cal_days,
             bar_dates=bar_dates,
+            tables=tables,
         )
         post_results = run_post_run_gates(
             context=gate_ctx,

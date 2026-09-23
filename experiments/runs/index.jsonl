@@ -31,3 +31,4 @@
 {"run_id": "20260923-044636-e65-score-basket-v1-noseed", "status": "FINISHED", "timestamp": "2026-09-23T04:46:36+00:00", "note": "e70 horizon: h240 x top40 arm"}
 {"run_id": "20260923-045353-e65-score-basket-v1-noseed", "status": "FINISHED", "timestamp": "2026-09-23T04:53:53+00:00", "note": "e70 horizon: h240 x top100 arm"}
 {"run_id": "20260923-012520-e65-score-basket-v1-noseed", "status": "FINISHED", "timestamp": "2026-09-23T01:25:20+00:00", "note": "e68 width frontier: top20 arm"}
+{"run_id": "20260923-054328-e65-score-basket-v1-noseed", "status": "FINISHED", "timestamp": "2026-09-23T05:43:28+00:00", "note": "e70 top40 gated v5: per_board_limits 钳制修复验证 — E-3 1988/1988 PASS"}

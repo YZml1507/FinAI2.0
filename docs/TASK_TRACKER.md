@@ -1483,3 +1483,21 @@ MDD 24.40% vs 17.40%（+7.00pp）、换手 6.45、round_trips 312（156→312 �
 - **现役基线 = e63 label150(h150) top40 等权 / reb60 / no-timing /
   amt5M / min_pos5000**（替代 top100；E65 文档已标记 superseded）
 - 权威产物已晋级 experiments/runs/ + index.jsonl（含 5 个被引臂产物补齐）
+
+## 2026-09-23 E-3 价格模型限幅缺陷闭环
+
+- **缺陷**（e70 评估 §7 登记）：滑点取整后成交价可微越真实板价 1-2 分
+  （top40 3/1988、top100 基线 6/4818）；且 E-3 门进程内 INCONCLUSIVE——
+  门读引擎 Trade 对象无 limit 字段，与 evidence 富化路径脱节。
+- **修复**（commit 40b9134 + 本笔）：
+  - `make_price_model(per_board_limits=True)`：无显式 limit_pct 时按板块
+    登记表（`board_limit_pct`）+ST 5% 钳制滑点取整价于 [板价下界,上界]；
+    三入口统一启用（score_basket/dividend/produce_gate_evidence_run）。
+  - `_build_post_run_gate_context(tables=)`：ctx 注入 `serialize_trades`
+    契约成交（limit 价与 evidence.trades 同源一处重算），E-3 进程内可判。
+- **验证**（v5 gated，run 20260923-054328）：top40 晋级口径重跑，
+  CAGR 32.42%/MDD 0.2291/换手 298.2% 与 052313 逐位一致；E-3 判定
+  **1988/1988 PASS 零违规**（对比 052313 修复前口径 FAIL 3 笔）。
+- 测试：TestPerBoardLimits×7 + TestE3GateContract×2；
+  TEST_BASELINE_PASSED 1265→1274（套件 1F 定位=G-DOC-1 行内
+  run-id 引用 2 处，E70/E71 文档已内联修复）。

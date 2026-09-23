@@ -280,6 +280,7 @@ def _build_post_run_gate_context(
     index_frame: "pd.DataFrame | None",
     cal_days: list[_date],
     bar_dates: "dict[str, set] | None" = None,
+    tables: "dict[str, Any] | None" = None,
 ) -> dict[str, Any]:
     """从真实回测结果构造后置门禁 ctx（消除 runner 硬编码兜底的根因）。
 
@@ -341,6 +342,11 @@ def _build_post_run_gate_context(
         "failed_cases": [k for k, v in must_fail.items() if not v],
         "task_id": "T312",
     }
+    if tables:
+        from reporting.evidence import serialize_trades
+        # E-3 契约输入：与 evidence.trades 同一序列化路径（按板块档重算板价），
+        # 让滑点限幅门拿到真实 limit_up/limit_down 而非 INCONCLUSIVE。
+        ctx["trades"] = serialize_trades(getattr(result, "trades", []), tables)
     # B1（P2-b）：宽度择时口径显式注入后置门禁 ctx，供 S-2 宽度门禁与审计直接读取
     breadth_gate_context = {
         k: params[k]
@@ -821,6 +827,7 @@ def run_dividend_backtest_2015_2024(
             strategy_config=strategy_config,
             index_frame=index_frame,
             cal_days=cal_days,
+            tables=tables,
         )
         post_results = run_post_run_gates(
             context=gate_ctx,

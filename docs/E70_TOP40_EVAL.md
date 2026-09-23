@@ -104,6 +104,12 @@ h240 全局 IC 更高（0.289）但**头部持仓收益反而塌**——IC 是�
   板价 1-2 分（2024-10-08，slippage 在涨停板上缘叠加）——晋升基线
   232024 同型 6/4818 笔，属引擎价格模型既有缺陷非 top40 退化，
   登记待办：价格模型滑点应在 limit_up/limit_down 处截断。
+- **E-3 缺陷已闭环（v5 gated，run 20260923-054328）**：价格模型新增
+  `per_board_limits` 钳制（ST 5% / `board_limit_pct` 逐标的板幅），
+  同口径重跑 CAGR/MDD/换手与 052313 逐位一致（32.42%/0.2291/298.2%）
+  且 E-3 判定 **1988/1988 PASS 零违规**；门进程内可判化同步修复
+  （gate_ctx 注入 serialize_trades 契约成交，limit 价与 evidence 同源）。
+  权威 v5 产物 `experiments/runs/20260923-054328-e65-score-basket-v1-noseed.json`。
 
 **终判：top40 晋升为新基线构型**（替代 top100）：
 分数 e63 label150(h150) top40 等权 / 每 60 交易日调仓 /

@@ -373,3 +373,36 @@ class TestPerBoardLimits:
     def test_unclamped_inside_board(self) -> None:
         pm = make_price_model(per_board_limits=True)
         assert pm(_order(OrderSide.BUY), _bar()) == D("10.05")
+
+
+class TestE3GateContract:
+    """ctx['trades'] 接线契约：serialize_trades 富化后的成交可直接喂
+    SlippagePriceCapGate 判定（E-3 从 INCONCLUSIVE 变为可判）。"""
+
+    def _tables(self) -> dict:
+        return {"sh.600000": pd.DataFrame({
+            "date": [_DAY], "preclose": [10.0], "open": [10.04],
+            "amount": [1e6], "close": [10.04], "isST": [0],
+        })}
+
+    def _trade(self, price: str) -> object:
+        from types import SimpleNamespace
+        return SimpleNamespace(
+            trade_id="t1", client_order_id="o1", symbol=SH,
+            side=SimpleNamespace(value="BUY"), date=_DAY, volume=1000,
+            price=D(price), fees={}, sellable_date=_DAY,
+        )
+
+    def test_limits_enriched_and_inside_passes(self) -> None:
+        from reporting.evidence import serialize_trades
+        from scripts.gates.gate_e_engine import SlippagePriceCapGate
+        tr = serialize_trades([self._trade("10.40")], self._tables())
+        assert tr[0]["limit_up"] == "11.00"
+        assert tr[0]["limit_down"] == "9.00"
+        assert SlippagePriceCapGate().evaluate({"trades": tr}).status.name == "PASS"
+
+    def test_breach_fails(self) -> None:
+        from reporting.evidence import serialize_trades
+        from scripts.gates.gate_e_engine import SlippagePriceCapGate
+        tr = serialize_trades([self._trade("11.01")], self._tables())
+        assert SlippagePriceCapGate().evaluate({"trades": tr}).status.name == "FAIL"
