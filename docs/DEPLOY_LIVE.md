@@ -13,6 +13,12 @@
 
 ## 1. 每次调仓三步走
 
+**一键等价**：`./.venv/bin/python -m scripts.daily_ops --topn 20 --capital 150000`
+把下面 1→3 的数据段全部自动化（bars 续采→veto 重建→特征→分数→清单），
+日志在 `experiments/live/ops_log/`；任一步失败即停不发清单。
+手工逐步排查仍按下述三步走。
+
+
 1. **产分数**（每月末后）：跑 `e63_score_2025.py` 得到最新
    `scores_label150_2025.parquet`（产出节奏：每月 1 期）。
 2. **产清单**（下一个交易日前）：
