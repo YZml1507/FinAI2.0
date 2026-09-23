@@ -22,21 +22,26 @@ ROOT = Path(__file__).resolve().parents[2]
 X_TRAIN = ROOT / "experiments/lab/e63_Xlab4.parquet"
 X_SCORE = ROOT / "experiments/lab/e63_Xlab_2025.parquet"
 OUT = ROOT / "experiments/lab/e83"
+AUX = OUT / "aux_features.parquet"
 
 sys.path.insert(0, str(ROOT))
 from scripts.lab.e63_score_sweep_local import (  # noqa: E402
     BASE, MIN_TRAIN_MONTHS, EMBARGO_TD, PARAMS)
 
 LABEL = "label150"
+GROUP_7 = ["fund_cov", "fund_cov_chg",
+           "s1_eps_rev90", "s2_np_rev90",
+           "s3_fy_slope", "s4_pe_chg", "fwd_ep"]
 ARMS = {
     "v0": BASE,
     "v1": BASE + ["fund_cov", "fund_cov_chg"],
     "v2": BASE + ["s1_eps_rev90", "s2_np_rev90",
                   "s3_fy_slope", "s4_pe_chg"],
     "v3": BASE + ["fwd_ep"],
-    "v4": BASE + ["fund_cov", "fund_cov_chg",
-                  "s1_eps_rev90", "s2_np_rev90",
-                  "s3_fy_slope", "s4_pe_chg", "fwd_ep"],
+    "v4": BASE + GROUP_7,
+    "v5": BASE + ["ann_cnt60"],
+    "v6": BASE + ["gdhs_qoq"],
+    "v7": BASE + GROUP_7 + ["ann_cnt60", "gdhs_qoq"],
 }
 SCORE_START = pd.Timestamp("2025-01-01")
 TRAIN_START = pd.Timestamp("2017-01-01")
@@ -100,6 +105,12 @@ def main() -> int:
     xs = pd.read_parquet(X_SCORE)
     xt["src"] = "train"; xs["src"] = "score"
     X = pd.concat([xt, xs], ignore_index=True)
+    if AUX.exists():
+        aux = pd.read_parquet(AUX)
+        X = X.merge(aux, on=["sig_date", "ts_code"], how="left")
+    else:
+        X["ann_cnt60"] = np.nan
+        X["gdhs_qoq"] = np.nan
     results = []
     for arm in arms:
         feats = ARMS[arm]

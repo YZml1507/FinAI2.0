@@ -22,9 +22,16 @@ XGBoost 的非线性交互可能吸收其正交信息。本实验测的是
 | v2 | BASE + s1_eps_rev90 + s2_np_rev90 + s3_fy_slope + s4_pe_chg |
 | v3 | BASE + fwd_ep |
 | v4 | BASE + 上述全部 7 列 |
+| v5 | BASE + ann_cnt60（公告密度：60 自然日公告条数，notice_meta，PIT-safe） |
+| v6 | BASE + gdhs_qoq（股东户数增减比例最新值，gdhs 公告日锚定） |
+| v7 | BASE + ann_cnt60 + gdhs_qoq + 上述全部 7 列 |
 
 同一打分管线（e63_score_2025 同构：月末 sig、24 月滚动训练窗、
-EMBARGO_TD=20、PARAMS 固定），复用 X_TRAIN/X_SCORE 矩阵零新采集。
+EMBARGO_TD=20、PARAMS 固定），复用 X_TRAIN/X_SCORE 矩阵零新采集；
+v5/v6/v7 额外 join e83/aux_features.parquet（ann_cnt60/gdhs_qoq 均为
+公告日 PIT 锚定，无未来函数）。
+**修订记录**：v5-v7 于 v0-v4 结果未出前加入（预登记仍处冻结期），
+理由——notice_meta 351MB/gdhs 55 期两源本就落盘未启用，边际成本低。
 
 ## 2. 判据
 
