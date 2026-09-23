@@ -112,6 +112,10 @@ def main() -> int:
     X = pd.concat([xt, xs], ignore_index=True)
     if AUX.exists():
         aux = pd.read_parquet(AUX)
+        dup = [c for c in aux.columns
+               if c in X.columns
+               and c not in ("sig_date", "ts_code")]
+        aux = aux.drop(columns=dup)
         X = X.merge(aux, on=["sig_date", "ts_code"], how="left")
     else:
         X["ann_cnt60"] = np.nan
