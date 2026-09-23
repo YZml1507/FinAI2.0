@@ -40,7 +40,7 @@ sys.path.insert(0, str(_root))
 from backtest.broker import BacktestBroker
 from backtest.engine import BacktestEngine
 from backtest.feed import ParquetDailyFeed
-from backtest.fees import make_fee_model, make_price_model
+from backtest.fees import default_fee_config, make_fee_model, make_price_model
 from backtest.ledger import Ledger
 from backtest.matching import MatchEngine
 from backtest.metrics import compute_metrics
@@ -138,6 +138,8 @@ def main() -> int:
                     help="关闭 MA200 择时（诊断归因用，⛔ 非晋级口径）")
     ap.add_argument("--min-daily-amount", type=Decimal, default=None,
                     help="建仓流动性下限（当日成交额，元）；缺省用组合层默认 5000 万")
+    ap.add_argument("--slippage-rate", type=Decimal, default=None,
+                    help="滑点压测口径（如 0.0015 = 15bps/边）；缺省 5bps")
     args = ap.parse_args()
 
     start = _date.fromisoformat(args.start)
@@ -245,7 +247,10 @@ def main() -> int:
     )
 
     ledger = Ledger(initial_cash=args.capital, date=start)
-    matcher = MatchEngine(fee_model=make_fee_model(), price_model=make_price_model())
+    fee_config = (default_fee_config(slippage_rate=args.slippage_rate)
+                  if args.slippage_rate is not None else None)
+    matcher = MatchEngine(fee_model=make_fee_model(fee_config),
+                          price_model=make_price_model(fee_config))
     broker = BacktestBroker(matcher=matcher, ledger=ledger, feed=feed,
                             enable_dividend_tax=True)
     engine = BacktestEngine(broker=broker, feed=feed)
