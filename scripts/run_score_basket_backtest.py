@@ -382,8 +382,17 @@ def main() -> int:
     }
     evidence = build_run_evidence(result, tables=tables, extras=ev_extras)
 
+    # 分数表身份入参：scores 文件是回测输入但原先不进任何指纹要素，
+    # 导致不同分数表的产物共享同一 repro_fingerprint（G-REPRO-1 实测
+    # 撞对 062849 vs 064906）。把文件内容 hash 记入 params ⇒
+    # params_hash → fingerprint 随分数表区分，同指纹即同输入可复现。
+    from hashlib import sha256 as _sha256
+    run_params = dict(_asdict(strategy_config))
+    run_params["scores_sha256"] = _sha256(args.scores.read_bytes()).hexdigest()[:16]
+    run_params["scores_path"] = str(args.scores)
+
     run_id = registry.record_run(
-        params=_asdict(strategy_config),
+        params=run_params,
         report=report,
         seed=None,
         status="FINISHED",

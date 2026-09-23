@@ -1496,7 +1496,7 @@ MDD 24.40% vs 17.40%（+7.00pp）、换手 6.45、round_trips 312（156→312 �
   - `_build_post_run_gate_context(tables=)`：ctx 注入 `serialize_trades`
     契约成交（limit 价与 evidence.trades 同源一处重算），E-3 进程内可判。
 - **验证**（v5 gated，run 20260923-054328）：top40 晋级口径重跑，
-  CAGR 32.42%/MDD 0.2291/换手 298.2% 与 052313 逐位一致；E-3 判定
+  CAGR 32.42%/MDD 0.2291/换手 298.2% 与 20260923-052313 逐位一致；E-3 判定
   **1988/1988 PASS 零违规**（对比 052313 修复前口径 FAIL 3 笔）。
 - 测试：TestPerBoardLimits×7 + TestE3GateContract×2；
   TEST_BASELINE_PASSED 1265→1274（套件 1F 定位=G-DOC-1 行内
@@ -1532,3 +1532,24 @@ MDD 24.40% vs 17.40%（+7.00pp）、换手 6.45、round_trips 312（156→312 �
   （run 20260923-064906，参与率温和绑 −4.7pp）；
   top40@10M+amt20M 16.32%/0.229/191.0% 判负（run 20260923-065728，
   流动性门槛砍掉小票 alpha 层）；E71 ≥1000万档改为"top40+amt5M 保持"实测结论。
+
+## 2026-09-23 G-REPRO-1 真缺陷修复 + G-DOC-1 三处行内 run-id
+
+- **缺陷坐实**：`repro_fingerprint` 六要素（params/code/data/calendar/
+  universe/seed）不含分数表——`--scores` parquet 只进 evidence 不进
+  params_hash。导致 run 20260923-062849（误用 `_STALE82` 截断域）
+  与 20260923-064906（label150x 域）指纹全同而指标分叉 ⇒
+  G-REPRO-1 扫真实 runs/ 撞对 FAIL，meta 测试连带红。
+- **修复**：`run_score_basket_backtest.py` 在 `record_run(params=)`
+  注入 `scores_sha256`（内容 sha256[:16]）+ `scores_path` ⇒
+  params_hash → fingerprint 随分数表区分，同指纹即同输入。
+- **处置**：错误域产物 062849 移 `experiments/legacy/quarantine_062849/`
+  （README 留档），index.jsonl 摘除该行；指纹撞对复查清零。
+- **G-DOC-1**：065728 提交后权威产物移位，三处文档裸指标对齐——
+  DEPLOY_LIVE:52（择时臂 8.81%→标 20260923-043905）、
+  E71:51（32.42%→标 20260923-052313）、tracker:1499（短 id 补全）。
+  复跑 PASS（131 文档 0 违规）。
+- **年报文本入库**：Release `年到文本` 26 分卷 7.6G 拉取解压→
+  `data/annual_reports_txt/{year}/`，73,481 份 txt（2000-2025），
+  文件名自带 代码_财年_简称_标题_披露日——PIT 锚天然就绪；
+  来源=商家 cninfo 官方接口爬取（附脚本坐实口径）。
