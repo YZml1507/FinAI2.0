@@ -2,7 +2,9 @@
 
 ## 0. 适用构型与期望
 
-- 构型：e63 label150(h150) 分数 **top20 等权**，每个新分数期调仓一次
+- 构型：e63 label150(h150) 分数 **top20 等权** + **e37 veto_daily
+  买侧否决**（e81 判强并入基线，ΔCAGR +1.13pp/ΔMDD −0.42pp，
+  run 20260923-110342），每个新分数期调仓一次
   （生产口径 reb60≈每 60 交易日；分数月产 ⇒ 实际月度跟随）。
 - 回测参照（run 20260923-012520，含费含滑点）：**CAGR 25.72% / 换手 ~300%**
   ——这是**含成本上限**，实盘按 ~20%/年 期望管理（冲击/纪律损耗另扣）。
@@ -17,10 +19,14 @@
    ```bash
    ./.venv/bin/python scripts/emit_live_basket.py \
        --scores experiments/lab/e63/scores_label150_2025.parquet \
-       --topn 20 --capital 150000
+       --topn 20 --capital 150000 \
+       --veto-path data/e37_veto/veto_daily.parquet \
+       --veto-path data/e37_veto/veto_daily_2025plus.parquet
    ```
    → 打印名单/股数/目标市值 + `experiments/live/basket_<日期>_top20.csv`。
    分数期距数据端 >45 天会**警告过期**——别用过期清单。
+   日志应显示「否决序列生效…N 只禁买」；若无此行或警告「未应用否决」，
+   清单口径与基线不一致，查明再执行。
 3. **执行**（次日开盘附近）：
    - **先卖后买**：清仓不在新名单里的持仓 → 再买新名单（T+1 约束，
      当日买入不可卖）。
@@ -38,9 +44,10 @@
 
 ## 3. 已验证工具链
 
-- `scripts/emit_live_basket.py`：选股/流动性/整手/min_pos 语义与
-  `strategy.score_basket`+`portfolio.plan_positions` 同源；已实测
-  （2026-09-22 数据端 19/20 成活，输出含候补 10 名）。
+- `scripts/emit_live_basket.py`：选股/流动性/整手/min_pos/veto
+  语义与 `strategy.score_basket`+`portfolio.plan_positions` 同源
+  （veto loader 共享 `strategy/veto.py`）；已实测（2026-09-22
+  数据端 veto 547 只禁买生效，19/20 成活，输出含候补 10 名）。
 - 分数管线：dbasic 2025 补救 → `e63_build_2025.py` → `e63_score_2025.py`
   （产出即插入步骤 1 路径）。
 
@@ -56,9 +63,11 @@
   接受=按策略语义执行；退市风险由等权分散 + 月度换血天然约束，
   但没有硬性保护，想清楚再下单。
 
-## 5. 首期清单（2026-09-22 已发射）
+## 5. 首期清单（2026-09-22 已发射，veto 口径重发版）
 
 - `experiments/live/basket_2026-09-22_top20.csv` + `_meta.json`：
-  分数期/数据端同日（age=0），19 成活（1 只流动性过滤落候补），
+  分数期/数据端同日（age=0），veto 547 只禁买生效，19 成活，
   现金余量 ≈8959 元，候补 10 名按序。OOS-2025 分数 IC 0.150/t10.65
   （13 已标注月），与 in-sample 0.147/10 同位——模型跨窗未见衰减。
+  ⚠️ 该文件已按 veto 口径覆盖重写——若此前按无 veto 版本下过单，
+  差异部分以下一调仓期修正即可（veto 只影响买入名单）。
