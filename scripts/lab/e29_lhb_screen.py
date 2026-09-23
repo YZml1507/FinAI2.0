@@ -55,7 +55,7 @@ def load_lhb() -> pd.DataFrame:
         if f.stem.startswith('_'):
             continue
         d = pd.read_parquet(f)
-        d['trade_date'] = pd.to_datetime(d['trade_date'], format='%Y-%m-%d')
+        d['trade_date'] = pd.to_datetime(d['trade_date'], format='mixed')
         frames.append(d[['trade_date', 'ts_code', 'net_buy', 'buy_amount',
                          'sell_amount', 'reason', 'pct_change']])
     df = pd.concat(frames, ignore_index=True)

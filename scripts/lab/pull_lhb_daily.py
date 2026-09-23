@@ -91,7 +91,7 @@ def main() -> int:
             (LHB / f"{d}.empty").write_text("")  # 空日标记防重拉
             continue
         out = pd.DataFrame({
-            "trade_date": d,
+            "trade_date": f"{d[:4]}-{d[4:6]}-{d[6:]}",
             "ts_code": df["代码"].astype(str).str.zfill(6).map(_ts),
             "name": df["名称"],
             "close": pd.to_numeric(df["收盘价"], errors="coerce"),
