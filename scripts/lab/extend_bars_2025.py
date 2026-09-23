@@ -25,17 +25,34 @@ COLS = ["date", "open", "high", "low", "close", "preclose", "volume",
         "source", "adjust_mode"]
 
 
-def _needs(symdir: Path, end: str) -> bool:
+def _needs(symdir: Path, end: str, last_td: str | None = None) -> bool:
     f26 = symdir / "2026.parquet"
     if not f26.exists():
         return True
     try:
         mx = pd.read_parquet(f26, columns=["date"])["date"].max()
-        # 容 2 天：末交易日 vs --end 之间可能有周末/假期
+        if last_td:
+            return str(mx) < last_td
         watermark = str(pd.Timestamp(end) - pd.Timedelta(days=2))[:10]
         return str(mx) < watermark
     except Exception:
         return True
+
+
+def _last_trade_day(end: str) -> str | None:
+    """末交易日 ≤ end：baostock 交易日历；失败 None（退旧 2 日容差）。"""
+    try:
+        rs = bs.query_trade_dates(
+            start_date=str(pd.Timestamp(end) - pd.Timedelta(days=15))[:10],
+            end_date=end)
+        last = None
+        while rs.error_code == "0" and rs.next():
+            r = rs.get_row_data()
+            if r[1] == "1":
+                last = r[0]
+        return last
+    except Exception:
+        return None
 
 
 def main() -> int:
@@ -47,9 +64,11 @@ def main() -> int:
 
     syms = sorted(d for d in BARS.iterdir()
                   if d.is_dir() and d.name.startswith(("sh.", "sz.")))
-    todo = [d for d in syms if _needs(d, args.end)]
-    print(f"total={len(syms)} todo={len(todo)}", flush=True)
     bs.login()
+    last_td = _last_trade_day(args.end)
+    todo = [d for d in syms if _needs(d, args.end, last_td)]
+    print(f"total={len(syms)} todo={len(todo)} last_td={last_td}",
+          flush=True)
     done = 0
     for i, symdir in enumerate(todo):
         code = symdir.name
@@ -78,7 +97,7 @@ def main() -> int:
             # 的首个交易日记 is_resumption=True（复牌结构性跳变属真实行情）
             _ts = df["tradestatus"].fillna("1").astype(int)
             df["is_resumption"] = (_ts == 1) & (_ts.shift(1) == 0)
-            df["is_resumption"].iloc[0] = False
+            df.loc[df.index[0], "is_resumption"] = False
             for yr, g in df.groupby(pd.to_datetime(df["date"]).dt.year):
                 fp = symdir / f"{yr}.parquet"
                 if fp.exists():
