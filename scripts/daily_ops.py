@@ -10,6 +10,7 @@
   5. score   2025 分数重算（e63_score_2025 → scores_label150_2025.parquet）
   6. emit    实盘篮（emit_live_basket --veto-path ×2）
   7. nav     shadow NAV 实盘对照（shadow_nav → experiments/live/shadow_nav.parquet）
+  8. anatomic 东财F10分析师预测明细快照（e86；rolling 6M 窗口向前累积）
 
 纪律：fail-closed——任一步非零退出即停，宁可不发清单不发半新鲜数据；
 每步日志落 ``experiments/live/ops_log/<stamp>_<step>.log`` 可回查。
@@ -38,7 +39,8 @@ VETO_HIST = ROOT / "data" / "e37_veto" / "veto_daily.parquet"
 VETO_25 = ROOT / "data" / "e37_veto" / "veto_daily_2025plus.parquet"
 SCORES_25 = ROOT / "experiments" / "lab" / "e63" / "scores_label150_2025.parquet"
 
-STEPS = ("bars", "lhb", "veto", "features", "score", "emit", "nav")
+STEPS = ("bars", "lhb", "veto", "features", "score", "emit", "nav",
+         "anatomic")
 
 
 def _commands(today: str, topn: int, capital: int) -> dict[str, list[str]]:
@@ -57,6 +59,7 @@ def _commands(today: str, topn: int, capital: int) -> dict[str, list[str]]:
                  "--veto-path", str(VETO_HIST),
                  "--veto-path", str(VETO_25)],
         "nav": [PY, str(LAB / "shadow_nav.py")],
+        "anatomic": [PY, str(LAB / "pull_analyst_atomic_em.py")],
     }
 
 

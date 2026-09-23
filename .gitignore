@@ -113,3 +113,4 @@ data/notice_body/
 experiments/runs/*-e65-score-basket-*.json
 data/annual_reports_txt/
 data/fund_holdings_fundlvl/
+data/analyst_atomic_em/
