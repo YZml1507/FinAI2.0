@@ -35,6 +35,7 @@ if str(ROOT) not in sys.path:
 from backtest.types import Bar                                        # noqa: E402
 from strategy.portfolio import (                                      # noqa: E402
     PortfolioConfig,
+    PortfolioError,
     plan_positions,
     select_targets,
 )
@@ -263,13 +264,19 @@ def recompute_double_count() -> dict[str, Any]:
         base = NAV_BASE / D(n) if n else ZERO
         syms = list(targets)
         bars = {s: make_bar("10.00", symbol=s) for s in syms}
-        plan, dropped = plan_positions(syms, NAV_BASE, bars, cfg)
+        try:
+            plan, dropped = plan_positions(syms, NAV_BASE, bars, cfg)
+            raised = None
+        except PortfolioError as exc:
+            plan, dropped = {}, []
+            raised = str(exc)
         rows.append({
             "default_positions": dp, "target_count": tc, "N": n,
             "base": _s(base), "n_built": len(plan),
             "n_dropped": len(dropped),
             "drop_reasons": sorted({r for _, r in dropped}),
             "dropped": [[s, r] for s, r in dropped],
+            "raised": raised,
         })
     return {"nav": _s(NAV_BASE), "rows": rows}
 

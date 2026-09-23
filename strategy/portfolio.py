@@ -194,14 +194,26 @@ def plan_positions(
         target_weights = {s: Decimal(str(weights.get(s, _ZERO))) for s in targets}
         sum_w = sum(target_weights.values(), _ZERO)
 
+    bases: dict[str, Decimal] = {}
+    for symbol in targets:
+        if sum_w > _ZERO:
+            bases[symbol] = (total_nav * target_weights[symbol]) / sum_w
+        else:
+            bases[symbol] = total_nav / Decimal(len(targets))
+    # 僵尸态结构判据（仅多目标篮子）：等权/加权分配后连最大份额都够不到
+    # 单票下限 ⇒ 本次建仓必然全灭且之后每个调仓期重复（资金永远趴现金）。
+    # 单目标调用是探测级语义，仍走正常丢弃路径，不在此拦截。
+    if len(targets) > 1 and max(bases.values()) < cfg.min_position_value:
+        raise PortfolioError(
+            f"结构性资金不足：max(nav/目标数, 加权)="
+            f"{max(bases.values()):.2f} < min_position_value="
+            f"{cfg.min_position_value}——全部建仓必被单票下限拦截"
+            f"（僵尸态），须降低目标数或单票下限")
+
     plan: dict[str, Decimal] = {}
     dropped: list[tuple[str, str]] = []
     for symbol in targets:
-        if sum_w > _ZERO:
-            base = (total_nav * target_weights[symbol]) / sum_w
-        else:
-            base = total_nav / Decimal(len(targets))
-        value, reason = _plan_one(symbol, base, bars.get(symbol), cfg)
+        value, reason = _plan_one(symbol, bases[symbol], bars.get(symbol), cfg)
         if value is None:
             dropped.append((symbol, reason or ""))
         else:

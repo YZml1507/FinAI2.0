@@ -84,6 +84,7 @@
         "dropped": [],
         "n_built": 5,
         "n_dropped": 0,
+        "raised": null,
         "target_count": 5
       },
       {
@@ -94,6 +95,7 @@
         "dropped": [],
         "n_built": 5,
         "n_dropped": 0,
+        "raised": null,
         "target_count": 8
       },
       {
@@ -104,51 +106,18 @@
         "dropped": [],
         "n_built": 5,
         "n_dropped": 0,
+        "raised": null,
         "target_count": 5
       },
       {
         "N": 8,
         "base": "18750",
         "default_positions": 8,
-        "drop_reasons": [
-          "低于单票下限"
-        ],
-        "dropped": [
-          [
-            "s0",
-            "低于单票下限"
-          ],
-          [
-            "s1",
-            "低于单票下限"
-          ],
-          [
-            "s2",
-            "低于单票下限"
-          ],
-          [
-            "s3",
-            "低于单票下限"
-          ],
-          [
-            "s4",
-            "低于单票下限"
-          ],
-          [
-            "s5",
-            "低于单票下限"
-          ],
-          [
-            "s6",
-            "低于单票下限"
-          ],
-          [
-            "s7",
-            "低于单票下限"
-          ]
-        ],
+        "drop_reasons": [],
+        "dropped": [],
         "n_built": 0,
-        "n_dropped": 8,
+        "n_dropped": 0,
+        "raised": "结构性资金不足：max(nav/目标数, 加权)=18750.00 < min_position_value=20000——全部建仓必被单票下限拦截（僵尸态），须降低目标数或单票下限",
         "target_count": 8
       },
       {
@@ -159,6 +128,7 @@
         "dropped": [],
         "n_built": 3,
         "n_dropped": 0,
+        "raised": null,
         "target_count": 5
       }
     ]

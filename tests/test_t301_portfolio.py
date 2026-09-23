@@ -96,12 +96,21 @@ class TestPlanPositions:
         assert all(v == D("20000") for v in plan.values())
 
     def test_below_min_position_value_all_dropped(self) -> None:
-        # 每票 19000 < 20000 → 全 dropped，计划为空
+        # 每票基准 < 下限 ⇒ 僵尸态 fail-closed raise（原"全 dropped 静默归零"语义废弃）
+        with pytest.raises(PortfolioError, match="结构性资金不足"):
+            plan_positions(
+                [f"s{i}" for i in range(5)], D("95000"),
+                {f"s{i}": _bar() for i in range(5)}, PortfolioConfig())
+
+    def test_partial_below_min_position_value_dropped_not_raise(self) -> None:
+        # 加权下小权重票基准 < 下限仍按票丢弃（非僵尸——大票基准 ≥ 下限）
+        bars = {f"s{i}": _bar() for i in range(4)}
+        weights = {"s0": D("97"), "s1": D("1"), "s2": D("1"), "s3": D("1")}
         plan, dropped = plan_positions(
-            [f"s{i}" for i in range(5)], D("95000"),
-            {f"s{i}": _bar() for i in range(5)}, PortfolioConfig())
-        assert plan == {}
-        assert len(dropped) == 5 and all(r == "低于单票下限" for _, r in dropped)
+            list(weights), D("100000"), bars, PortfolioConfig(), weights=weights)
+        assert "s0" in plan
+        assert len(dropped) == 3
+        assert all(r == "低于单票下限" for _, r in dropped)
 
     def test_liquidity_floor_filtered(self) -> None:
         bars = {"a": _bar(), "b": _bar(amount=D("40000000"))}   # b 4 千万 < 5 千万

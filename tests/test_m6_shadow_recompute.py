@@ -24,7 +24,7 @@ from decimal import Decimal
 import pytest
 
 from scripts import m6_shadow_recompute as m6
-from strategy.portfolio import PortfolioConfig, plan_positions, select_targets
+from strategy.portfolio import PortfolioConfig, PortfolioError, plan_positions, select_targets
 
 D = Decimal
 _ZERO = D("0")
@@ -277,12 +277,9 @@ class TestDoubleCount61:
         assert r["N"] == 5 and r["base"] == D("30000") and len(r["plan"]) == 5
 
     def test_dp8_tc8_is_permanently_dead(self) -> None:
-        """(8,8) ⇒ N=8 ⇒ base=18750 < 20000 ⇒ plan_positions 返回**空计划**。"""
-        r = self._combo(8, 8)
-        assert r["N"] == 8 and r["base"] == D("18750") < _M
-        assert r["plan"] == {}
-        assert len(r["dropped"]) == 8
-        assert {reason for _, reason in r["dropped"]} == {"低于单票下限"}
+        """(8,8) ⇒ N=8 ⇒ base=18750 < 20000 ⇒ 结构性资金不足（僵尸态）直接 raise。"""
+        with pytest.raises(PortfolioError, match="结构性资金不足"): 
+            self._combo(8, 8)
 
     def test_dp3_tc5_gives_wide_base_no_dead(self) -> None:
         r = self._combo(3, 5)
