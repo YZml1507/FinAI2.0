@@ -23,6 +23,7 @@ X_TRAIN = ROOT / "experiments/lab/e63_Xlab4.parquet"
 X_SCORE = ROOT / "experiments/lab/e63_Xlab_2025.parquet"
 OUT = ROOT / "experiments/lab/e83"
 AUX = OUT / "aux_features.parquet"
+TYPED = OUT / "typed_features.parquet"
 
 sys.path.insert(0, str(ROOT))
 from scripts.lab.e63_score_sweep_local import (  # noqa: E402
@@ -42,6 +43,10 @@ ARMS = {
     "v5": BASE + ["ann_cnt60"],
     "v6": BASE + ["gdhs_qoq"],
     "v7": BASE + GROUP_7 + ["ann_cnt60", "gdhs_qoq"],
+    # e84: 分类型密度 on top of the promoted v7 set (BASE now = v7 set)
+    "v8": BASE + ["cnt_research60", "cnt_related60",
+                  "cnt_divplan60", "cnt_guar60",
+                  "cnt_exec60", "cnt_pledge60"],
 }
 SCORE_START = pd.Timestamp("2025-01-01")
 TRAIN_START = pd.Timestamp("2017-01-01")
@@ -111,6 +116,9 @@ def main() -> int:
     else:
         X["ann_cnt60"] = np.nan
         X["gdhs_qoq"] = np.nan
+    if TYPED.exists():
+        typed = pd.read_parquet(TYPED)
+        X = X.merge(typed, on=["sig_date", "ts_code"], how="left")
     results = []
     for arm in arms:
         feats = ARMS[arm]
