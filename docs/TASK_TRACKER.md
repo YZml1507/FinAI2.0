@@ -1779,3 +1779,5 @@ MDD 24.40% vs 17.40%（+7.00pp）、换手 6.45、round_trips 312（156→312 �
 
 - **shadow_nav 实盘对照追踪器**（2026-09-23 云）：`scripts/lab/shadow_nav.py`——每个 experiments/live/basket_*.csv 按日推进假想净值（Σ shares×RAW close + cash_left，归一化到清单日），落 `experiments/live/shadow_nav.parquet`（basket_id,date,nav,ret,priced_n,n），不经回测口径修饰的真 OOS 对照记分；接入 daily_ops 尾步（bars→lhb→veto→features→score→emit→nav 七步）。+1 测试，TEST_BASELINE_PASSED 1302→1303。
 - 2026-09-23 e62分片修正: 子会话s4(prefix{1,2})实测为空片——东财公告集代码分布{0:68940,3:62531,6:90319,8:33,9:11660,A:7399}，1/2前缀零行(转债基金/深B非A股域)；'A'前缀(辅导备案未上市)确认不采。真实覆盖映射: s1={0} s2={3} s3={6} s5local={4,8,9}，有效权重92%行集中在0/3/6。
+- 2026-09-23 全量pytest权威确认: 1303 passed/2345s (pytest_full3, 与constants.py基线一致)。
+- 2026-09-23 e83特征边际扫描进行中: v0基线(BASE27) IC_train=0.2415/t21.3, OOS25 IC=0.1502/t10.6 (82+13月); v1-v4矩阵内7列边际臂+v5-v7辅助特征臂排队。
