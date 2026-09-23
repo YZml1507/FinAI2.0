@@ -65,8 +65,8 @@ def _fetch(code: str, retry: int = 3) -> str | None:
     for i in range(retry):
         try:
             r = _sess().get(API.format(code=code), timeout=20)
-            if r.status_code == 429:
-                time.sleep(2.0 * (i + 1))
+            if r.status_code in (429, 567):  # 频控/WAF 封禁页：长退避
+                time.sleep(30.0 * (i + 1))
                 continue
             j = r.json()
             if j.get('success') and j.get('data'):
@@ -109,6 +109,7 @@ def main() -> int:
             continue
         yr = str(d['公告日期'].iloc[0])[:4]
         rows = []
+        time.sleep(0.6)  # 文件间节流，缓解频控封禁
         with ThreadPoolExecutor(max_workers=a.workers) as pool:
             futs = {pool.submit(_fetch, c): (c, r) for c, r in
                     zip(d['art_code'], d.itertuples(index=False))}
