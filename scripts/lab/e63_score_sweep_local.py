@@ -34,6 +34,12 @@ PARAMS = dict(max_depth=6, learning_rate=0.03, n_estimators=600,
               min_child_weight=80, subsample=0.9, colsample_bytree=0.8,
               tree_method='hist', device='cpu', n_jobs=8)
 
+# e87 晋级特征集+参数（v9=31列 d16，docs/E87_PROMOTION_EVAL.md
+# run 20260923-201853：CAGR 41.66%/MDD 0.2017，ΔCAGR +3.78pp 过门）
+E87_DROP = ["an_epsrev20", "max20", "ann_cnt60", "ret5", "ret20"]
+V9_FEATS = [c for c in BASE if c not in E87_DROP]
+V9_PARAMS = dict(PARAMS, max_depth=16)
+
 
 def run_label(X: pd.DataFrame, label: str) -> dict:
     sig_days = np.array(sorted(X['sig_date'].unique()))
