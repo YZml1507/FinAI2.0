@@ -31,7 +31,9 @@ def _needs(symdir: Path, end: str) -> bool:
         return True
     try:
         mx = pd.read_parquet(f26, columns=["date"])["date"].max()
-        return str(mx) < "2026-09-18"
+        # 容 2 天：末交易日 vs --end 之间可能有周末/假期
+        watermark = str(pd.Timestamp(end) - pd.Timedelta(days=2))[:10]
+        return str(mx) < watermark
     except Exception:
         return True
 
