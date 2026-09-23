@@ -69,10 +69,10 @@
       "is_st": true
     }
   ],
-  "scores_path": "experiments/lab/e63/scores_label150_2025.parquet",
+  "scores_path": "/home/ubuntu/repos/FinAI2-0/experiments/lab/e63/scores_label150_2025.parquet",
   "veto_paths": [
-    "data/e37_veto/veto_daily.parquet",
-    "data/e37_veto/veto_daily_2025plus.parquet"
+    "/home/ubuntu/repos/FinAI2-0/data/e37_veto/veto_daily.parquet",
+    "/home/ubuntu/repos/FinAI2-0/data/e37_veto/veto_daily_2025plus.parquet"
   ],
   "veto_n": 547
 }
