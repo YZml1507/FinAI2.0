@@ -132,6 +132,17 @@ def _load_industry_frames(industry_path: Path) -> list:
     return frames
 
 
+def _load_veto_series(veto_path: Path) -> dict:
+    """veto_daily.parquet (date, symbols[]) → {date: frozenset(代码)}。
+
+    代码格式与分数表一致（'000001.SZ'）——e37_veto_series 已规范。
+    """
+    d = pd.read_parquet(veto_path, columns=["date", "symbols"])
+    return {_date.fromisoformat(str(r.date)[:10]):
+            frozenset(normalize_score_code(s) for s in r.symbols)
+            for r in d.itertuples(index=False)}
+
+
 def _load_score_table(scores_path: Path) -> dict[_date, dict[str, float]]:
     df = pd.read_parquet(scores_path)
     need = {"sig_date", "ts_code", "score"}
@@ -172,6 +183,9 @@ def main() -> int:
                     help="E79 行业中性化：单行业篮内名额上限（缺省不约束）")
     ap.add_argument("--industry-path", type=Path,
                     default=_root / "data" / "industry")
+    ap.add_argument("--veto-path", type=Path, default=None,
+                    help="E81 否决层：veto_daily.parquet（买侧否决，" 
+                         "缺省不启用）")
     ap.add_argument("--max-score-age-days", type=int, default=45)
     ap.add_argument("--risk-free-annual", type=Decimal, default=Decimal("0.015"))
     ap.add_argument("--registry-root", type=Path, default=None)
@@ -289,11 +303,17 @@ def main() -> int:
         logger.info(f"行业快照 {len(industry_frames)} 期 "
                     f"({industry_frames[0][0]} ~ {industry_frames[-1][0]})")
 
+    veto_series = None
+    if args.veto_path is not None:
+        veto_series = _load_veto_series(args.veto_path)
+        logger.info(f"否决序列 {len(veto_series)} 期载入 ({args.veto_path})")
+
     strategy = ScoreBasketStrategy(
         config=strategy_config,
         score_table=score_table,
         universe_provider=None,          # watchlist = 分数覆盖域 ∩ 当日有 bar
         industry_frames=industry_frames,
+        veto_series=veto_series,
     )
 
     ledger = Ledger(initial_cash=args.capital, date=start)

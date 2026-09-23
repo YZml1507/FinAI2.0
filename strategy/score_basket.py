@@ -117,6 +117,7 @@ class ScoreBasketStrategy:
         score_table: Mapping[_date, Mapping[str, float]],
         universe_provider: Any | None = None,
         industry_frames: Sequence[tuple[_date, Mapping[str, str]]] | None = None,
+        veto_series: Mapping[_date, frozenset] | None = None,
     ) -> None:
         """
         Args:
@@ -126,6 +127,8 @@ class ScoreBasketStrategy:
                 （防幸存者偏差）；None = 用分数表覆盖域做 watchlist。
             industry_frames: [(updateDate, {symbol: industry})]——PIT 行业
                 快照序列；仅 ``industry_cap`` 生效时需要。
+            veto_series: {date: {禁买代码}}——当日禁买名单（e37 否决层，
+                仅买侧：调仓选品剔除并从分数降序回补；已持仓不强制卖出）。
         """
         self.config = config
         self.universe_provider = universe_provider
@@ -153,6 +156,8 @@ class ScoreBasketStrategy:
         self._rebuild_streak = 0
         # invvol 权重用收盘缓冲（首个 bar 起随日推入，暖机期也在攒）
         self._px_hist: dict[str, deque[Decimal]] = {}
+        # e81 否决层：{date: frozenset(禁买代码)}
+        self._veto: Mapping[_date, frozenset] | None = veto_series
 
     # ------------------------------------------------------------------
     # 引擎契约
@@ -262,6 +267,8 @@ class ScoreBasketStrategy:
         targets = select_targets(scores, cfg.portfolio)
         if cfg.industry_cap is not None:
             targets = self._apply_industry_cap(targets, scores, day, cfg)
+        if self._veto is not None:
+            targets = self._apply_veto(targets, scores, day, cfg)
         total_nav = book.total_nav if hasattr(book, "total_nav") else getattr(book, "nav", Decimal("0"))
         weights: dict[str, Decimal] | None = None
         if cfg.weight_mode == "score":
@@ -326,6 +333,28 @@ class ScoreBasketStrategy:
             if counts.get(ind, 0) >= cap:
                 continue
             counts[ind] = counts.get(ind, 0) + 1
+            kept.append(s)
+            kept_set.add(s)
+        return kept
+
+    def _apply_veto(self, targets: list[str],
+                    scores: dict[str, Decimal], day: _date,
+                    cfg: ScoreBasketConfig) -> list[str]:
+        """e37 否决层：当日禁买代码剔除 + 分数降序回补至 target_count。"""
+        banned = self._veto.get(day) if self._veto is not None else None
+        if not banned:
+            return targets
+        need = cfg.portfolio.target_count
+        kept = [s for s in targets if s not in banned]
+        if len(kept) >= need:
+            return kept
+        kept_set = set(kept)
+        ranking = sorted(scores.items(), key=lambda kv: (-float(kv[1]), kv[0]))
+        for s, _ in ranking:
+            if len(kept) >= need:
+                break
+            if s in kept_set or s in banned:
+                continue
             kept.append(s)
             kept_set.add(s)
         return kept

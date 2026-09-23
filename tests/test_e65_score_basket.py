@@ -269,3 +269,51 @@ class TestIndustryCap:
         bought = {t.symbol for t in broker.trades
                   if str(t.side).endswith("BUY")}
         assert _SY_A in bought and _SY_B in bought
+
+
+class TestVetoOverlay:
+    def _basket_cfg(self, target: int = 2) -> ScoreBasketConfig:
+        return ScoreBasketConfig(
+            portfolio=PortfolioConfig(
+                target_count=target, min_positions=1, max_positions=target + 2,
+                hard_limit=target + 4, min_position_value=D("1000")),
+            rebalance_days=5, max_score_age_days=45, warmup_bars=2,
+            use_ma200_timing=False)
+
+    def test_veto_excludes_banned(self) -> None:
+        """A 当日禁买 → 篮子取 B+C（次高分顺位回补）。"""
+        scores = {_SY_A: 0.9, _SY_B: 0.85, _SY_C: 0.8}
+        score_table = {_D0: dict(scores),
+                       _D0 + timedelta(days=20): dict(scores)}
+        veto = {d: frozenset({_SY_A}) for d in _DAYS}  # 全窗口禁买 A
+        st = ScoreBasketStrategy(self._basket_cfg(), score_table,
+                                 veto_series=veto)
+        _, broker = _run(st)
+        bought = {t.symbol for t in broker.trades
+                  if str(t.side).endswith("BUY")}
+        assert _SY_A not in bought
+        assert _SY_B in bought and _SY_C in bought
+
+    def test_veto_empty_day_noop(self) -> None:
+        """当日无 veto 行 → 选品不受扰（A+B 照常）。"""
+        scores = {_SY_A: 0.9, _SY_B: 0.85, _SY_C: 0.8}
+        score_table = {_D0: dict(scores),
+                       _D0 + timedelta(days=20): dict(scores)}
+        veto = {_D0 - timedelta(days=1): frozenset({_SY_C})}
+        st = ScoreBasketStrategy(self._basket_cfg(), score_table,
+                                 veto_series=veto)
+        _, broker = _run(st)
+        bought = {t.symbol for t in broker.trades
+                  if str(t.side).endswith("BUY")}
+        assert _SY_A in bought and _SY_B in bought
+
+    def test_veto_none_passthrough(self) -> None:
+        """veto_series=None → 与基线逐位一致。"""
+        scores = {_SY_A: 0.9, _SY_B: 0.85, _SY_C: 0.8}
+        score_table = {_D0: dict(scores),
+                       _D0 + timedelta(days=20): dict(scores)}
+        st = ScoreBasketStrategy(self._basket_cfg(), score_table)
+        _, broker = _run(st)
+        bought = {t.symbol for t in broker.trades
+                  if str(t.side).endswith("BUY")}
+        assert _SY_A in bought and _SY_B in bought
