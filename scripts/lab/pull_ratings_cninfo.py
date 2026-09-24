@@ -38,8 +38,8 @@ def fetch_day(td: str, retries: int = 6) -> list:
             d = json.loads(urllib.request.urlopen(req, timeout=30).read())
             if d.get('resultcode') == 200:
                 return d.get('records') or []
-            if '没有购买' in str(d.get('resultmsg')):
-                raise SystemExit(f'账号无权限: {d}')
+            if '没有购买' in str(d.get('resultmsg')) or '过期' in str(d.get('resultmsg')):
+                raise SystemExit(f'账号凭证失效: {d}')
         except SystemExit:
             raise
         except Exception:
