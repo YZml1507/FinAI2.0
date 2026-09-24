@@ -20,6 +20,7 @@ import argparse
 import glob
 import io
 import json
+import os
 import re
 import threading
 import time
@@ -100,7 +101,9 @@ def _org_id(code: str) -> str:
         org = f'gssh0{c}' if c[0] in '69' else f'gssz0{c}'
     with _orgid_lock:
         m[c] = org
-        ORGID_FILE.write_text(json.dumps(m, ensure_ascii=False))
+        tmp = ORGID_FILE.with_suffix(f'.tmp.{os.getpid()}')
+        tmp.write_text(json.dumps(m, ensure_ascii=False))
+        tmp.replace(ORGID_FILE)
     return org
 
 
@@ -156,7 +159,31 @@ def cninfo_index(code: str, year: int) -> list[dict]:
         page += 1
 
 
+def _js_text(adjunct: str, retry: int = 2) -> str | None:
+    """cninfo .js 公告页：var affiches=[{...,"Zw":"正文html"}] JSONP。"""
+    for i in range(retry):
+        try:
+            r = _sess().get(PDF_BASE + adjunct,
+                            headers={'User-Agent': 'Mozilla/5.0'},
+                            timeout=20)
+            if r.status_code != 200:
+                time.sleep(2.0 * (i + 1))
+                continue
+            m = re.search(r'var\s+affiches\s*=\s*(\[.*\])\s*;?\s*$',
+                          r.text, re.S)
+            if not m:
+                return ''
+            arr = json.loads(m.group(1))
+            return '\n'.join(re.sub(r'<[^>]+>', '', a.get('Zw', ''))
+                             for a in arr)
+        except Exception:  # noqa: BLE001
+            time.sleep(2.0 * (i + 1))
+    return None
+
+
 def _pdf_text(adjunct: str, retry: int = 3) -> str | None:
+    if adjunct.endswith('.js'):
+        return _js_text(adjunct)
     for i in range(retry):
         try:
             r = _sess().get(PDF_BASE + adjunct,
@@ -198,13 +225,68 @@ def _mark_fail(code: str, why: str):
                                 ensure_ascii=False) + '\n')
 
 
-def _job(meta_row, idx_by_title):
+def _lcp(a: str, b: str) -> int:
+    n = 0
+    for x, y in zip(a, b):
+        if x != y:
+            break
+        n += 1
+    return n
+
+
+def _job(meta_row, idx_items):
     """匹配标题→下PDF→抽文本。返回 row dict 或 None。"""
     ac, code, name, title, atype, ann_date = meta_row
-    cand = idx_by_title.get(_norm(title)) or \
-        idx_by_title.get(_norm_suffix(title))
+    idx_by_title = {_norm(a['title']): a['url'] for a in idx_items
+                    if a['url']}
+    s = _norm_suffix(title)
+    keys = [_norm(title), s]
+    nm = _norm(name)
+    if nm and s.startswith(nm):  # 东财标题带「简称」前缀，巨潮无
+        keys.append(s[len(nm):])
+    cand = next((idx_by_title[k] for k in keys if k in idx_by_title),
+                None)
+    if not cand:  # 「年」异体：2017年度报告 vs 2017年年度报告
+        deyear = {_norm(a['title']).replace('年', ''): a['url']
+                  for a in idx_items if a['url']}
+        cand = next((deyear[k2] for k in keys
+                     for k2 in [k.replace('年', '')] if k2 in deyear),
+                    None)
+    if not cand:  # 同公告日收窄：东财改写/截断标题按日期对齐（±1 天）
+        import datetime as _dt
+        try:
+            d0 = _dt.date.fromisoformat(str(ann_date)[:10])
+        except ValueError:
+            d0 = None
+        if d0:
+            best_l, best_u = 0, None
+            for a in idx_items:
+                if not a['url'] or not a['t']:
+                    continue
+                ad = _dt.datetime.fromtimestamp(
+                    a['t'] / 1000, _dt.timezone.utc).date()
+                if abs((ad - d0).days) > 1:
+                    continue
+                nt = _norm(a['title'])
+                for k in keys[1:]:
+                    if len(nt) >= 8 and (nt in k or k in nt):
+                        best_l, best_u = 10**9, a['url']
+                        break
+                    l = max(_lcp(nt, k), _lcp(nt[::-1], k[::-1])
+                            if len(nt) >= 8 else 0)
+                    if l > best_l:
+                        best_l, best_u = l, a['url']
+                if best_l == 10**9:
+                    break
+            if best_l >= 10:
+                cand = best_u
+    if not cand:  # 反向包含：巨潮标题常为东财去前缀后的子串
+        for nt, u in idx_by_title.items():
+            if nt and len(nt) >= 8 and nt in s:
+                cand = u
+                break
     if not cand:  # 模糊兜底：前缀差异/截断标题常见
-        probe = _norm_suffix(title)[:18]
+        probe = s[:18]
         for nt, u in idx_by_title.items():
             if probe and probe in nt:
                 cand = u
@@ -266,11 +348,9 @@ def main() -> int:
     for code, yr in keys:
         rows_meta = groups[(code, yr)]
         idx = cninfo_index(code, yr)
-        idx_by_title = {_norm(a['title']): a['url'] for a in idx
-                        if a['url']}
         rows = []
         with ThreadPoolExecutor(max_workers=a.workers) as pool:
-            futs = {pool.submit(_job, m, idx_by_title): m[0]
+            futs = {pool.submit(_job, m, idx): m[0]
                     for m in rows_meta}
             for fut in as_completed(futs):
                 ac = futs[fut]
