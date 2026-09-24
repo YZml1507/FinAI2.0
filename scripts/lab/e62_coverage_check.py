@@ -25,19 +25,24 @@ def art(u):
 
 
 def main():
+    import sys
+    stock_only = '--stock-only' in sys.argv
     wl = {}
     for f in sorted(glob.glob('data/notice_meta/*.parquet')):
         if not Path(f).stem.isdigit():
             continue
-        d = pd.read_parquet(f, columns=['网址', '公告类型', '公告日期'])
+        d = pd.read_parquet(f, columns=['网址', '公告类型', '公告日期', '代码'])
         d['ac'] = d['网址'].map(art)
         d = d[d['ac'].notna() & d['公告类型'].map(want)]
+        if stock_only:
+            d = d[d['代码'].astype(str).str.zfill(6).str[0].isin(['0', '3', '6'])]
         for ac, yr in zip(d['ac'], d['公告日期'].astype(str).str[:4]):
             wl.setdefault(yr, set()).add(ac)
 
     body = {}
+    shard_re = re.compile(r'(?:rec_)?(\d{4})(?:_s\d+[a-z]?|_d)?$')
     for f in sorted(glob.glob('data/notice_body/*.parquet')):
-        if '_d' in Path(f).stem:
+        if not shard_re.match(Path(f).stem):
             continue
         d = pd.read_parquet(f, columns=['art_code', 'ann_date'])
         for ac, yr in zip(d['art_code'], d['ann_date'].astype(str).str[:4]):

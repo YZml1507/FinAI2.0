@@ -49,21 +49,34 @@ def _ts(code: str) -> str:
     return f"bj.{code}"
 
 
+_SHARD_RE = re.compile(r"(?:rec_)?(\d{4})(?:_s\d+[a-z]?|_d)?$")
+
+
 def load_body() -> pd.DataFrame:
+    """逐文件抽取特征后即弃 text——合并语料全量载入会 OOM，
+    只保留特征列拼接。"""
     frames = []
     for f in sorted(glob.glob(str(BODY_DIR / "*.parquet"))):
-        if "_d" in Path(f).stem:  # _d = 去重前的重复/降级分片，跳过
+        stem = Path(f).stem
+        if not _SHARD_RE.match(stem) or "_d" in stem:
             continue
-        frames.append(pd.read_parquet(f))
+        d = pd.read_parquet(
+            f, columns=["art_code", "code", "title", "atype",
+                        "ann_date", "text"])
+        d["nchar"] = d["text"].fillna("").str.len()
+        d["risk_hits"] = d["text"].fillna("").map(
+            lambda t: len(RISK_WORDS.findall(t)))
+        d["pos_hits"] = d["text"].fillna("").map(
+            lambda t: len(POS_WORDS.findall(t)))
+        d["is_lit"] = d["title"].fillna("").str.contains(LIT_TITLE).astype(int)
+        frames.append(d[["art_code", "code", "ann_date", "atype",
+                         "nchar", "risk_hits", "pos_hits", "is_lit"]])
     df = pd.concat(frames, ignore_index=True)
     df = df.drop_duplicates(subset=["art_code"])
     df["ann_date"] = pd.to_datetime(df["ann_date"])
     df["ts_code"] = df["code"].map(_ts)
-    df["nchar"] = df["text"].fillna("").str.len()
-    df["risk_hits"] = df["text"].fillna("").map(lambda t: len(RISK_WORDS.findall(t)))
-    df["pos_hits"] = df["text"].fillna("").map(lambda t: len(POS_WORDS.findall(t)))
-    df["is_lit"] = df["title"].fillna("").str.contains(LIT_TITLE).astype(int)
-    return df[["ts_code", "ann_date", "nchar", "risk_hits", "pos_hits", "is_lit", "atype"]]
+    return df[["ts_code", "ann_date", "nchar", "risk_hits",
+               "pos_hits", "is_lit", "atype"]]
 
 
 def monthly_signals(body: pd.DataFrame, ends: pd.DatetimeIndex, win: int = 60) -> pd.DataFrame:

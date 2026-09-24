@@ -99,7 +99,7 @@ def _name_candidates(name: str, ann_date: str) -> tuple[list, float]:
     out = []
     for page in range(1, 4):
         j = None
-        for attempt in range(3):
+        for attempt in range(6):
             try:
                 r = _sess().post(SEARCH, data={
                     'searchkey': str(name), 'sdate': lo, 'edate': hi,
@@ -111,7 +111,7 @@ def _name_candidates(name: str, ann_date: str) -> tuple[list, float]:
                 j = r.json()
                 break
             except Exception:  # noqa: BLE001
-                time.sleep(2.0 * (attempt + 1))
+                time.sleep(3.0 * (attempt + 1))
         if j is None:
             break
         anns = j.get('announcements') or []
