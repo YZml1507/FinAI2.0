@@ -40,11 +40,15 @@ def fetch_day(td: str, retries: int = 6) -> list:
                 return d.get('records') or []
             if '没有购买' in str(d.get('resultmsg')) or '过期' in str(d.get('resultmsg')):
                 raise SystemExit(f'账号凭证失效: {d}')
+            if d.get('resultcode') == 429 or '限流' in str(d.get('resultmsg')):
+                time.sleep(15 + 15 * i)
+                continue
+            time.sleep(3 + 3 * i)
         except SystemExit:
             raise
         except Exception:
             time.sleep(2 + 2 * i)
-    return []
+    raise RuntimeError(f'fetch_day {td} 连续 {retries} 次失败,中止以防记假 done')
 
 
 def load_done() -> set:
