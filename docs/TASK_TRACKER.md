@@ -1883,3 +1883,10 @@ MDD 24.40% vs 17.40%（+7.00pp）、换手 6.45、round_trips 312（156→312 �
 - 生产落地：daily_ops emit 步 --min-amount 1000000（仅 15 万账户口径）。
 - @150K top40 不可行：150000/40=3750<min_pos 5000（结构性拦截，e90 首臂
   PortfolioError 按设计拒绝）。
+
+
+## 2026-09-24 e62 NLP 首验（部分覆盖 15.9%，机制检查非正式判定）
+
+- 五信号月频 IC（92 月）：pos_den -0.0207/t-2.27/安慰剂p=0 为唯一候选
+  （符号翻转：正面词密度高→fwd20低）；ann_cnt/loglen/risk_den/lit_frac 全灭。
+- 正式复算待 notice_body 覆盖≥80%；结果文档 docs/E62_BODY_NLP_RESULT.md。

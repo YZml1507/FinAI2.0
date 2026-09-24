@@ -104,11 +104,10 @@ def fwd20_returns() -> pd.DataFrame:
 
 
 def eval_ic(sig: pd.DataFrame, rets: pd.DataFrame, col: str, shift_days: int = 0) -> dict:
-    d = sig.merge(rets, on=["ts_code", "date"], how="inner").dropna(subset=[col, "fwd20"])
+    d = sig[["ts_code", "date", col]].copy()
     if shift_days:
-        d = d.copy()
         d["date"] = d["date"] + pd.Timedelta(days=shift_days)
-        d = d.merge(rets, on=["ts_code", "date"], how="inner").dropna(subset=[col, "fwd20"])
+    d = d.merge(rets, on=["ts_code", "date"], how="inner").dropna(subset=[col, "fwd20"])
     ic = d.groupby("date").apply(
         lambda g: g[col].corr(g["fwd20"], method="spearman") if len(g) >= 20 else np.nan,
         include_groups=False)
