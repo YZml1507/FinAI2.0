@@ -26,7 +26,7 @@ REPO = 'YZml1507/FinAI2.0'
 
 COLS = ['art_code', 'code', 'name', 'title', 'atype',
         'ann_date', 'text', 'pdf_url']
-SHARD_RE = re.compile(r'(?:rec_)?(\d{4})(?:_s\d+[a-z]?|_d)?\.parquet$')
+SHARD_RE = re.compile(r'(?:rec_)?(\d{4})(?:_s\d+[a-z]?|_d|_l\d+)?\.parquet$')
 
 
 def download(staging: Path) -> None:
