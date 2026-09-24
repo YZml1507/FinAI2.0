@@ -1,0 +1,46 @@
+{
+  "n_forecasts": 1476663,
+  "n_stock_months": 290384,
+  "signals": {
+    "rev_breadth": {
+      "ic": 0.0265,
+      "t": 2.91,
+      "months": 85,
+      "placebo_ics": [
+        0.0827,
+        0.0248
+      ],
+      "placebo_p": 0.5
+    },
+    "disp_cv": {
+      "ic": -0.015,
+      "t": -0.97,
+      "months": 85,
+      "placebo_ics": [
+        -0.0273,
+        -0.0111
+      ],
+      "placebo_p": 0.5
+    },
+    "cover_n": {
+      "ic": 0.006,
+      "t": 0.48,
+      "months": 85,
+      "placebo_ics": [
+        0.0273,
+        -0.0128
+      ],
+      "placebo_p": 1.0
+    },
+    "cons_chg": {
+      "ic": 0.0159,
+      "t": 2.89,
+      "months": 85,
+      "placebo_ics": [
+        0.0735,
+        0.0173
+      ],
+      "placebo_p": 1.0
+    }
+  }
+}
