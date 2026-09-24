@@ -56,6 +56,10 @@ def _commands(today: str, topn: int, capital: int) -> dict[str, list[str]]:
         "emit": [PY, str(ROOT / "scripts" / "emit_live_basket.py"),
                  "--scores", str(SCORES_25),
                  "--topn", str(topn), "--capital", str(capital),
+                 # 15万账户流动性下限放宽至1M：e90 引擎臂 run
+                 # 20260924-004322 CAGR 46.25%/MDD 0.1875（vs amt5M
+                 # 44.05%/0.1692，run 20260924-005243），+2.2pp。
+                 "--min-amount", "1000000",
                  "--veto-path", str(VETO_HIST),
                  "--veto-path", str(VETO_25)],
         "nav": [PY, str(LAB / "shadow_nav.py")],
