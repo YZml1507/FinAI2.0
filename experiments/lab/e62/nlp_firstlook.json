@@ -1,0 +1,64 @@
+{
+  "n_rows": 236079,
+  "n_stock_months": 187551,
+  "date_span": [
+    "2015-01-01",
+    "2026-09-22"
+  ],
+  "signals": {
+    "nlp_ann_cnt": {
+      "ic": -0.0059,
+      "t": -0.74,
+      "months": 92,
+      "placebo_ics": [
+        -0.0154,
+        -0.0119
+      ],
+      "placebo_p": 1.0
+    },
+    "nlp_loglen": {
+      "ic": -0.0063,
+      "t": -0.8,
+      "months": 92,
+      "placebo_ics": [
+        0.0112,
+        -0.0066
+      ],
+      "placebo_p": 1.0
+    },
+    "nlp_risk_den": {
+      "ic": 0.0032,
+      "t": 0.32,
+      "months": 92,
+      "placebo_ics": [
+        -0.0236,
+        -0.0026
+      ],
+      "placebo_p": 0.5
+    },
+    "nlp_pos_den": {
+      "ic": -0.0074,
+      "t": -0.79,
+      "months": 92,
+      "placebo_ics": [
+        0.0187,
+        0.0066
+      ],
+      "placebo_p": 0.5
+    },
+    "nlp_lit_frac": {
+      "ic": 0.0005,
+      "t": 0.08,
+      "months": 92,
+      "placebo_ics": [
+        -0.014,
+        -0.0067
+      ],
+      "placebo_p": 1.0
+    }
+  },
+  "coverage": {
+    "mean": 0.339,
+    "months": 93
+  }
+}
