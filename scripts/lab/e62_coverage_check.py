@@ -40,7 +40,7 @@ def main():
             wl.setdefault(yr, set()).add(ac)
 
     body = {}
-    shard_re = re.compile(r'(?:rec_)?(\d{4})(?:_s\d+[a-z]?|_d)?$')
+    shard_re = re.compile(r'(?:rec_)?(\d{4})(?:_s\d+[a-z]?|_d|_l\d+|_fc)?$')
     for f in sorted(glob.glob('data/notice_body/*.parquet')):
         if not shard_re.match(Path(f).stem):
             continue

@@ -2,7 +2,7 @@
 """拉取巨潮 webapi 投资评级原子全史 (p_sysapi1089)。
 
 每行 = 机构 x 研究员 x 评级 x 评级变化 x 目标价, 2005-至今。
-鉴权: Accept-EncKey = base64(unix_ts), access_token 表单字段 (org secret CNINFO_ACCESS_TOKEN)。
+鉴权: Accept-Enckey = JS getResCode1() (akshare cninfo.js), 无需 access_token。
 落盘: data/ratings_cninfo/{year}.parquet  (增量: 已有年份文件读回合入, 去重 by 全字段)。
 用法: ./.venv/bin/python -u scripts/lab/pull_ratings_cninfo.py [--start 2005-01-01] [--end 2026-12-31] [--workers 2]
 """
@@ -24,17 +24,27 @@ COLS = {'SECCODE': 'code', 'SECNAME': 'name', 'DECLAREDATE': 'ann_date',
         'F009N': 'target_low', 'F010N': 'target_high'}
 
 
+_JS = None
+
+
 def enckey():
-    return base64.b64encode(str(int(time.time())).encode()).decode()
+    global _JS
+    if _JS is None:
+        import py_mini_racer
+        _JS = py_mini_racer.MiniRacer()
+        _JS.eval(open(ROOT / 'scripts/lab/cninfo.js', encoding='utf-8').read())
+    return _JS.call('getResCode1')
 
 
 def fetch_day(td: str, retries: int = 6) -> list:
     for i in range(retries):
         try:
-            body = urllib.parse.urlencode({'tdate': td, 'access_token': TOKEN}).encode()
+            body = urllib.parse.urlencode({'tdate': td}).encode()
             req = urllib.request.Request(API, data=body, headers={
-                'User-Agent': UA, 'Accept-EncKey': enckey(),
-                'Referer': 'http://webapi.cninfo.com.cn/'})
+                'User-Agent': UA, 'Accept-Enckey': enckey(),
+                'Origin': 'http://webapi.cninfo.com.cn',
+                'Referer': 'http://webapi.cninfo.com.cn/',
+                'X-Requested-With': 'XMLHttpRequest'})
             d = json.loads(urllib.request.urlopen(req, timeout=30).read())
             if d.get('resultcode') == 200:
                 return d.get('records') or []
@@ -63,8 +73,6 @@ def main():
     ap.add_argument('--end', default=pd.Timestamp.today().strftime('%Y-%m-%d'))
     ap.add_argument('--workers', type=int, default=1)  # 保留参数, 串行最稳
     args = ap.parse_args()
-    if not TOKEN:
-        sys.exit('需要环境变量 CNINFO_ACCESS_TOKEN')
     days = [d.strftime('%Y-%m-%d') for d in pd.date_range(args.start, args.end, freq='D')]
     done = load_done()
     todo = [d for d in days if d not in done]
