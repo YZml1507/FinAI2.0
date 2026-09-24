@@ -19,6 +19,9 @@ def _norm(t):
 def _norm_suffix(t):
     return _norm(re.split(r'[:：]', str(t), maxsplit=1)[-1])
 
+def _deyear(t):
+    return _norm(str(t).replace('年', ''))
+
 BT = ['年度报告全文', '半年度报告', '季度报告', '业绩快报', '业绩预告',
       '重大事项', '停牌', '复牌', '诉讼', '仲裁', '风险提示', '退市',
       '违规', '处罚', '警示', '问询', '关注函', '监管', '立案调查']
@@ -44,12 +47,26 @@ def main():
     meta['code'] = meta['代码'].astype(str).str.zfill(6)
     print('meta whitelist rows:', len(meta))
 
-    # 2) lookup: (code, norm) → row
+    # 2) lookup: (code, norm) → row; per-code list for fuzzy fallback
     lut = {}
+    by_code = {}
     for code, nt, ns, ac, dt, tp in zip(meta['code'], meta['nt'], meta['ns'],
                                        meta['ac'], meta['公告日期'], meta['公告类型']):
         lut.setdefault((code, nt), (ac, dt, tp))
         lut.setdefault((code, ns), (ac, dt, tp))
+        by_code.setdefault(code, []).append((nt, ns, ac, dt, tp))
+
+    # already-covered art_codes → skip them in fuzzy pass
+    import glob as _g
+    covered = set()
+    shard_re = re.compile(r'(?:rec_)?(\d{4})(?:_s\d+[a-z]?|_d|_l\d+|_fc)?\.parquet$')
+    for f in _g.glob(str(ROOT / 'data/notice_body/*.parquet')):
+        if shard_re.match(Path(f).stem):
+            try:
+                covered.update(pd.read_parquet(f, columns=['art_code'])['art_code'])
+            except Exception:
+                pass
+    print('already covered:', len(covered))
 
     # 3) fincorpus
     fc = pd.read_parquet('/home/ubuntu/fincorpus_parsed.parquet')
@@ -68,6 +85,37 @@ def main():
                             'title': title, 'type': tp, 'body': body})
             hit += 1
     print('matched:', hit)
+    # fuzzy pass: only for whitelist art_codes not yet covered — deyear + containment
+    cands = {}
+    for code, rows in by_code.items():
+        todo = [(nt, ns, ac, dt, tp) for nt, ns, ac, dt, tp in rows if ac not in covered]
+        if todo:
+            cands[code] = todo
+    fc2 = fc[fc['year'].isin(out.keys()) & fc['code'].isin(cands.keys())]
+    fc2['dy'] = fc2['title'].map(_deyear)
+    hit2 = 0
+    for code, dy, ns, yr, title, body in zip(fc2['code'], fc2['dy'], fc2['ns'],
+                                            fc2['year'], fc2['title'], fc2['body']):
+        if not dy and not ns:
+            continue
+        best = None
+        for nt, nsm, ac, dt, tp in cands[code]:
+            if ac in covered:
+                continue
+            ntd = nt.replace('年', '')
+            nsd = nsm.replace('年', '')
+            ok = (dy and (dy == ntd or dy == nsd or (len(dy) >= 10 and (dy in ntd or dy in nsd)))
+                  ) or (ns and len(ns) >= 10 and (ns in nt or ns in nsm))
+            if ok:
+                best = (ac, dt, tp)
+                break
+        if best:
+            ac, dt, tp = best
+            covered.add(ac)
+            out[yr].append({'art_code': ac, 'code': code, 'ann_date': str(dt)[:10],
+                            'title': title, 'type': tp, 'body': body})
+            hit2 += 1
+    print('fuzzy matched:', hit2)
     for yr, rows in out.items():
         if rows:
             df = pd.DataFrame(rows).drop_duplicates('art_code')
