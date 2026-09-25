@@ -31,10 +31,10 @@ def _code_to_ts(c) -> str:
     s = str(c).zfill(6)
     p = s[0]
     if p in "03":
-        return f"sz.{s}"
+        return f"{s}.SZ"
     if p == "6":
-        return f"sh.{s}"
-    return f"bj.{s}"
+        return f"{s}.SH"
+    return f"{s}.BJ"
 
 
 def build_fh_features(sig_dates: np.ndarray) -> pd.DataFrame:

@@ -1,0 +1,258 @@
+{
+  "n_v9_feats": 31,
+  "panel_rows": 422292,
+  "signals": [
+    {
+      "signal": "e103f_fund_val",
+      "panel_coverage": 0.986,
+      "max_abs_rho": 0.723,
+      "max_rho_feat": "fund_cov",
+      "mean_abs_rho": 0.1313
+    },
+    {
+      "signal": "e101_disp_cv",
+      "panel_coverage": 0.2641,
+      "max_abs_rho": 0.6942,
+      "max_rho_feat": "s3_fy_slope",
+      "mean_abs_rho": 0.1518
+    },
+    {
+      "signal": "e106_fh_cnt",
+      "panel_coverage": 0.9863,
+      "max_abs_rho": 0.6768,
+      "max_rho_feat": "fund_cov",
+      "mean_abs_rho": 0.1064
+    },
+    {
+      "signal": "e103f_fund_n",
+      "panel_coverage": 0.986,
+      "max_abs_rho": 0.6589,
+      "max_rho_feat": "fund_cov",
+      "mean_abs_rho": 0.1012
+    },
+    {
+      "signal": "e99_tp_gap",
+      "panel_coverage": 0.0941,
+      "max_abs_rho": 0.6069,
+      "max_rho_feat": "ret60",
+      "mean_abs_rho": 0.0923
+    },
+    {
+      "signal": "e103_gdhs_chg",
+      "panel_coverage": 0.9442,
+      "max_abs_rho": 0.5913,
+      "max_rho_feat": "gdhs_qoq",
+      "mean_abs_rho": 0.0481
+    },
+    {
+      "signal": "e103_gdhs_lvl",
+      "panel_coverage": 0.9442,
+      "max_abs_rho": 0.5866,
+      "max_rho_feat": "circ_mv",
+      "mean_abs_rho": 0.1154
+    },
+    {
+      "signal": "e99_n_orgs",
+      "panel_coverage": 0.2731,
+      "max_abs_rho": 0.4881,
+      "max_rho_feat": "fund_cov",
+      "mean_abs_rho": 0.0889
+    },
+    {
+      "signal": "e102_org_n",
+      "panel_coverage": 0.3641,
+      "max_abs_rho": 0.4588,
+      "max_rho_feat": "fund_cov",
+      "mean_abs_rho": 0.0857
+    },
+    {
+      "signal": "e101_cover_n",
+      "panel_coverage": 0.3887,
+      "max_abs_rho": 0.4353,
+      "max_rho_feat": "fund_cov",
+      "mean_abs_rho": 0.0936
+    },
+    {
+      "signal": "e103_hld_val",
+      "panel_coverage": 0.9442,
+      "max_abs_rho": 0.4348,
+      "max_rho_feat": "turnover20",
+      "mean_abs_rho": 0.119
+    },
+    {
+      "signal": "e102_cover_n",
+      "panel_coverage": 0.3641,
+      "max_abs_rho": 0.4148,
+      "max_rho_feat": "fund_cov",
+      "mean_abs_rho": 0.0799
+    },
+    {
+      "signal": "e100_bert_pos_cnt",
+      "panel_coverage": 0.7436,
+      "max_abs_rho": 0.407,
+      "max_rho_feat": "ev_fc_pos",
+      "mean_abs_rho": 0.0593
+    },
+    {
+      "signal": "e101_rev_breadth",
+      "panel_coverage": 0.2891,
+      "max_abs_rho": 0.3318,
+      "max_rho_feat": "s1_eps_rev90",
+      "mean_abs_rho": 0.0905
+    },
+    {
+      "signal": "e100_bert_pos_den",
+      "panel_coverage": 0.7436,
+      "max_abs_rho": 0.3177,
+      "max_rho_feat": "ev_fc_pos",
+      "mean_abs_rho": 0.0475
+    },
+    {
+      "signal": "e99_report_cnt30",
+      "panel_coverage": 0.1302,
+      "max_abs_rho": 0.3056,
+      "max_rho_feat": "fund_cov",
+      "mean_abs_rho": 0.0662
+    },
+    {
+      "signal": "e100_bert_posneg",
+      "panel_coverage": 0.7436,
+      "max_abs_rho": 0.296,
+      "max_rho_feat": "ev_fc_pos",
+      "mean_abs_rho": 0.0648
+    },
+    {
+      "signal": "e100_bert_conf",
+      "panel_coverage": 0.7436,
+      "max_abs_rho": 0.2676,
+      "max_rho_feat": "ev_fc_pos",
+      "mean_abs_rho": 0.0564
+    },
+    {
+      "signal": "e99_dispersion",
+      "panel_coverage": 0.0214,
+      "max_abs_rho": 0.2535,
+      "max_rho_feat": "fwd_ep",
+      "mean_abs_rho": 0.0705
+    },
+    {
+      "signal": "e100_bert_neg_den",
+      "panel_coverage": 0.7436,
+      "max_abs_rho": 0.2523,
+      "max_rho_feat": "ev_fc_neg",
+      "mean_abs_rho": 0.0562
+    },
+    {
+      "signal": "e101_cons_chg",
+      "panel_coverage": 0.3873,
+      "max_abs_rho": 0.2437,
+      "max_rho_feat": "s1_eps_rev90",
+      "mean_abs_rho": 0.0552
+    },
+    {
+      "signal": "e99_cov_chg",
+      "panel_coverage": 0.2731,
+      "max_abs_rho": 0.193,
+      "max_rho_feat": "an_rating_dir20",
+      "mean_abs_rho": 0.0343
+    },
+    {
+      "signal": "e104_plg_rel3m",
+      "panel_coverage": 0.1206,
+      "max_abs_rho": 0.1752,
+      "max_rho_feat": "circ_mv",
+      "mean_abs_rho": 0.0429
+    },
+    {
+      "signal": "e104_plg_cnt3m",
+      "panel_coverage": 0.1206,
+      "max_abs_rho": 0.1354,
+      "max_rho_feat": "ret120",
+      "mean_abs_rho": 0.0265
+    },
+    {
+      "signal": "e107_disc_late",
+      "panel_coverage": 0.2863,
+      "max_abs_rho": 0.1354,
+      "max_rho_feat": "ev_fc_pos",
+      "mean_abs_rho": 0.0305
+    },
+    {
+      "signal": "e102_depth_sh",
+      "panel_coverage": 0.3641,
+      "max_abs_rho": 0.125,
+      "max_rho_feat": "an_rating_dir20",
+      "mean_abs_rho": 0.0406
+    },
+    {
+      "signal": "e102_cover_d",
+      "panel_coverage": 0.2775,
+      "max_abs_rho": 0.1199,
+      "max_rho_feat": "ret120",
+      "mean_abs_rho": 0.0345
+    },
+    {
+      "signal": "e99_rating_chg90",
+      "panel_coverage": 0.242,
+      "max_abs_rho": 0.1183,
+      "max_rho_feat": "an_rating_dir20",
+      "mean_abs_rho": 0.0205
+    },
+    {
+      "signal": "e106_fh_cnt_chg",
+      "panel_coverage": 0.9756,
+      "max_abs_rho": 0.1044,
+      "max_rho_feat": "s2_np_rev90",
+      "mean_abs_rho": 0.0271
+    },
+    {
+      "signal": "e99_rating_score",
+      "panel_coverage": 0.2634,
+      "max_abs_rho": 0.1024,
+      "max_rho_feat": "s3_fy_slope",
+      "mean_abs_rho": 0.0199
+    },
+    {
+      "signal": "e106_fh_mv_chg",
+      "panel_coverage": 0.9756,
+      "max_abs_rho": 0.0996,
+      "max_rho_feat": "fund_cov_chg",
+      "mean_abs_rho": 0.0251
+    },
+    {
+      "signal": "e104_plg_net3m",
+      "panel_coverage": 0.1206,
+      "max_abs_rho": 0.0974,
+      "max_rho_feat": "ret120",
+      "mean_abs_rho": 0.024
+    },
+    {
+      "signal": "e99_rev_breadth90",
+      "panel_coverage": 0.242,
+      "max_abs_rho": 0.0493,
+      "max_rho_feat": "s1_eps_rev90",
+      "mean_abs_rho": 0.0158
+    },
+    {
+      "signal": "e99_rev_net90",
+      "panel_coverage": 0.242,
+      "max_abs_rho": 0.0493,
+      "max_rho_feat": "s1_eps_rev90",
+      "mean_abs_rho": 0.0158
+    },
+    {
+      "signal": "e107_disc_resched",
+      "panel_coverage": 0.2863,
+      "max_abs_rho": 0.0356,
+      "max_rho_feat": "ev_fc_neg",
+      "mean_abs_rho": 0.0099
+    },
+    {
+      "signal": "e99_eps_slope",
+      "panel_coverage": 0.0,
+      "max_abs_rho": null,
+      "max_rho_feat": null,
+      "mean_abs_rho": null
+    }
+  ]
+}
