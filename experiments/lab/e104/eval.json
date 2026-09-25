@@ -1,0 +1,39 @@
+{
+  "lag": "DECLAREDATE+1d",
+  "win_days": 90,
+  "eval_window": "2016-01..2024-12",
+  "signals": {
+    "plg_net3m": {
+      "ic": 0.0008,
+      "t": 0.09,
+      "months": 33,
+      "placebo_ics": [
+        -0.0033,
+        0.001
+      ],
+      "placebo_p": 1.0
+    },
+    "plg_cnt3m": {
+      "ic": 0.0106,
+      "t": 1.27,
+      "months": 33,
+      "placebo_ics": [
+        0.0026,
+        -0.0041
+      ],
+      "placebo_p": 0.0
+    },
+    "plg_rel3m": {
+      "ic": 0.0042,
+      "t": 0.45,
+      "months": 33,
+      "placebo_ics": [
+        0.0109,
+        -0.0063
+      ],
+      "placebo_p": 1.0
+    }
+  },
+  "months": 53,
+  "covered_stocks": 2408
+}
