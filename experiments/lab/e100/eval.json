@@ -1,64 +1,64 @@
 {
-  "n_scored": 242602,
-  "n_stock_months": 192887,
+  "n_scored": 550417,
+  "n_stock_months": 422741,
   "date_span": [
     "2015-01-01",
     "2026-09-22"
   ],
   "signals": {
     "bert_pos_den": {
-      "ic": -0.006,
-      "t": -0.72,
+      "ic": -0.0001,
+      "t": -0.01,
       "months": 92,
       "placebo_ics": [
-        0.0287,
-        0.0102
+        0.0337,
+        0.0099
       ],
       "placebo_p": 1.0
     },
     "bert_neg_den": {
-      "ic": 0.001,
-      "t": 0.11,
+      "ic": -0.0055,
+      "t": -0.73,
       "months": 92,
       "placebo_ics": [
         -0.021,
-        -0.0163
+        -0.0142
       ],
       "placebo_p": 1.0
     },
     "bert_posneg": {
-      "ic": -0.0014,
-      "t": -0.15,
+      "ic": 0.0045,
+      "t": 0.6,
       "months": 92,
       "placebo_ics": [
-        0.0297,
-        0.0165
+        0.033,
+        0.0153
       ],
       "placebo_p": 1.0
     },
     "bert_conf": {
-      "ic": -0.0104,
-      "t": -1.78,
+      "ic": -0.0095,
+      "t": -1.63,
       "months": 92,
       "placebo_ics": [
-        -0.0029,
-        -0.0034
+        0.0022,
+        -0.0048
       ],
       "placebo_p": 0.0
     },
     "bert_pos_cnt": {
-      "ic": -0.0091,
-      "t": -1.17,
+      "ic": -0.0046,
+      "t": -0.67,
       "months": 92,
       "placebo_ics": [
-        0.0203,
-        0.0056
+        0.0246,
+        0.0035
       ],
       "placebo_p": 0.5
     }
   },
   "coverage": {
-    "mean": 0.346,
+    "mean": 0.782,
     "months": 93
   }
 }
