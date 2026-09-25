@@ -1,0 +1,40 @@
+{
+  "n_rows": 181699,
+  "n_stock_months": 582710,
+  "asof_span": [
+    "2005-05-15",
+    "2026-08-14"
+  ],
+  "signals": {
+    "fh_cnt": {
+      "ic": -0.0284,
+      "t": -2.18,
+      "months": 92,
+      "placebo_ics": [
+        -0.0149,
+        -0.0085
+      ],
+      "placebo_p": 0.0
+    },
+    "fh_cnt_chg": {
+      "ic": -0.028,
+      "t": -1.93,
+      "months": 92,
+      "placebo_ics": [
+        -0.034,
+        0.0237
+      ],
+      "placebo_p": 0.5
+    },
+    "fh_mv_chg": {
+      "ic": -0.0047,
+      "t": -0.75,
+      "months": 92,
+      "placebo_ics": [
+        -0.0068,
+        0.0183
+      ],
+      "placebo_p": 1.0
+    }
+  }
+}
