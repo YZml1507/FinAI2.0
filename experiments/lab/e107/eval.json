@@ -26,5 +26,13 @@
       ],
       "placebo_p": 0.5
     }
+  },
+  "attribution": {
+    "note": "disc_late pass = size proxy artifact",
+    "size_neutral_ic": 0.0047,
+    "size_neutral_t": 0.51,
+    "size_ic": -0.0557,
+    "size_t": -2.25,
+    "verdict": "weak_after_size_neutralization"
   }
 }
