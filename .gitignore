@@ -99,6 +99,7 @@ Desktop.ini
 
 # 实验产物本地隔离（大体积/可再生，不入 git；榜单 leaderboard.jsonl 与 runs/ 权威产物除外）
 experiments/lab/*/
+experiments/lab/*.parquet
 experiments/universe/
 
 # 流水线运行副本（start/daemon 生成的临时隔离副本，守护退出自删；失败残留时也不入 git）
@@ -110,7 +111,11 @@ tmp_audit/
 data/notice_meta/
 data/consensus/
 data/notice_body/
+data/cninfo_*/
+data/em_reports/
+data/ratings_cninfo/
 experiments/runs/*-e65-score-basket-*.json
+experiments/runs/*-e65-score-basket-*.json.gz
 data/annual_reports_txt/
 data/fund_holdings_fundlvl/
 data/analyst_atomic_em/
