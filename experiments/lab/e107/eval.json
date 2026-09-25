@@ -1,0 +1,30 @@
+{
+  "n_rows": 257833,
+  "n_stock_months": 167461,
+  "asof_span": [
+    "2005-04-07",
+    "2026-08-31"
+  ],
+  "signals": {
+    "disc_late": {
+      "ic": 0.0487,
+      "t": 4.22,
+      "months": 53,
+      "placebo_ics": [
+        0.0178,
+        0.0021
+      ],
+      "placebo_p": 0.0
+    },
+    "disc_resched": {
+      "ic": -0.0114,
+      "t": -1.03,
+      "months": 63,
+      "placebo_ics": [
+        -0.0348,
+        -0.0045
+      ],
+      "placebo_p": 0.5
+    }
+  }
+}
