@@ -1,0 +1,57 @@
+{
+  "lag_days": 60,
+  "signals": {
+    "gdhs_lvl": {
+      "ic": -0.0122,
+      "t": -0.87,
+      "months": 91,
+      "placebo_ics": [
+        -0.0074,
+        -0.0129
+      ],
+      "placebo_p": 0.5
+    },
+    "gdhs_chg": {
+      "ic": -0.0277,
+      "t": -5.12,
+      "months": 91,
+      "placebo_ics": [
+        -0.0228,
+        -0.0181
+      ],
+      "placebo_p": 0.0
+    },
+    "hld_val": {
+      "ic": 0.0128,
+      "t": 1.0,
+      "months": 91,
+      "placebo_ics": [
+        0.0254,
+        0.0023
+      ],
+      "placebo_p": 0.5
+    },
+    "fund_n": {
+      "ic": -0.0239,
+      "t": -1.92,
+      "months": 91,
+      "placebo_ics": [
+        -0.0107,
+        -0.0121
+      ],
+      "placebo_p": 0.0
+    },
+    "fund_val": {
+      "ic": -0.0174,
+      "t": -1.18,
+      "months": 91,
+      "placebo_ics": [
+        0.0008,
+        -0.017
+      ],
+      "placebo_p": 0.0
+    }
+  },
+  "holders_months": 138,
+  "fund_heavy_months": 138
+}
