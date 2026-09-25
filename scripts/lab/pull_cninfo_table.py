@@ -79,7 +79,7 @@ def write_year(out_dir, year, rows):
 
 
 def date_of(row):
-    for k in ('DECLAREDATE', 'F001D', 'VARYDATE', 'ENDDATE', 'STARTDATE', 'RECTIME', 'F003D'):
+    for k in ('DECLAREDATE', 'F001D', 'TRADEDATE', 'VARYDATE', 'ENDDATE', 'STARTDATE', 'RECTIME', 'F003D'):
         v = row.get(k)
         if v:
             return str(v)[:4]
