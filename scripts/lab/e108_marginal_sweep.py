@@ -55,8 +55,16 @@ CANDIDATES = {
     "bert_pos_den":("e100/sig_monthly.parquet", "bert_pos_den"),
     "bert_neg_den":("e100/sig_monthly.parquet", "bert_neg_den"),
     "bert_conf":   ("e100/sig_monthly.parquet", "bert_conf"),
-    "ix_gdhs_mv":  ("e108/sig_ix_gdhs_circ_mv.parquet", "ix_gdhs_mv"),
-    "ix_fh_to":    ("e108/sig_ix_fh_turnover.parquet", "ix_fh_to"),
+    "ix_gdhs_mv":  ("e108/sig_ix_gdhs_circ_mv.parquet", "ix_gdhs_chg_circ_mv"),
+    "ix_fh_to":    ("e108/sig_ix_fh_turnover.parquet", "ix_fh_cnt_turnover20"),
+    "ix_fh_fundcov": ("e108/sig_ix_fh_fundcov.parquet", "ix_fh_cnt_fund_cov"),
+    "ix_disc_ret": ("e108/sig_ix_disc_late_ret120.parquet", "ix_disc_late_ret120"),
+    "ix_rating_rev": ("e108/sig_ix_rating_rev.parquet", "ix_rating_chg90_rev_net90"),
+    "ix_rating_eps": ("e108/sig_ix_rating_epsrev.parquet", "ix_rating_chg90_s1_eps_rev90"),
+    "ix_bert_to":  ("e108/sig_ix_bert_to.parquet", "ix_bert_conf_turnover20"),
+    "ix_plg_mv":   ("e108/sig_ix_plg_mv.parquet", "ix_plg_net3m_circ_mv"),
+    "ix_fhchg_vol": ("e108/sig_ix_fhchg_vol.parquet", "ix_fh_cnt_chg_vol20"),
+    "ix_disc_lr":  ("e108/sig_ix_disc_late_resched.parquet", "ix_disc_late_disc_resched"),
 }
 
 
