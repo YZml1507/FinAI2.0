@@ -1,0 +1,122 @@
+[
+ {
+  "arm": "fh_cnt:turnover20",
+  "merge_cov_train": 0.9973
+ },
+ {
+  "arm": "fh_cnt:turnover20",
+  "n_feat": 32,
+  "ic_in": 0.07309,
+  "t_in": 4.3,
+  "ic_oos25": 0.12663,
+  "t_oos25": 3.18,
+  "n_in": 35,
+  "n_oos": 19,
+  "top_feats": {
+   "turnover20": 0.0817,
+   "ev_lhb": 0.0502,
+   "vol20": 0.0452,
+   "ev_resumption": 0.0408,
+   "circ_mv": 0.0399,
+   "fund_cov_chg": 0.0394,
+   "ev_fc_neg": 0.0392,
+   "ev_insider_sell": 0.0379
+  }
+ },
+ {
+  "arm": "fh_cnt:fund_cov",
+  "merge_cov_train": 0.9973
+ },
+ {
+  "arm": "fh_cnt:fund_cov",
+  "n_feat": 32,
+  "ic_in": 0.0722,
+  "t_in": 4.46,
+  "ic_oos25": 0.1231,
+  "t_oos25": 3.06,
+  "n_in": 35,
+  "n_oos": 19,
+  "top_feats": {
+   "turnover20": 0.0827,
+   "ev_lhb": 0.0501,
+   "vol20": 0.0452,
+   "ev_resumption": 0.0423,
+   "circ_mv": 0.0402,
+   "fund_cov_chg": 0.04,
+   "ev_fc_neg": 0.0383,
+   "ev_insider_sell": 0.0378
+  }
+ },
+ {
+  "arm": "disc_late:ret120",
+  "merge_cov_train": 0.2792
+ },
+ {
+  "arm": "disc_late:ret120",
+  "n_feat": 32,
+  "ic_in": 0.0727,
+  "t_in": 4.45,
+  "ic_oos25": 0.12218,
+  "t_oos25": 2.92,
+  "n_in": 35,
+  "n_oos": 19,
+  "top_feats": {
+   "turnover20": 0.0827,
+   "ev_lhb": 0.0489,
+   "vol20": 0.0451,
+   "ev_resumption": 0.0422,
+   "fund_cov_chg": 0.039,
+   "circ_mv": 0.0388,
+   "ev_fc_neg": 0.0386,
+   "ev_frozen": 0.0376
+  }
+ },
+ {
+  "arm": "gdhs_chg:circ_mv",
+  "merge_cov_train": 0.9401
+ },
+ {
+  "arm": "gdhs_chg:circ_mv",
+  "n_feat": 32,
+  "ic_in": 0.07752,
+  "t_in": 4.71,
+  "ic_oos25": 0.12673,
+  "t_oos25": 3.1,
+  "n_in": 35,
+  "n_oos": 19,
+  "top_feats": {
+   "turnover20": 0.0827,
+   "ev_lhb": 0.0491,
+   "vol20": 0.0452,
+   "ev_resumption": 0.0436,
+   "circ_mv": 0.042,
+   "ev_fc_neg": 0.0394,
+   "fund_cov_chg": 0.0393,
+   "ev_frozen": 0.0384
+  }
+ },
+ {
+  "arm": "rating_chg90:rev_net90",
+  "merge_cov_train": 0.2065
+ },
+ {
+  "arm": "rating_chg90:rev_net90",
+  "n_feat": 32,
+  "ic_in": 0.07243,
+  "t_in": 4.43,
+  "ic_oos25": 0.12457,
+  "t_oos25": 3.05,
+  "n_in": 35,
+  "n_oos": 19,
+  "top_feats": {
+   "turnover20": 0.0813,
+   "ev_lhb": 0.0499,
+   "vol20": 0.0461,
+   "ev_resumption": 0.0436,
+   "ev_fc_neg": 0.0402,
+   "circ_mv": 0.0401,
+   "fund_cov_chg": 0.04,
+   "ev_insider_sell": 0.0397
+  }
+ }
+]

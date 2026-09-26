@@ -30,7 +30,7 @@ LAB = ROOT / "experiments" / "lab"
 OUT = LAB / "e108"
 
 # 筛选参数（快 4x）：胜出者回 V9_PARAMS 全参复验
-SCREEN_PARAMS = dict(S.PARAMS, max_depth=8, n_estimators=300)
+SCREEN_PARAMS = dict(S.PARAMS, max_depth=6, n_estimators=250)
 
 # 每个候选: (信号文件, 信号列)。与 e108 冗余度筛同一批正交+对照信号
 CANDIDATES = {
@@ -55,13 +55,16 @@ CANDIDATES = {
     "bert_pos_den":("e100/sig_monthly.parquet", "bert_pos_den"),
     "bert_neg_den":("e100/sig_monthly.parquet", "bert_neg_den"),
     "bert_conf":   ("e100/sig_monthly.parquet", "bert_conf"),
+    "ix_gdhs_mv":  ("e108/sig_ix_gdhs_circ_mv.parquet", "ix_gdhs_mv"),
+    "ix_fh_to":    ("e108/sig_ix_fh_turnover.parquet", "ix_fh_to"),
 }
 
 
 def load_signal(fn: str, col: str) -> pd.DataFrame:
     d = pd.read_parquet(LAB / fn)
     d["code6"] = d["ts_code"].astype(str).str.extract(r"(\d{6})")
-    d["period"] = pd.to_datetime(d["date"]).dt.to_period("M")
+    if "period" not in d.columns:
+        d["period"] = pd.to_datetime(d["date"]).dt.to_period("M")
     return d[["code6", "period", col]].dropna()
 
 
@@ -69,6 +72,8 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--arms", default="base," + ",".join(CANDIDATES))
     ap.add_argument("--tag", default="all")
+    ap.add_argument("--v9params", action="store_true",
+                    help="全参复验模式 (V9_PARAMS, 生产口径)")
     a = ap.parse_args()
     OUT.mkdir(parents=True, exist_ok=True)
     t0 = time.time()
@@ -80,8 +85,9 @@ def main() -> int:
     x["period"] = pd.to_datetime(x["sig_date"]).dt.to_period("M")
 
     arms = [s.strip() for s in a.arms.split(",") if s.strip()]
+    from e63_score_sweep_local import V9_PARAMS
     old = S.PARAMS
-    S.PARAMS = SCREEN_PARAMS
+    S.PARAMS = V9_PARAMS if a.v9params else SCREEN_PARAMS
     results = []
     for name in arms:
         if name == "base":
